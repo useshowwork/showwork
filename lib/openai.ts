@@ -588,6 +588,7 @@ Otherwise set shouldReply=true, provide only the customer-facing reply in replyT
   contentGroups,
   scheduleStrategy,
   platformSchedules,
+  onBatch,
 }: {
   clientName: string;
   businessSummary: string;
@@ -608,9 +609,10 @@ Otherwise set shouldReply=true, provide only the customer-facing reply in replyT
       time: string;
     }
   >;
+  onBatch?: (batchPosts: unknown[], completed: number, total: number) => Promise<void> | void;
 }): Promise<GeneratedPostIdea[]> {
   if (process.env.CONTENT_BRIEF_GENERATION_ENABLED !== "false") {
-    return generateBriefCalendar(callContentAI, { clientName, businessSummary, startDate, endDate, postsPerWeek, platforms, customInstructions, recentContent, campaignObjective, contentStrategy, contentGroups }) as Promise<GeneratedPostIdea[]>;
+    return generateBriefCalendar(callContentAI, { clientName, businessSummary, startDate, endDate, postsPerWeek, platforms, customInstructions, recentContent, campaignObjective, contentStrategy, contentGroups, onBatch }) as Promise<GeneratedPostIdea[]>;
   }
   if (platforms.length === 0) {
     throw new Error("At least one platform is required.");
@@ -1050,10 +1052,10 @@ For image posts and carousels, hook and script may be empty strings unless the c
 
 CONTENT QUALITY:
 
-- Base every post on the business summary.
+- Base every post on the workspace profile, business summary, and documented facts.
 - Avoid generic filler.
 - Vary topics and formats across content units.
-- Keep the content coherent with the brand.
+- Keep the content coherent with the brand voice and positioning.
 - Follow the manager's specific instructions when provided.
 - Make every content unit meaningfully different from the previous content unit.
 
@@ -1178,7 +1180,7 @@ ${customInstructions.trim()}`
         },
       },
     },
-  }, sharedDates.flatMap((_, index) => streams.map(stream => ({ contentUnit: index + 1, platform: stream.platforms[0] }))));
+  }, sharedDates.flatMap((_, index) => streams.map(stream => ({ contentUnit: index + 1, platform: stream.platforms[0] }))), { onBatch });
 
   const cleaned = raw
     .trim()

@@ -3,10 +3,10 @@ export async function writeContentBatches(
   call: (request: { instructions: string; input: string; maxOutputTokens: number; jsonSchema: { name: string; schema: Record<string, unknown> } }) => Promise<string>,
   request: { instructions: string; input: string; jsonSchema: { name: string; schema: Record<string, unknown> } },
   identities: { contentUnit: number; platform: string }[],
-  options: { concurrency?: number } = {},
+  options: { concurrency?: number; onBatch?: (posts: unknown[], completed: number, total: number) => Promise<void> | void } = {},
 ) {
   const batches = Array.from({ length: Math.ceil(identities.length / 3) }, (_, i) => identities.slice(i * 3, i * 3 + 3));
-  const concurrency = options.concurrency ?? 2;
+  const concurrency = options.concurrency ?? 3;
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) throw Error("Content writing concurrency must be between 1 and 4.");
   const results: unknown[][] = new Array(batches.length);
   let cursor = 0, failed = false;
@@ -28,6 +28,14 @@ export async function writeContentBatches(
       if (!parsed || !Array.isArray(parsed.posts) || parsed.posts.length !== batch.length) throw Error("The AI returned an incomplete content batch. Please try again.");
       for (const post of parsed.posts) if (!post || !keys.delete(`${post.platform}:${post.contentUnit}`)) throw Error("The AI returned unexpected or duplicate content items. Please try again.");
       results[index] = parsed.posts;
+      if (options.onBatch) {
+        const completedCount = results.filter(Boolean).flat().length;
+        try {
+          await options.onBatch(parsed.posts, completedCount, identities.length);
+        } catch (onBatchErr) {
+          console.warn("[writeContentBatches] onBatch hook warning:", onBatchErr);
+        }
+      }
       } catch (error) {
         if (!failed) { failed = true; failure = error; }
         return;

@@ -58,7 +58,7 @@ async function executeClaimedJob(job: { id: string; creatorId: string; calendarI
     const response = creator
       ? await generateCalendarDrafts(new NextRequest("http://localhost/api/ai-generation", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(job.request),
-      }), { params: Promise.resolve({ id: job.calendarId }) }, creator)
+      }), { params: Promise.resolve({ id: job.calendarId }) }, creator, jobId)
       : NextResponse.json({ error: "Account no longer available." }, { status: 401 });
     const result = await response.json();
     if (!result || typeof result !== "object" || Array.isArray(result)) throw new Error("Invalid generation result");

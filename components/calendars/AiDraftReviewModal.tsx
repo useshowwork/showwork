@@ -63,9 +63,11 @@ function snapshot(draft: DraftPost): DraftPost {
 
 export default function AiDraftReviewModal({
   calendarId,
+  jobId = null,
   onClose,
 }: {
   calendarId: string;
+  jobId?: string | null;
   onClose: () => void;
 }) {
   const [drafts, setDrafts] = useState<DraftPost[] | null>(null);
@@ -76,6 +78,8 @@ export default function AiDraftReviewModal({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [jobStatus, setJobStatus] = useState<"PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | null>(jobId ? "RUNNING" : null);
+  const [jobProgress, setJobProgress] = useState<{ inProgress?: boolean; completedCount?: number; totalCount?: number } | null>(null);
 
   const selected = useMemo(
     () => drafts?.find((draft) => draft.id === selectedId) ?? null,
@@ -94,19 +98,28 @@ export default function AiDraftReviewModal({
     }
   }
 
-  async function loadDrafts() {
+  async function loadDrafts(silent = false) {
     try {
-      setError(null);
+      if (!silent) setError(null);
       const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts`, {
         cache: "no-store",
       });
       const data = await readJson(res);
       if (!res.ok) throw new Error(data.error ?? "Failed to load drafts");
 
-      setDrafts(data.drafts ?? []);
-      if (data.drafts?.length) setSelectedId((current: string | null) => current ?? data.drafts[0].id);
+      const incoming: DraftPost[] = data.drafts ?? [];
+      setDrafts((current) => {
+        if (!current || current.length === 0) return incoming;
+        const currentIds = new Set(current.map((d) => d.id));
+        const newItems = incoming.filter((d) => !currentIds.has(d.id));
+        if (newItems.length === 0) return current;
+        return [...current, ...newItems];
+      });
+      if (incoming.length) {
+        setSelectedId((current: string | null) => current ?? incoming[0].id);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load drafts");
+      if (!silent) setError(err instanceof Error ? err.message : "Failed to load drafts");
     }
   }
 
@@ -130,6 +143,49 @@ export default function AiDraftReviewModal({
   useEffect(() => {
     loadDrafts();
   }, []);
+
+  // Poll for background generation progress and stream new drafts
+  useEffect(() => {
+    if (!jobId || jobStatus === "COMPLETED" || jobStatus === "FAILED") return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/calendars/${encodeURIComponent(calendarId)}/ai-generate/${encodeURIComponent(jobId)}`, {
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+
+        if (res.status === 200 || data.status === "COMPLETED") {
+          setJobStatus("COMPLETED");
+          await loadDrafts(true);
+          return;
+        }
+
+        if (res.status === 202) {
+          setJobStatus("RUNNING");
+          if (data.progress) {
+            setJobProgress(data.progress);
+          }
+          await loadDrafts(true);
+        } else if (res.status >= 400) {
+          setJobStatus("FAILED");
+          if (data.error) setError(data.error);
+        }
+      } catch {
+        // Soft network failure; keep polling
+      }
+    };
+
+    const interval = setInterval(poll, 2500);
+    void poll();
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [calendarId, jobId, jobStatus]);
 
   useEffect(() => {
     if (selectedId) loadGenerations(selectedId);
@@ -581,9 +637,17 @@ export default function AiDraftReviewModal({
             <div className="border-b border-[#EEF2F6] px-5 py-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#101828]">Draft queue</span>
-                <span className="rounded-full bg-[#EEF5FF] px-2 py-1 text-[10px] font-bold text-[#2478FF]">
-                  {remaining}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {jobStatus === "RUNNING" && (
+                    <span className="flex items-center gap-1 rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[9px] font-bold text-[#2478FF]">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2478FF]" />
+                      Generating
+                    </span>
+                  )}
+                  <span className="rounded-full bg-[#EEF5FF] px-2 py-1 text-[10px] font-bold text-[#2478FF]">
+                    {remaining}
+                  </span>
+                </div>
               </div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#EEF2F6]">
                 <div
@@ -591,6 +655,13 @@ export default function AiDraftReviewModal({
                   style={{ width: `${progress}%` }}
                 />
               </div>
+              {jobStatus === "RUNNING" && (
+                <p className="mt-2 text-[10px] text-[#667085]">
+                  {jobProgress?.completedCount && jobProgress.totalCount
+                    ? `Generated ${jobProgress.completedCount} of ${jobProgress.totalCount} drafts…`
+                    : "Drafts are streaming in live…"}
+                </p>
+              )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -756,6 +827,23 @@ export default function AiDraftReviewModal({
                       Confirm & add to calendar
                     </button>
                   </div>
+                </div>
+              </div>
+            ) : jobStatus === "RUNNING" && (!drafts || drafts.length === 0) ? (
+              <div className="flex min-h-full items-center justify-center p-8 text-center">
+                <div className="mx-auto max-w-sm">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF5FF] text-[#2478FF] shadow-sm">
+                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#2478FF]/30 border-t-[#2478FF]" />
+                  </div>
+                  <h2 className="mt-4 text-base font-semibold text-[#101828]">Generating your content…</h2>
+                  <p className="mt-1.5 text-xs leading-relaxed text-[#667085]">
+                    The AI is planning and drafting posts based on your brand knowledge. Drafts will appear in the queue on the left as soon as they are ready.
+                  </p>
+                  {jobProgress?.totalCount ? (
+                    <p className="mt-3 text-[11px] font-bold text-[#2478FF]">
+                      Planning {jobProgress.totalCount} publishing slots…
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ) : (

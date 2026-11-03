@@ -28,7 +28,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (Date.now() - progressAt.getTime() > 16 * 60_000) {
     return NextResponse.json({ error: "Generation was interrupted. Check your drafts before trying again." }, { status: 504 });
   }
-  return NextResponse.json({ jobId, status: job.status }, { status: 202, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ jobId, status: job.status, progress: job.result }, { status: 202, headers: { "Cache-Control": "no-store" } });
   }); } catch(error) {
     if (!databaseUnavailable(error)) throw error;
     console.warn("DATABASE_TEMPORARILY_UNAVAILABLE", { endpoint: "ai_generation_status", code: (error as {code?:string}).code });

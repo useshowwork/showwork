@@ -28,7 +28,7 @@ function isRealDate(value: unknown): value is string {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-export async function generateCalendarDrafts(req: NextRequest, { params }: { params: Promise<{ id: string }> }, creator: { id: string }) {
+export async function generateCalendarDrafts(req: NextRequest, { params }: { params: Promise<{ id: string }> }, creator: { id: string }, jobId?: string) {
   const { id } = await params;
   if (!(await hasCalendarPermission(creator.id, id, "ai.generate"))) {
     return NextResponse.json({ error: "You don't have permission to generate content on this calendar" }, { status: 403 });
@@ -135,6 +135,20 @@ export async function generateCalendarDrafts(req: NextRequest, { params }: { par
       contentGroups: contentGroups as string[][] | undefined,
       scheduleStrategy: scheduleStrategy as "SAME_TIME" | "SAME_DAY" | "CUSTOM" | undefined,
       platformSchedules: schedules as Record<string, { date: string; time: string }>,
+      onBatch: async (_batchPosts: unknown[], completed: number, total: number) => {
+        if (jobId) {
+          await db.aiGenerationJob.update({
+            where: { id: jobId },
+            data: {
+              result: {
+                inProgress: true,
+                completedCount: completed,
+                totalCount: expectedDrafts || total,
+              },
+            },
+          }).catch(() => {});
+        }
+      },
     });
     generationPhase = "validation";
     for (const idea of ideas) {
@@ -190,7 +204,10 @@ return NextResponse.json({
     creatorId: creator.id,
     phase: generationPhase,
     errorType: error instanceof Error ? error.name : "UnknownError",
+    errorMessage: error instanceof Error ? error.message : String(error),
+    errorStack: error instanceof Error ? error.stack : undefined,
     code: typeof error === "object" && error !== null && "code" in error ? String(error.code) : undefined,
+    stack: error
   });
 
   try {

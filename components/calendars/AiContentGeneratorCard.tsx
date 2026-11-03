@@ -65,6 +65,7 @@ export default function AiContentGeneratorCard({
   const [timeZone,setTimeZone]=useState("UTC");
   useEffect(()=>{setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC");},[]);
   const [customInstructions, setCustomInstructions] = useState("");
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [researchLoaded, setResearchLoaded] = useState(false);
   useEffect(() => {
     const apply = () => { const text = consumeResearchBrief(calendarId); if (text) { setCustomInstructions(text); setResearchLoaded(true); } };
@@ -202,12 +203,6 @@ const togglePlatform = (platform: string) => {
       });
 
       let data = await readAiGenerationResponse(res);
-      if (res.status === 202 && typeof data.jobId === "string") {
-        const completed = await waitForAiGeneration(calendarId, data.jobId);
-        res = completed.response;
-        data = completed.data;
-      }
-
       if (data.code === "KNOWLEDGE_CLARIFICATION_REQUIRED" && Array.isArray(data.gaps)) {
         if (resolution) setKnowledgeAnswers(resolution.knowledgeAnswers);
         setClarification({ gaps: data.gaps, incomplete: data.incomplete === true, canSave: data.canSave === true });
@@ -221,6 +216,13 @@ const togglePlatform = (platform: string) => {
 
       setClarification(null);
       setKnowledgeAnswers([]);
+
+      if (res.status === 202 && typeof data.jobId === "string") {
+        setActiveJobId(data.jobId);
+        setReviewOpen(true);
+        return;
+      }
+
       setReviewOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -1033,11 +1035,27 @@ const togglePlatform = (platform: string) => {
             </button>
           </div>
         )}
+        {activeJobId && !reviewOpen && (
+          <div className="mx-5 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-xs text-blue-900 sm:mx-7">
+            <div className="flex items-center gap-2.5">
+              <span className="h-2 w-2 animate-ping rounded-full bg-blue-600" />
+              <span className="font-semibold">Content generation is running in the background.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReviewOpen(true)}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 font-bold text-white shadow-sm hover:bg-blue-700"
+            >
+              Open draft queue
+            </button>
+          </div>
+        )}
       </section>
 
       {reviewOpen && (
         <AiDraftReviewModal
           calendarId={calendarId}
+          jobId={activeJobId}
           onClose={() => setReviewOpen(false)}
         />
       )}
