@@ -69,18 +69,16 @@ export async function getBusinessKnowledgeContext(calendarId: string, query: str
 
   let context = profileSection + personalitySection + (evidenceSection || (overview ? "" : "\nNo usable business source material is available. Brand personality is style only; do not invent business facts. Request clarification or hand off to a human.")) + overview;
 
-  if (purpose !== "reply") {
-    const run = (await db.businessResearchRun.findFirst({
-      where: { calendarId, status: "SUCCEEDED", sourceHash: hash, completedAt: { gte: new Date(Date.now() - 30 * 86400000) } },
-      orderBy: { completedAt: "desc" },
-    })) ?? (await db.businessResearchRun.findFirst({
-      where: { calendarId, status: "SUCCEEDED", completedAt: { gte: new Date(Date.now() - 30 * 86400000) } },
-      orderBy: { completedAt: "desc" },
-    }));
-    const result = run?.result as { findings?: { id: string; title: string; learning: string; application: string; sourceUrls: string[] }[] } | null;
-    const findings = result?.findings?.filter(f => !(run?.excludedFindingIds ?? []).includes(f.id) && f.sourceUrls.some(url => sourceAllowed(url, (calendar?.researchPlan as ResearchPlan | null)?.excludedDomains ?? []))).map(f => ({ ...f, sourceUrls: f.sourceUrls.filter(url => sourceAllowed(url, (calendar?.researchPlan as ResearchPlan | null)?.excludedDomains ?? [])) })) ?? [];
-    if (findings.length) context += `\n\nEXTERNAL RESEARCH — hypotheses for content experiments only, not verified business facts or proof of account performance. Observed analytics take precedence. Cite the sources when discussing these findings:\n${JSON.stringify(findings).slice(0, 14000)}`;
-  }
+  const run = (await db.businessResearchRun.findFirst({
+    where: { calendarId, status: "SUCCEEDED", sourceHash: hash, completedAt: { gte: new Date(Date.now() - 30 * 86400000) } },
+    orderBy: { completedAt: "desc" },
+  })) ?? (await db.businessResearchRun.findFirst({
+    where: { calendarId, status: "SUCCEEDED", completedAt: { gte: new Date(Date.now() - 30 * 86400000) } },
+    orderBy: { completedAt: "desc" },
+  }));
+  const result = run?.result as { findings?: { id: string; title: string; learning: string; application: string; sourceUrls: string[] }[] } | null;
+  const findings = result?.findings?.filter(f => !(run?.excludedFindingIds ?? []).includes(f.id) && f.sourceUrls.some(url => sourceAllowed(url, (calendar?.researchPlan as ResearchPlan | null)?.excludedDomains ?? []))).map(f => ({ ...f, sourceUrls: f.sourceUrls.filter(url => sourceAllowed(url, (calendar?.researchPlan as ResearchPlan | null)?.excludedDomains ?? [])) })) ?? [];
+  if (findings.length) context += `\n\nEXTERNAL RESEARCH — hypotheses and market findings for context, not verified business facts. Observed analytics and documented facts take precedence. Cite the sources when discussing these findings:\n${JSON.stringify(findings).slice(0, 14000)}`;
   return context;
 }
 

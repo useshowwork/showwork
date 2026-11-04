@@ -85,12 +85,7 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
           summary.handedOff++;
           continue;
         }
-        const requiredHandoff = requiredHandoffReason(inbound.text);
-        if (requiredHandoff) {
-          await handoff(requiredHandoff);
-          summary.handedOff++;
-          continue;
-        }
+        const detectedHandoff = requiredHandoffReason(inbound.text);
         if (inbound.conversation.platform === "WHATSAPP") {
           const reason = await whatsappAutoReplyHandoff(inbound);
           if (reason) {
@@ -136,10 +131,11 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
           participantName: inbound.conversation.participantName,
           conversation: recent,
           latestInbound: inbound.text.slice(0, 3000),
+          detectedHandoffReason: detectedHandoff,
         });
         generationMs = Date.now() - generationStartedAt;
         if (!generated.shouldReply || !generated.replyText || !inbound.conversation.connection || !supportsMessaging(inbound.conversation.platform)) {
-          await handoff(generated.handoffReason || "This message needs a human response.");
+          await handoff(generated.handoffReason || detectedHandoff || "This message needs a human response.");
           summary.handedOff++;
           continue;
         }
@@ -190,10 +186,16 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
           } else {
             await tx.socialLeadMessage.create({ data: { conversationId: inbound.conversationId, direction: "OUTBOUND", status: "SENT", text: generated.replyText, platformCreatedAt: sentAt, isAiGenerated: true } });
           }
-          await tx.socialLeadMessage.update({ where: { id: inbound.id }, data: { autoReplyHandledAt: sentAt, autoReplyClaimedAt: null, autoReplyHandoffReason: null } });
+          await tx.socialLeadMessage.update({ where: { id: inbound.id }, data: { autoReplyHandledAt: sentAt, autoReplyClaimedAt: null, autoReplyHandoffReason: generated.handoffReason } });
           await tx.socialLeadConversation.update({ where: { id: inbound.conversationId }, data: { lastMessageAt: sentAt, lastMessagePreview: generated.replyText.slice(0, 500) } });
         });
-        summary.sent++;
+        if (generated.handoffNeeded || detectedHandoff) {
+          const finalReason = generated.handoffReason || detectedHandoff || "A team member needs to guide the next step.";
+          await handoffSocialConversation(inbound.conversationId, finalReason, beforeSend.aiControlVersion);
+          summary.handedOff++;
+        } else {
+          summary.sent++;
+        }
         // Aggregate timings only; no customer text, credentials, or account IDs.
         console.info("Social inbox AI reply timing", {
           platform: inbound.conversation.platform,
