@@ -71,9 +71,10 @@ async function tokenRequest(body: Record<string, string>): Promise<TikTokTokenRe
   });
   const data = (await res.json()) as TikTokTokenResponse;
   if (!res.ok || data.error) {
+    if (data.error === "invalid_grant" || data.error === "invalid_refresh_token") throw new Error("TikTok authorization expired or was revoked. Reconnect TikTok in Channels.");
     throw new Error(data.error_description ?? data.error ?? `TikTok token request failed (${res.status})`);
   }
-  if (!data.access_token || !data.refresh_token || !data.open_id || !Number.isFinite(data.expires_in) || !Number.isFinite(data.refresh_expires_in)) throw new Error("TikTok returned an incomplete connection. Reconnect the account.");
+  if (!data.access_token || !data.refresh_token || !data.open_id || !Number.isFinite(data.expires_in) || data.expires_in <= 0 || !Number.isFinite(data.refresh_expires_in) || data.refresh_expires_in <= 0 || typeof data.scope !== "string") throw new Error("TikTok returned an incomplete connection. Reconnect the account.");
   return data;
 }
 

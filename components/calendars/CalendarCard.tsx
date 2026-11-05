@@ -1,7 +1,7 @@
 "use client";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
-import { X, CalendarDays, CheckCircle2 } from "lucide-react";
+import { X, CalendarDays } from "lucide-react";
 import styles from "./CalendarDashboard.module.css";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -64,7 +64,6 @@ export default function CalendarCard({
   clientName,
   postCount,
   collaboratorCount,
-  createdAt,
 }: CalendarCardProps) {
   const router = useRouter();
 
@@ -126,7 +125,6 @@ export default function CalendarCard({
         <div className={styles.cover}>
           <div className={styles.coverTop}>
             <span className={styles.monogram} aria-hidden="true">{clientName.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "CW"}</span>
-            <span className={styles.activeBadge}><CheckCircle2 size={12} aria-hidden="true" />Active</span>
           </div>
           <h3 className={styles.cardTitle} title={clientName}>{clientName}</h3>
           <p className={styles.cardSubtitle}>Marketing workspace</p>
@@ -134,13 +132,12 @@ export default function CalendarCard({
         <div className={styles.cardBody}>
           <div className={styles.cardMeta}>
             <span className={styles.postCount}><CalendarDays size={15} aria-hidden="true" />{postCount} {postCount === 1 ? "post" : "posts"}</span>
-            <span>Since {new Date(createdAt).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "Africa/Lagos" })}</span>
           </div>
           <div className={styles.cardFooter}>
             <div className="relative z-30 -ml-2"><CalendarPeopleManager compact calendarId={id} calendarName={clientName} totalMembers={totalMembers} /></div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => { setError(null); setConfirming(true); }} aria-label={`Delete ${clientName}'s workspace`} className="relative z-20 flex h-11 w-11 items-center justify-center rounded-lg text-[#7890AE] hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1768E8]"><TrashIcon className="h-4 w-4" /></button>
-              <span className={styles.open}>Open <ArrowRightIcon /></span>
+              <span className={styles.open}>Open workspace <ArrowRightIcon /></span>
             </div>
           </div>
         </div>

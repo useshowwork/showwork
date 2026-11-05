@@ -1,16 +1,9 @@
 .page { min-height: 100vh; padding: 24px 32px 40px; color: #172d4e; background: radial-gradient(ellipse at 90% 0, #dce8fd, transparent 45%), #eef2f8; }
 .shell { max-width: 1200px; margin: auto; }
 .nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid #d3deed; }
-.hero { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 36px; padding: 38px 40px; border-radius: 24px; color: #fff; background: radial-gradient(ellipse at 95% 80%, #326dcc70, transparent 60%), linear-gradient(125deg, #0e244b, #183d7b); box-shadow: 0 20px 45px -30px #14356980; }
-.heroArt { position: absolute; z-index: -1; width: 660px; height: 460px; right: -140px; top: -90px; opacity: .25; pointer-events: none; }
-.eyebrow { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: #bdd6ff; }
-.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #85b6ff; box-shadow: 0 0 15px #82b4ff; }
-.hero h1 { margin-top: 16px; font-size: clamp(30px, 4vw, 46px); font-weight: 500; letter-spacing: -.045em; line-height: 1.1; }
-.hero p:not(.eyebrow) { margin-top: 14px; max-width: 450px; font-size: 14px; line-height: 1.8; color: #d0dff7; }
-.heroStats { display: flex; align-items: center; gap: 28px; padding-left: 32px; border-left: 1px solid #ffffff25; flex-shrink: 0; }
-.heroStats strong { display: block; font-size: 38px; font-weight: 500; letter-spacing: -.04em; }
-.heroStats span { display: block; margin-top: 6px; font-size: 11px; color: #c2d7f7; }
-.heroStats .plan { font-size: 22px; letter-spacing: -.025em; }
+.heading { margin: 30px 0 24px; }
+.heading h1 { font-size: clamp(28px, 3.5vw, 38px); font-weight: 600; letter-spacing: -.04em; line-height: 1.2; }
+.heading p { margin-top: 10px; color: #607089; font-size: 14px; line-height: 1.7; }
 .create { position: relative; margin: 18px 0 32px; padding: 22px 24px; border: 1px solid #cadbf3; border-radius: 18px; background: linear-gradient(120deg, #dfeaff, #f3f7ff); }
 .createIntro { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
 .createIcon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: #fff; color: #2869cb; border: 1px solid #cadbf3; }

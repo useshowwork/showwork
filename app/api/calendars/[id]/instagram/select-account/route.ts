@@ -249,6 +249,7 @@ async function invoke(
       return NextResponse.json(
         {
           accounts,
+          grantedPermissions,
 
           expectedVersion: 0,
 

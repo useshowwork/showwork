@@ -1,4 +1,3 @@
-import DashboardResources from "@/components/dashboard/DashboardResources";
 import { TOOL_COPY } from "@/components/dashboard/toolCopy";
 import WorkspaceCard from "@/components/dashboard/WorkspaceCard";
 import workspaceStyles from "@/components/dashboard/WorkspaceCard.module.css";
@@ -438,12 +437,12 @@ export default async function DashboardPage() {
         </div>
         <section aria-labelledby="workspace-actions" className="scroll-mt-24">
           <div className={workspaceStyles.sectionHeading}>
-            <h2 id="workspace-actions">Your tools</h2>
+            <div><h2 id="workspace-actions">Choose the right tool for your work</h2><p>Click a tool to get started.</p></div>
           </div>
           <div className={workspaceStyles.grid}>
-            <WorkspaceCard index="01" variant="workspace" product={TOOL_COPY.workspace.product} title={TOOL_COPY.workspace.title} description={TOOL_COPY.workspace.description} href="/dashboard/calendars" action={calendar ? TOOL_COPY.workspace.openAction : TOOL_COPY.workspace.createAction} icon={<WorkspaceIcon />} />
-            <WorkspaceCard index="02" variant="delivery" product={TOOL_COPY.delivery.product} title={TOOL_COPY.delivery.title} description={TOOL_COPY.delivery.description} href={projectCount > 0 ? "/dashboard/projects" : "/dashboard/start"} action={projectCount > 0 ? TOOL_COPY.delivery.openAction : TOOL_COPY.delivery.createAction} icon={<DeliveryIcon />} />
-            <WorkspaceCard index="03" variant="portfolio" product={TOOL_COPY.portfolio.product} title={TOOL_COPY.portfolio.title} description={TOOL_COPY.portfolio.description} href="/dashboard/portfolio" action={portfolio ? TOOL_COPY.portfolio.openAction : TOOL_COPY.portfolio.createAction} icon={<PortfolioIcon />} />
+            <WorkspaceCard variant="workspace" product={TOOL_COPY.workspace.product} description={TOOL_COPY.workspace.description} href="/dashboard/calendars" action={calendar ? TOOL_COPY.workspace.openAction : TOOL_COPY.workspace.createAction} icon={<WorkspaceIcon />} />
+            <WorkspaceCard variant="delivery" product={TOOL_COPY.delivery.product} description={TOOL_COPY.delivery.description} href={projectCount > 0 ? "/dashboard/projects" : "/dashboard/start"} action={projectCount > 0 ? TOOL_COPY.delivery.openAction : TOOL_COPY.delivery.createAction} icon={<DeliveryIcon />} />
+            <WorkspaceCard variant="portfolio" product={TOOL_COPY.portfolio.product} description={TOOL_COPY.portfolio.description} href="/dashboard/portfolio" action={portfolio ? TOOL_COPY.portfolio.openAction : TOOL_COPY.portfolio.createAction} icon={<PortfolioIcon />} />
           </div>
         </section>
         <section className={`${workspaceStyles.hero} mt-7`} aria-labelledby="dashboard-welcome">
@@ -468,7 +467,6 @@ export default async function DashboardPage() {
           </div>
         </section>
         <BillingBenefits creator={creator} />
-        <DashboardResources />
         <footer className={workspaceStyles.footer}>
           <div className="flex items-center gap-4"><Logo /><span>A little more room to create.</span></div>
           <div className={workspaceStyles.footerLinks}><Link href="/dashboard/profile">Account</Link><Link href="/dashboard/billing">Billing</Link><Link href="/help/workspace">Help &amp; guides</Link><a href="mailto:hello@useshowwork.com">Support</a></div>

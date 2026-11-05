@@ -14,7 +14,7 @@
 .connectionCard :global([class~="text-slate-400"]) { color: #8295af; }
 .connectionCard :global([class~="border-white/10"]),.connectionCard :global([class~="border-white/20"]) { border-color: #e0e8f5; }
 .connectionCard :global([class~="bg-white/5"]),.connectionCard :global([class~="bg-white/[0.03]"]) { background: #f6f9ff; }
-.connectionCard :global(a[class~="text-white"]:not([style]):not([class~="bg-black"])) { color: #5482c0; }
+.connectionCard :global(a[class~="text-white"]:not([style]):not([class~="bg-black"]):not([class~="bg-[#128C7E]"])) { color: #5482c0; }
 .connectionCard :global(button[class~="text-white"]:not([class~="bg-red-500"]):not([class~="bg-[#128C7E]"])) { color: #5482c0; }
 .connectionCard :global(input) { max-width: 100%; }.connectionCard :global(input[class~="text-white"]) { color: #425f83; }
 .connectionCard :global(a):focus-visible,.connectionCard :global(button):focus-visible { outline: 2px solid #1768e8; outline-offset: 3px; }

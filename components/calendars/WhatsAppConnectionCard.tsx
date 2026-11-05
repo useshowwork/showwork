@@ -39,6 +39,9 @@ export default function WhatsAppConnectionCard({ calendarId, isManager }: { cale
     finally { setLoading(false); }
   }, [endpoint]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (isManager && new URLSearchParams(window.location.search).get("connect") === "whatsapp") setEditing(true);
+  }, [isManager]);
   async function connect(event: FormEvent) {
     event.preventDefault();
     setBusy(true); setError(""); setNotice("");
@@ -91,7 +94,7 @@ export default function WhatsAppConnectionCard({ calendarId, isManager }: { cale
           <label className="block text-xs text-[#71849E]">Access token<input required type="password" autoComplete="new-password" maxLength={4096} value={accessToken} onChange={e => setAccessToken(e.target.value)} disabled={busy} className={inputClass} /></label>
           <div className="flex gap-2"><button disabled={busy || !configured} className="rounded-lg bg-[#128C7E] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Connecting…" : "Save connection"}</button><button type="button" disabled={busy} onClick={() => { setEditing(false); setAccessToken(""); }} className="rounded-lg border border-[#DCE5F2] px-3 py-2 text-xs text-[#71849E]">Cancel</button></div>
         </form> : confirming ? <div><p className="mb-3 text-xs text-[#71849E]">Disconnect WhatsApp? Incoming messages and AI replies will stop. Existing leads and history stay available.</p><div className="flex gap-2"><button disabled={busy} onClick={() => void disconnect()} className="rounded-lg bg-red-500 px-3 py-2 text-xs text-white">{busy ? "Disconnecting…" : "Disconnect"}</button><button disabled={busy} onClick={() => setConfirming(false)} className="rounded-lg border border-[#DCE5F2] px-3 py-2 text-xs text-[#71849E]">Keep connected</button></div></div>
-        : <div className="flex flex-wrap gap-2"><button disabled={!configured} onClick={() => setEditing(true)} className="rounded-lg bg-[#128C7E] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{connection ? "Update connection" : "Connect WhatsApp"}</button>{connection && <><button onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "inbox" } }))} className="rounded-lg border border-[#DCE5F2] px-3 py-2 text-xs text-[#71849E]">Open inbox</button><button onClick={() => setConfirming(true)} className="rounded-lg border border-[#DCE5F2] px-3 py-2 text-xs text-[#71849E]">Disconnect</button></>}</div>}
+        : <div className="flex flex-wrap gap-2"><a href={configured ? `/dashboard/calendars/${encodeURIComponent(calendarId)}?view=channels&connect=whatsapp` : undefined} target="_blank" rel="noopener noreferrer" title="Opens in a new tab" aria-disabled={!configured} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#128C7E] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#0F756B] ${!configured ? "cursor-not-allowed opacity-50" : ""}`}>{connection ? "Update connection" : "Connect WhatsApp"}<UiSymbol name="right" /></a>{connection && <><button onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "inbox" } }))} className="rounded-lg border border-[#DCE5F2] px-3 py-2 text-xs text-[#71849E]">Open inbox</button><button onClick={() => setConfirming(true)} className="rounded-lg border border-[#DCE5F2] px-3 py-2 text-xs text-[#71849E]">Disconnect</button></>}</div>}
       {!loading && error && !connection && !editing && <button onClick={() => void load()} className="mt-3 text-xs text-[#397CC8] underline">Retry loading</button>}
     </div>
   </section>;

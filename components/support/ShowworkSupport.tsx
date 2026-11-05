@@ -9,5 +9,5 @@ export default function ShowworkSupport(){
  const [hostname,setHostname]=useState<string|null>(null);
  useEffect(()=>{setHostname(window.location.hostname);},[]);
  if(hostname===null)return null;
- return <><WhatsAppSupport/>{!isClientView(path,hostname)&&<RandyAssistant/>}</>;
+ return <><WhatsAppSupport enableRandy={!isClientView(path,hostname)}/>{!isClientView(path,hostname)&&<RandyAssistant hideLauncher/>}</>;
 }

@@ -1,0 +1,31 @@
+.root{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:90;font-family:var(--font-sans),sans-serif;color:#24364e}
+.root :focus-visible{outline:2px solid #2478ff;outline-offset:4px}
+.launcher{display:grid;place-items:center;width:42px;height:76px;border:1px solid #dce5f0;border-right:0;border-radius:15px 0 0 15px;background:#fffffff2;color:#416182;box-shadow:-6px 10px 30px #0f172a14;cursor:pointer;transition:width .2s ease,background .2s ease}
+.launcher:hover{width:47px;background:#fff;color:#1768e8}
+.panel{position:absolute;right:56px;top:50%;transform:translateY(-50%);width:370px;max-width:calc(100vw - 66px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;border:1px solid #dce6f2;border-radius:22px;background:#fff;box-shadow:0 22px 80px #102a4c29;animation:appear .18s ease-out}
+.header{position:relative;padding:26px 24px 22px;background:radial-gradient(ellipse at 100% 0,#dceaff,transparent 75%),#f6f9ff;border-bottom:1px solid #e7edf5}
+.eyebrow{color:#5376a4;font-size:10px;font-weight:700;letter-spacing:.14em}
+.header h2{margin:13px 0 10px;max-width:270px;font-size:23px;line-height:1.25;letter-spacing:-.035em;font-weight:650;color:#193858}
+.header p{margin:0;font-size:13px;line-height:1.75;color:#62768f}
+.close{position:absolute;right:14px;top:14px;display:grid;place-items:center;width:32px;height:32px;background:#ffffffb3;border:1px solid #e0e8f3;border-radius:10px;color:#637e9c;cursor:pointer}
+.choices{display:grid;gap:12px;padding:18px}
+.choice{display:flex;align-items:flex-start;gap:12px;width:100%;padding:16px 13px;border:1px solid #dae6f7;border-radius:15px;background:#f9fbff;text-align:left;text-decoration:none;cursor:pointer;transition:background .15s,border-color .15s}
+.choice:hover{background:#f0f6ff;border-color:#98bbef}
+.choice>img{flex-shrink:0}
+.choiceCopy{display:block;flex:1;min-width:0}
+.choiceTitle{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:14px;font-weight:650;line-height:1.5;color:#233f62}
+.choiceTitle small{padding:2px 5px;border-radius:5px;background:#eaf1fc;color:#55759f;font-size:9px;font-weight:500}
+.description{display:block;margin-top:6px;font-size:12px;line-height:1.7;color:#687e98}
+.action{display:flex;align-items:center;gap:5px;margin-top:11px;font-size:11px;font-weight:600;color:#1768e8}
+.arrow{flex-shrink:0;margin-top:4px;color:#638cc6}
+.whatsapp{background:#fbfefc;border-color:#dbece3}
+.whatsapp:hover{background:#f0faf5;border-color:#9dcfb6}
+.whatsappIcon{display:grid;place-items:center;flex-shrink:0;width:42px;height:42px;border:1px solid #d0ecde;border-radius:13px;background:#eaf8ef;color:#27855b}
+.whatsappIcon svg{width:21px;height:21px}
+.whatsapp .action{color:#27855b}
+.whatsapp small{color:#357c5c;background:#e9f5ed}
+.footer{padding:0 22px 20px;color:#71859d;font-size:11px;line-height:1.7;text-align:center}
+@keyframes appear{from{opacity:0;margin-right:-8px}to{opacity:1;margin-right:0}}
+@media(max-width:639px){.launcher{width:36px;height:56px;border-radius:13px 0 0 13px}.launcher:hover{width:36px}.panel{right:46px;max-width:calc(100vw - 58px);border-radius:18px}.header{padding:22px 18px 18px}.header h2{font-size:21px}.choices{padding:12px;gap:10px}.choice{padding:14px 10px;gap:10px}.arrow{display:none}}
+@media(prefers-reduced-motion:reduce){.panel{animation:none}.launcher,.choice{transition:none}}
+@media print{.root{display:none}}

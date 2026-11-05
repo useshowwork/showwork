@@ -11,6 +11,7 @@ function loadPage({ total = 12, matches = total, billing = null, signedIn = true
   const retryCode = ts.transpileModule(fs.readFileSync("lib/retryDatabaseRead.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   new Function("module", "exports", retryCode)(retryModule, retryModule.exports);
   const mocks = {
+    "@/components/help/HelpLink": stub,
     "@/lib/calendarTeamPolicy": require("./helpers/billing-fixtures.cjs").withBillingDependencies({})["@/lib/calendarTeamPolicy"],
     "@/lib/retryDatabaseRead": retryModule.exports,
     "@/components/calendars/CalendarDashboard.module.css": { default: new Proxy({}, { get: (_, key) => String(key) }), __esModule: true },
@@ -97,4 +98,11 @@ test('Billing distinguishes active, expired, complimentary and unselected plans'
     assert.ok(nav.includes(label));
     assert.doesNotMatch(nav, /days left|day left/);
   }
+});
+
+test('first-time users see one creation prompt without an empty workspace list', async () => {
+  const html = renderToStaticMarkup(await loadPage({ total: 0 }).page({}));
+  assert.match(html, /Create your first workspace/);
+  assert.match(html, /One workspace for each business or client/);
+  assert.doesNotMatch(html, /id="your-workspaces"|Your clients start here/);
 });

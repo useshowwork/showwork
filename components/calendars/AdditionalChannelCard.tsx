@@ -118,7 +118,7 @@ export default function AdditionalChannelCard({
 
         {channel === "linkedin" && isConnected && isManager && <LinkedInPagePicker calendarId={calendarId} />}
         {channel === "linkedin" && <p className="mt-3 text-xs text-slate-400">LinkedIn inbox replies and message-to-lead import require approved Page Messaging access and a confirmed messaging subscription.</p>}
-        {isConnected && isManager && <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="mt-3 inline-block text-xs text-[#397CC8] underline">Refresh permissions</a>}
+        {isConnected && isManager && <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="mt-3 inline-block text-xs text-[#397CC8] underline" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Refresh permissions</a>}
         <ChannelCapabilities platform={channel}/>
         {isConnected ? (
           <>
@@ -157,7 +157,7 @@ export default function AdditionalChannelCard({
             </button>
           )
         ) : (
-          <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white transition hover:brightness-110" style={{ backgroundColor: meta.color }}>
+          <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white transition hover:brightness-110" style={{ backgroundColor: meta.color }} target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
             Connect {meta.name}<span aria-hidden="true"><><UiSymbol name="right" /></></span>
           </a>
         )}

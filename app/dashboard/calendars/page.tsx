@@ -9,7 +9,6 @@ import { redirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarDays,
   CreditCard,
   Search,
   Users,
@@ -148,7 +147,7 @@ export default async function CalendarsPage({
             className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-[#475467] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1768E8]"
           >
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            All apps
+            All tools
           </Link>
           <div className="flex items-center gap-1">
             <HelpLink className="px-2 text-xs text-[#607fa5]"/>
@@ -181,15 +180,11 @@ export default async function CalendarsPage({
           </div>
         </nav>
         <div data-dashboard-tour-slot="billing" />
-        <header className={styles.hero}>
-          <svg className={styles.heroArt} viewBox="0 0 660 460" fill="none" aria-hidden="true">
-            {Array.from({ length: 10 }, (_, i) => <path key={i} d={`M${80 + i * 32} -50 C${-120 + i * 24} 200 ${680 + i * 15} 60 ${320 + i * 30} 500`} stroke="#a7caff" strokeWidth="1" />)}
-          </svg>
-          <div><p className={styles.eyebrow}>One client. One space.</p><h1>Marketing workspaces</h1><p>Content, approvals, and conversations. Keep every client moving.</p></div>
-          <div className={styles.heroStats}>
-            <div><strong>{totalCalendars.toString().padStart(2, "0")}</strong><span>{totalCalendars === 1 ? "Marketing workspace" : "Marketing workspaces"}</span></div>
-            <div><strong className={styles.plan}>{planName}</strong><span>{billingSummary || "Choose your plan"}</span></div>
-          </div>
+        <header className={styles.heading}>
+          <h1>Marketing workspaces</h1>
+          <p>{totalCalendars > 0 || collaboratorMemberships.length > 0
+            ? "Open a workspace to continue, or create one for a new client."
+            : "Create a workspace for your business or client to get started."}</p>
         </header>
         {billing?.contentWorkspacePlan && needsBilling && (
           <aside
@@ -213,7 +208,7 @@ export default async function CalendarsPage({
         >
           <div className={styles.createIntro}>
             <span className={styles.createIcon}><Users size={20} aria-hidden="true" /></span>
-            <div><h2>Make room for your next client.</h2><p>A dedicated space, ready for their next idea.</p></div>
+            <div><h2>{totalCalendars > 0 ? "Add another workspace" : "Create your first workspace"}</h2><p>One workspace for each business or client.</p></div>
           </div>
           <div className={styles.createForm}>
             <CreateCalendarForm contentWorkspacePlan={billing?.contentWorkspacePlan ?? null} />
@@ -223,7 +218,7 @@ export default async function CalendarsPage({
         <Suspense fallback={null}>
           <CalendarPaymentCallbackHandler />
         </Suspense>
-        <section id="your-workspaces" aria-labelledby="your-workspaces-title">
+        {(totalCalendars > 0 || query) && <section id="your-workspaces" aria-labelledby="your-workspaces-title">
           <div className={styles.workspaceHeading}>
             <h2
               id="your-workspaces-title"
@@ -296,15 +291,8 @@ export default async function CalendarsPage({
             </div>
           ) : (
             <div className={styles.empty}>
-              <span className={styles.emptyIcon}><CalendarDays aria-hidden="true" size={28} /></span>
-              <h3 className="text-base font-semibold">
-                {query ? "No matching workspaces" : "Your clients start here"}
-              </h3>
-              <p className="mt-2 text-sm text-[#667085]">
-                {query
-                  ? "Try another client name or clear your search."
-                  : "Add your first client using the button above."}
-              </p>
+              <h3 className="text-base font-semibold">No matching workspaces</h3>
+              <p>Try another client name or clear your search.</p>
             </div>
           )}
           {totalPages > 1 && (
@@ -335,7 +323,7 @@ export default async function CalendarsPage({
               </Link>
             </nav>
           )}
-        </section>
+        </section>}
         {collaboratorMemberships.length > 0 && (
           <section
             id="shared-workspaces"

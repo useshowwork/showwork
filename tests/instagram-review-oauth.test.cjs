@@ -46,7 +46,7 @@ function picker({ actor = 'reviewer', allowed = true } = {}) {
 }
 test('picker exposes Page/account names and grant evidence, never tokens', async()=>{
   const p=picker();const response=await p.route.GET(p.request(),p.context);const text=await response.text();
-  assert.equal(response.status,200);assert.ok(!text.includes('secret-'));assert.equal(JSON.parse(text).insightsGranted,true);assert.match(text,/@review/);assert.equal(p.calls.length,0);
+  assert.equal(response.status,200);assert.ok(!text.includes('secret-'));assert.equal(JSON.parse(text).insightsGranted,true);assert.deepEqual(JSON.parse(text).grantedPermissions,['instagram_manage_insights']);assert.match(text,/@review/);assert.equal(p.calls.length,0);
 });
 test('picker rejects another creator and insufficient workspace permissions', async()=>{
   for(const config of [{actor:'other'},{allowed:false}]){const p=picker(config);const response=await p.route.GET(p.request(),p.context);assert.ok([403,409].includes(response.status));assert.equal(p.calls.length,0);}

@@ -37,7 +37,7 @@ export function createCanonicalShowworkOAuth(deps:{database:OwnershipDatabase;ac
    if(!selection||selection.calendarId!==params.id)return NextResponse.json({error:'The account selection expired. Reconnect Instagram.'},{status:409});
    const binding=await deps.database.transaction(async tx=>(await tx.query(`SELECT * FROM "PublishingAccountBinding" WHERE "calendarId"=$1 AND platform='INSTAGRAM'`,[params.id])).rows[0]);
    const options=selection.pages.map(page=>({...JSON.parse(page.id) as {pageId:string;accountId:string},name:page.name}));
-   if(request.method==='GET')return NextResponse.json({accounts:options,insightsGranted:selection.grantedPermissions.includes('instagram_manage_insights'),expectedVersion:binding?.currentVersion??0},{headers:{'Cache-Control':'no-store'}});
+   if(request.method==='GET')return NextResponse.json({accounts:options,grantedPermissions:selection.grantedPermissions,insightsGranted:selection.grantedPermissions.includes('instagram_manage_insights'),expectedVersion:binding?.currentVersion??0},{headers:{'Cache-Control':'no-store'}});
    if(request.headers.get('origin')!==request.nextUrl.origin)return NextResponse.json({error:'Invalid request origin.'},{status:403});
    const body=await request.clone().json(),operationId=request.headers.get('idempotency-key'),index=options.findIndex(option=>option.accountId===body.accountId);
    if(!operationId||!Number.isSafeInteger(body.expectedVersion)||index<0)return NextResponse.json({error:'Select the exact account and current connection revision.'},{status:400});

@@ -119,7 +119,7 @@ export default function InstagramConnectionCard({
 
       <div className="border-t border-[#E4EBF6] bg-[#F7FAFF] p-4 sm:p-5">
         {isManager && isConnected && !confirming && (
-          <a href={`/api/calendars/${calendarId}/instagram/connect`} className="mb-3 flex justify-center rounded-xl border border-white/20 px-4 py-2.5 text-xs font-semibold text-white">
+          <a href={`/api/calendars/${calendarId}/instagram/connect`} className="mb-3 flex justify-center rounded-xl border border-white/20 px-4 py-2.5 text-xs font-semibold text-white" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
             Reauthorize Instagram
           </a>
         )}
@@ -162,7 +162,7 @@ export default function InstagramConnectionCard({
     background:
       "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
   }}
->
+ target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
   Connect Instagram
 
         <svg

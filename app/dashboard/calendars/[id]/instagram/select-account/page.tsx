@@ -1,14 +1,25 @@
 'use client';
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight, BarChart3, Check, CheckCircle2, Camera, Loader2, MessageCircle, Send, ShieldCheck, Users, RefreshCw } from 'lucide-react';
+import styles from './selection.module.css';
 import { calendarMutationFetch } from '@/lib/publishing/clientRequests';
 
 type Selection = {
   accounts: { accountId: string; pageId: string; name: string }[];
   expectedVersion: number;
-  insightsGranted?: boolean;
+  grantedPermissions?: string[];
   diagnostics?: { discoveryStatus?: string };
 };
+const capabilities = [
+  { title: 'Account & profile', description: 'Access your Instagram professional profile and media.', scopes: ['instagram_basic'], icon: Camera },
+  { title: 'Content publishing', description: 'Publish scheduled Instagram content from your workspace.', scopes: ['instagram_content_publish'], icon: Send },
+  { title: 'Inbox & replies', description: 'Manage Instagram conversations and respond to messages.', scopes: ['instagram_manage_messages'], icon: MessageCircle },
+  { title: 'Analytics & reporting', description: 'Read Instagram Insights to measure content and account performance.', scopes: ['instagram_manage_insights'], icon: BarChart3 },
+  { title: 'Page access', description: 'Find linked Facebook Pages and read their engagement information.', scopes: ['pages_show_list', 'pages_read_engagement'], icon: Users },
+  { title: 'Messaging updates', description: 'Subscribe the linked Page to receive messaging events.', scopes: ['pages_manage_metadata'], icon: RefreshCw },
+];
+
 export default function InstagramAccountSelection({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -40,29 +51,52 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
     } catch (error) { setError(error instanceof Error ? error.message : 'Account selection failed.'); }
     finally { setBusy(false); }
   }
-  return <main className="mx-auto max-w-xl space-y-5 p-6">
-    <h1 className="text-2xl font-semibold">Choose your Instagram account</h1>
-    <p>Select the Facebook Page and linked Instagram professional account for this workspace.</p>
-    {options?.insightsGranted !== undefined && <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-800">
-      {options.insightsGranted
-        ? 'Meta granted Instagram Insights during this authorization. Connect the account, then sync Analytics & Reporting to verify access to live metrics.'
-        : 'Meta did not grant Instagram Insights during this authorization. Publishing and messaging can still connect; analytics access requires reauthorization with the Insights permission.'}
-    </p>}
-    {!options && !error && <p role="status">Loading your linked accounts…</p>}
-    {options && options.accounts.length === 0 && <p>{options.diagnostics?.discoveryStatus === "NO_FACEBOOK_PAGES" ? "Meta returned no accessible Facebook Pages. Check the authorizing Facebook profile’s Page access and Business Portfolio asset assignment, then restart authorization and select the Page." : "Meta returned no linked Instagram professional accounts. Check the Page-to-Instagram connection and allow access to both assets when reconnecting."}</p>}
-    <fieldset className="space-y-3" disabled={busy}>
-      <legend className="sr-only">Instagram accounts linked to Facebook Pages</legend>
-      {options?.accounts.map(account => <label key={account.accountId} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-300 p-4">
-        <input className="mt-1" type="radio" name="instagram-account" value={account.accountId}
-          checked={selected === account.accountId} onChange={() => setSelected(account.accountId)} />
-        <span className="min-w-0 break-words">{account.name}</span>
-      </label>)}
-    </fieldset>
-    <button className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
-      onClick={() => void select()} disabled={busy || !selected || !options}>
-      {busy ? 'Connecting…' : 'Connect selected account'}
-    </button>
-    {error && <p role="alert" className="text-red-600">{error}</p>}
-    <a className="block text-sm underline" href={`/api/calendars/${id}/instagram/connect`}>Restart Instagram authorization</a>
+  const granted = new Set(options?.grantedPermissions ?? []);
+  const grantedCount = capabilities.filter(capability => capability.scopes.every(scope => granted.has(scope))).length;
+  return <main className={styles.page}>
+    <div className={styles.container}>
+      <a className={styles.back} href={`/dashboard/calendars/${id}?view=channels`}><ArrowLeft size={16} /> Back to channels</a>
+      <header className={styles.header}>
+        <div className={styles.brand}><Camera size={28} /></div>
+        <div><p className={styles.eyebrow}>CONNECT YOUR CHANNEL</p><h1>Bring your Instagram into Showwork</h1>
+          <p className={styles.subtitle}>Choose the professional account you want to use in this workspace.</p></div>
+      </header>
+      <div className={styles.layout}>
+        <section className={styles.card} aria-labelledby="account-heading">
+          <div className={styles.sectionHeading}><span className={styles.step}>1</span><h2 id="account-heading">Choose your account</h2></div>
+          <p className={styles.intro}>Select a Facebook Page and its linked Instagram professional account.</p>
+          {!options && !error && <p role="status" className={styles.notice}><Loader2 size={18} className={styles.spinner} /> Loading your linked accounts…</p>}
+          {options && options.accounts.length === 0 && <p className={styles.notice}>{options.diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' ? 'No accessible Facebook Pages found. Check your Facebook profile’s Page access and Business Portfolio asset assignment, then restart authorization.' : options.diagnostics?.discoveryStatus === 'PAGES_PERMISSION_MISSING' ? 'Page access was not granted. Restart authorization and allow access to your Facebook Page.' : 'No linked Instagram professional accounts found. Check your Page-to-Instagram connection and allow access to both assets when reconnecting.'}</p>}
+          <fieldset className={styles.accounts} disabled={busy}>
+            <legend className="sr-only">Instagram accounts linked to Facebook Pages</legend>
+            {options?.accounts.map(account => <label key={account.accountId} className={`${styles.account} ${selected === account.accountId ? styles.selected : ''}`}>
+              <input type="radio" name="instagram-account" value={account.accountId} checked={selected === account.accountId} onChange={() => setSelected(account.accountId)} />
+              <span className={styles.avatar}><Camera size={23} /></span>
+              <span className={styles.accountName}><strong>{account.name}</strong><small>Instagram professional account · Linked Facebook Page</small></span>
+              {selected === account.accountId && <CheckCircle2 size={21} className={styles.check} aria-hidden="true" />}
+            </label>)}
+          </fieldset>
+          {error && <p role="alert" className={styles.error}>{error}</p>}
+          <button className={styles.connect} onClick={() => void select()} disabled={busy || !selected || !options}>
+            {busy ? <><Loader2 size={18} className={styles.spinner} /> Connecting…</> : <>Connect selected account <ArrowRight size={18} /></>}
+          </button>
+          <p className={styles.footnote}><ShieldCheck size={16} /> Your account will be connected to this workspace.</p>
+          <div className={styles.restart}><span>Missing an account or permission?</span><a href={`/api/calendars/${id}/instagram/connect`}>Restart authorization <RefreshCw size={13} /></a></div>
+        </section>
+        <section className={`${styles.card} ${styles.permissions}`} aria-labelledby="permissions-heading">
+          <div className={styles.permissionHeading}><ShieldCheck size={21} /><h2 id="permissions-heading">Your Meta permissions</h2></div>
+          <p className={styles.intro}>Access granted during this authorization, across your Instagram use cases.</p>
+          <p role="status" className={styles.summary}>{options ? `${grantedCount} of ${capabilities.length} use cases have all required permissions` : 'Checking permissions…'}</p>
+          <div className={styles.capabilities}>{capabilities.map(({ title, description, scopes, icon: Icon }) => {
+            const enabled = scopes.every(scope => granted.has(scope));
+            return <div key={title} className={styles.capability}>
+              <span className={styles.capabilityIcon}><Icon size={18} /></span>
+              <div><div className={styles.capabilityTitle}><h3>{title}</h3><span className={enabled ? styles.granted : styles.missing}>{!options ? 'Checking' : enabled ? <><Check size={11} /> Granted</> : 'Not granted'}</span></div><p>{description}</p></div>
+            </div>;
+          })}</div>
+          <p className={styles.permissionNote}>Granted permissions apply to this connection. Publishing, messaging, and live metrics also depend on the selected account’s eligibility and setup. Reauthorize to request any missing access.</p>
+        </section>
+      </div>
+    </div>
   </main>;
 }

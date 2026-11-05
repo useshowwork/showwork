@@ -177,7 +177,7 @@ test('creator endpoint returns restriction flags and no credentials',async()=>{
 test('token rotation is serialized, updates refresh expiry and synchronizes account connections',async()=>{
   const connection={id:'c',platformAccountId:'account',status:'CONNECTED',accessToken:'expired',accessTokenExpiresAt:new Date(0),refreshToken:'old',refreshTokenExpiresAt:new Date(Date.now()+100000)};let lock=0;const writes=[];
   const tx={$executeRaw:async()=>{lock++;},socialConnection:{findUniqueOrThrow:async()=>connection,updateMany:async args=>{writes.push(args);Object.assign(connection,args.data);return{count:1};}},socialCalendar:{updateMany:async()=>({count:1})}};
-  const m=load('lib/tiktokConnection.ts',{'@/lib/db':{db:{$transaction:async fn=>fn(tx)}},'@/lib/tiktok':{refreshTikTokAccessToken:async()=>({open_id:'account',access_token:'new',refresh_token:'rotated',expires_in:86400,refresh_expires_in:100000,scope:'video.publish'})},'@/lib/socialTokens':{}});
+  const m=load('lib/tiktokConnection.ts',{'@/lib/db':{db:{$transaction:async fn=>fn(tx)}},'@/lib/tiktok':{refreshTikTokAccessToken:async()=>({open_id:'account',access_token:'new',refresh_token:'rotated',expires_in:7200,refresh_expires_in:15552000,scope:'video.publish'})},'@/lib/socialTokens':{}});
   const result=await m.freshTikTokConnection(connection);assert.equal(lock,1);assert.equal(result.refreshToken,'rotated');assert.ok(result.refreshTokenExpiresAt.getTime()>Date.now());assert.equal(writes[0].where.platformAccountId,'account');assert.equal(writes[0].where.refreshToken,'old');
 });
 

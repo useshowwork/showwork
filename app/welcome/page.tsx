@@ -45,12 +45,12 @@ export default function WelcomePage() {
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-16">
         <section className={workspaceStyles.intro}>
           <p className="text-sm font-semibold text-[#175CD3]">Welcome to Showwork</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">What would you like to do?</h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-[#475467]">Start with one task. You can use the other tools anytime from your dashboard.</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">Choose the right tool for your work</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-[#475467]">Click a tool to get started.</p>
         </section>
-        <section aria-label="Choose your first task" className={`${workspaceStyles.grid} mt-8`}>
-          {ROUTES.map(({ title, description, href, icon: Icon, product, action, variant }, index) => (
-            <WorkspaceCard key={href} index={`0${index + 1}`} variant={variant} title={title} product={product} description={description} href={href} action={action} icon={<Icon size={22} aria-hidden="true" />} />
+        <section aria-label="Choose a Showwork tool" className={`${workspaceStyles.grid} mt-8`}>
+          {ROUTES.map(({ description, href, icon: Icon, product, action, variant }) => (
+            <WorkspaceCard key={href} variant={variant} product={product} description={description} href={href} action={action} icon={<Icon size={22} aria-hidden="true" />} />
           ))}
         </section>
         <a href="https://chat.whatsapp.com/GVRHGFaFW5Z0yOOWbWmrn0?mode=gi_t" target="_blank" rel="noopener noreferrer" className="mt-8 flex items-center gap-4 rounded-2xl border border-[#DCE2EA] bg-white p-5 hover:border-[#2478FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#175CD3]">

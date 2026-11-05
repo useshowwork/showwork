@@ -98,7 +98,7 @@ export default function CreateCalendarForm({
         className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#1768E8] px-4 py-3 text-sm font-semibold text-white hover:bg-[#125CCF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1768E8] sm:w-auto"
       >
         <Plus aria-hidden="true" className="h-4 w-4" />
-        New workspace
+        Create workspace
       </button>
     );
 

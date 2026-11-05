@@ -27,8 +27,8 @@ export default function LinkedInPagePicker({ calendarId }: { calendarId: string 
   return <div className="mt-4 space-y-2 rounded-xl border border-slate-700 p-3 text-xs text-slate-300">
     {capabilities && <p>{capabilities.accountType} · Publishing: {capabilities.publishing ? "authorized" : "reconnect required"} · Analytics: {capabilities.analytics ? "authorized" : "additional approval and reconnection required"}</p>}
     {capabilities && <p>{capabilities.messagingNote}</p>}
-    {capabilities?.reconnectRequired && <a className="block font-semibold text-blue-300 underline" href={`/api/calendars/${calendarId}/channels/linkedin/connect`}>Reconnect LinkedIn</a>}
-    {capabilities?.accountType === "Personal profile" && !capabilities.analytics && <a className="block text-blue-300 underline" href={`/api/calendars/${calendarId}/channels/linkedin/connect?analytics=true`}>Authorize analytics after LinkedIn approval</a>}
+    {capabilities?.reconnectRequired && <a className="block font-semibold text-blue-300 underline" href={`/api/calendars/${calendarId}/channels/linkedin/connect`} target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Reconnect LinkedIn</a>}
+    {capabilities?.accountType === "Personal profile" && !capabilities.analytics && <a className="block text-blue-300 underline" href={`/api/calendars/${calendarId}/channels/linkedin/connect?analytics=true`} target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Authorize analytics after LinkedIn approval</a>}
     <button type="button" disabled={busy || capabilities?.reconnectRequired} className="block text-blue-300 underline disabled:opacity-50" onClick={async () => {
       setBusy(true); setError("");
       try {
@@ -40,7 +40,7 @@ export default function LinkedInPagePicker({ calendarId }: { calendarId: string 
       finally { setBusy(false); }
     }}>Set up Page messaging after approval</button>
     <p>Choose a company Page to publish and report on instead of your personal profile.</p>
-    <a className="block text-blue-300 underline" href={`/api/calendars/${calendarId}/channels/linkedin/connect?pages=true`}>Authorize company Pages</a>
+    <a className="block text-blue-300 underline" href={`/api/calendars/${calendarId}/channels/linkedin/connect?pages=true`} target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Authorize company Pages</a>
     <button type="button" disabled={busy || capabilities?.reconnectRequired} onClick={() => void request()} className="rounded border border-slate-600 px-3 py-2 disabled:opacity-50">{busy ? "Loading…" : "Choose company Page"}</button>
     <button type="button" disabled={busy || capabilities?.reconnectRequired} onClick={() => void request("personal")} className="ml-2 text-blue-300 underline">Use personal profile</button>
     {pages?.map(page => <button type="button" disabled={busy || capabilities?.reconnectRequired} key={page.id} onClick={() => void request(page.id)} className="block w-full rounded bg-slate-800 p-2 text-left">Connect {page.name}</button>)}

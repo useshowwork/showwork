@@ -2,22 +2,19 @@
 export const TOOL_COPY = {
   workspace: {
     product: "Marketing Workspace",
-    title: "Plan. Approve. Publish.",
-    description: "AI content, client approvals, conversations, leads, and insights. One space per client.",
+    description: "For social media managers, businesses & agencies.",
     createAction: "Create a workspace",
     openAction: "Open workspaces",
   },
   delivery: {
     product: "Project Delivery",
-    title: "Deliver with confidence.",
-    description: "A branded client page for files, feedback, approvals, and final downloads.",
+    description: "For videographers, photographers & creative teams.",
     createAction: "Start a delivery",
     openAction: "Open projects",
   },
   portfolio: {
     product: "Portfolio",
-    title: "Let your work speak.",
-    description: "Your projects, services, and testimonials. One link to share with your next client.",
+    description: "For creatives showcasing their work.",
     createAction: "Build a free portfolio",
     openAction: "Open portfolio",
   },

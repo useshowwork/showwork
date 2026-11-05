@@ -141,7 +141,7 @@ export default function TikTokConnectionCard({
             : analyticsAccess === false
               ? "Reconnect this account and grant profile statistics and video access to enable analytics. Publishing stays connected."
               : "Reconnect to grant or renew analytics access. Publishing stays connected."}</p>
-          <a href={`/api/calendars/${calendarId}/tiktok/connect`} className="mt-3 inline-flex rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-900">Reconnect TikTok</a>
+          <a href={`/api/calendars/${calendarId}/tiktok/connect`} className="mt-3 inline-flex rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-900" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Reconnect TikTok</a>
         </div>}
         {isManager && isConnected && <TikTokMessagingPanel calendarId={calendarId} />}
       </div>
@@ -182,7 +182,7 @@ export default function TikTokConnectionCard({
       <a
         href={`/api/calendars/${calendarId}/tiktok/connect`}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5"
-      >
+       target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
         Connect TikTok
       </a>
     )

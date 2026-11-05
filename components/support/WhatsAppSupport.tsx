@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-
-const WHATSAPP_NUMBER = "2347018819588";
+import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { ArrowRight, ArrowUpRight, MessageCircle, X } from 'lucide-react';
+import RandyAvatar from './RandyAvatar';
+import styles from './SupportLauncher.module.css';
 
 function WhatsAppIcon({ className = "" }: { className?: string }) {
   return (
@@ -22,274 +23,57 @@ function WhatsAppIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function ArrowIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        d="M5.5 14.5 14.5 5.5M7 5.5h7.5V13"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
-function CloseIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        d="M5 5l10 10M15 5 5 15"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-export default function WhatsAppSupport() {
+/** One shared entry point for AI help and the Showwork support team. */
+export default function WhatsAppSupport({ enableRandy = false }: { enableRandy?: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-
+  const root = useRef<HTMLDivElement>(null);
+  const launcher = useRef<HTMLButtonElement>(null);
+  const firstChoice = useRef<HTMLButtonElement>(null);
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
-    setMounted(true);
+    const close = () => setOpen(false);
+    window.addEventListener('showwork-randy-open', close);
+    return () => window.removeEventListener('showwork-randy-open', close);
   }, []);
-
-  /*
-   * Support should be available throughout the authenticated
-   * Showwork application, but not on public/authentication pages.
-   */
-  const hiddenRoutes = [
-    "/login",
-    "/signup",
-    "/register",
-    "/forgot-password",
-    "/reset-password",
-    "/verify",
-    "/auth",
-  ];
-
-  const isHiddenRoute =
-    !pathname ||
-    hiddenRoutes.some(
-      (route) => pathname === route || pathname.startsWith(`${route}/`),
-    );
-
-  if (!mounted || isHiddenRoute) {
-    return null;
-  }
-
-  const message = encodeURIComponent(
-    [
-      "Hello Showwork Support",
-      "",
-      "I'm using Showwork and I'd like some assistance with my account.",
-      "",
-      "Could you please help me?",
-      "",
-      "",
-    ].join("\n"),
-  );
-
-  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
-
-  return (
-    <>
-      {/* Desktop / tablet edge control */}
-      <div data-showwork-support="true" data-showwork-whatsapp="true"
-        className={`
-          fixed right-0 top-1/2 z-[90]
-          hidden -translate-y-1/2 sm:block
-          transition-all duration-300 ease-out
-          ${open ? "translate-x-0" : "translate-x-[8px]"}
-        `}
-      >
-        <div className="relative">
-          {/* Expanded support card */}
-          <div
-            className={`
-              absolute right-[42px] top-1/2
-              -translate-y-1/2
-              origin-right
-              transition-all duration-300 ease-out
-              ${
-                open
-                  ? "pointer-events-auto scale-100 opacity-100"
-                  : "pointer-events-none scale-95 opacity-0"
-              }
-            `}
-          >
-            <div
-              className="
-                w-[230px]
-                rounded-[18px]
-                border border-[#E4EAF2]
-                bg-white/95
-                p-3
-                shadow-[0_18px_55px_rgba(15,23,42,0.13)]
-                backdrop-blur-xl
-              "
-            >
-              <div className="flex items-center gap-3 px-1 py-1.5">
-                <div
-                  className="
-                    flex h-9 w-9 shrink-0 items-center justify-center
-                    rounded-xl
-                    bg-[#EAF8EF]
-                    text-[#25D366]
-                  "
-                >
-                  <WhatsAppIcon className="h-[18px] w-[18px]" />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[12px] font-bold tracking-[-0.01em] text-[#101828]">
-                    Need some help?
-                  </p>
-                  <p className="mt-0.5 text-[10px] leading-4 text-[#8A94A6]">
-                    Chat with Showwork Support
-                  </p>
-                </div>
-              </div>
-
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="
-                  mt-2.5 flex w-full items-center justify-between
-                  rounded-[12px]
-                  bg-[#25D366]
-                  px-3.5 py-2.5
-                  text-[11px] font-bold text-white
-                  shadow-[0_7px_18px_rgba(37,211,102,0.18)]
-                  transition-all duration-200
-                  hover:-translate-y-[1px]
-                  hover:bg-[#20BD5A]
-                  hover:shadow-[0_10px_22px_rgba(37,211,102,0.23)]
-                "
-              >
-                <span className="flex items-center gap-2">
-                  <WhatsAppIcon className="h-3.5 w-3.5" />
-                  Chat on WhatsApp
-                </span>
-
-                <ArrowIcon className="h-3.5 w-3.5" />
-              </a>
-            </div>
-          </div>
-
-          {/* Edge tab */}
-          <button
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            aria-label={open ? "Close Showwork Support" : "Open Showwork Support"}
-            aria-expanded={open}
-            className="
-              group
-              relative
-              flex h-[76px] w-[38px]
-              items-center justify-center
-              rounded-l-[14px]
-              border border-r-0 border-[#DCE5F0]
-              bg-white/90
-              text-[#667085]
-              shadow-[-6px_10px_30px_rgba(15,23,42,0.08)]
-              backdrop-blur-xl
-              transition-all duration-300
-              hover:w-[43px]
-              hover:bg-white
-              hover:text-[#2478FF]
-              focus:outline-none
-              focus:ring-2
-              focus:ring-[#2478FF]/20
-            "
-          >
-            {/* subtle availability indicator */}
-            <span
-              className="
-                absolute right-[5px] top-[10px]
-                h-[5px] w-[5px]
-                rounded-full
-                bg-[#25D366]
-                shadow-[0_0_0_3px_rgba(37,211,102,0.10)]
-              "
-            />
-
-            <span
-              className="
-                flex h-8 w-8 items-center justify-center
-                rounded-[10px]
-                transition-all duration-300
-                group-hover:scale-105
-                group-hover:bg-[#F1F6FF]
-              "
-            >
-              {open ? (
-                <CloseIcon className="h-[16px] w-[16px]" />
-              ) : (
-                <WhatsAppIcon className="h-[16px] w-[16px]" />
-              )}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile edge control */}
-      <div data-showwork-support="true" data-showwork-whatsapp="true"
-        className="
-          fixed right-0 top-1/2 z-[90]
-          -translate-y-1/2
-          sm:hidden
-        "
-      >
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Chat with Showwork Support on WhatsApp"
-          className="
-            flex h-[52px] w-[34px]
-            items-center justify-center
-            rounded-l-[14px]
-            border border-r-0 border-[#DCE5F0]
-            bg-white/95
-            text-[#25D366]
-            shadow-[-5px_8px_24px_rgba(15,23,42,0.10)]
-            backdrop-blur-xl
-            transition-transform duration-200
-            active:scale-95
-          "
-        >
-          <span className="relative">
-            <WhatsAppIcon className="h-[17px] w-[17px]" />
-
-            <span
-              className="
-                absolute -right-1.5 -top-1.5
-                h-1.5 w-1.5
-                rounded-full
-                bg-[#2478FF]
-              "
-            />
-          </span>
+  useEffect(() => {
+    if (!open) return;
+    (firstChoice.current ?? root.current?.querySelector<HTMLAnchorElement>('a'))?.focus();
+    const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setOpen(false); launcher.current?.focus(); } };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
+  }, [open]);
+  if (!mounted || !pathname || /^\/(?:login|signup|register|forgot-password|reset-password|verify|auth)(?:\/|$)/.test(pathname)) return null;
+  const whatsappUrl = `https://wa.me/2347018819588?text=${encodeURIComponent("Hi Showwork team! I’d appreciate some help with Showwork. Here’s what I’m trying to do:")}`;
+  return <div ref={root} className={styles.root} data-showwork-support="true">
+    {open && <section id="showwork-support-options" aria-labelledby="showwork-support-title" className={styles.panel}>
+      <header className={styles.header}>
+        <span className={styles.eyebrow}>SHOWWORK SUPPORT</span>
+        <button type="button" className={styles.close} aria-label="Close support options" onClick={() => { setOpen(false); launcher.current?.focus(); }}><X size={17} /></button>
+        <h2 id="showwork-support-title">A little help, whenever you need it.</h2>
+        <p>{enableRandy ? 'Get guidance from Randy or talk things through with our team. Choose what works for you.' : 'Have a question? Our team is here to help you find your next step.'}</p>
+      </header>
+      <div className={styles.choices}>
+        {enableRandy && <button ref={firstChoice} type="button" className={styles.choice} onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('showwork-randy-open')); }}>
+          <RandyAvatar size={42} />
+          <span className={styles.choiceCopy}><span className={styles.choiceTitle}>Ask Randy <small>AI assistant</small></span><span className={styles.description}>Step-by-step guidance for getting things done in Showwork.</span><span className={styles.action}>Start a conversation <ArrowRight size={13} /></span></span>
+          <ArrowRight size={17} className={styles.arrow} />
+        </button>}
+        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className={`${styles.choice} ${styles.whatsapp}`} onClick={() => { setOpen(false); launcher.current?.focus(); }}>
+          <span className={styles.whatsappIcon}><WhatsAppIcon /></span>
+          <span className={styles.choiceCopy}><span className={styles.choiceTitle}>Chat with our team <small>WhatsApp</small></span><span className={styles.description}>For account questions, troubleshooting, or a human helping hand.</span><span className={styles.action}>Continue on WhatsApp <ArrowUpRight size={13} /></span></span>
+          <span className="sr-only"> (opens in a new tab)</span>
         </a>
       </div>
-    </>
-  );
+      <footer className={styles.footer}>You’re in the right place. Let’s take the next step together.</footer>
+    </section>}
+    <button ref={launcher} data-showwork-chat-launcher type="button" className={styles.launcher} aria-label={open ? 'Close Showwork chat options' : 'Open Showwork chat options'} aria-expanded={open} aria-controls={open ? 'showwork-support-options' : undefined} onClick={() => setOpen(value => !value)}>
+      {open ? <X size={20} /> : <MessageCircle size={21} />}
+    </button>
+  </div>;
 }
