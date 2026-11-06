@@ -158,3 +158,15 @@ test('workspace trial and expired access keep their subscription checkout on Bil
   assert.match(html, /Subscribe &amp; restore access/);
   assert.doesNotMatch(html, /Your trial ends today/);
 });
+
+test('Agency solution destination highlights the highest workspace plan and offers explicit checkout', () => {
+  for (const workspaceBilling of [null, { contentWorkspacePlan: 'UNLIMITED', contentWorkspaceBillingStatus: 'TRIAL', contentWorkspaceBillingCycle: 'MONTHLY', contentWorkspaceTrialEndsAt: new Date(Date.now()+86400000) }]) {
+    const html = renderToStaticMarkup(React.createElement(View, {
+      creator: { name: 'Test', email: 'test@example.com' },
+      usage: { tier: 'FREE', used: 0, limit: 3, remaining: 3, atCap: false },
+      workspaceBilling, selectedProduct: 'content-workspace', selectedTier: 'UNLIMITED', selectedCycle: 'MONTHLY',
+    }));
+    assert.match(html, /id="workspace-plan-UNLIMITED"[^>]*data-selected="true"/);
+    assert.match(html, /Subscribe to Agency/);
+  }
+});

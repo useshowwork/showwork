@@ -32,6 +32,27 @@ const navigation = [
   ] },
 ];
 
+const homepageNavigation = [
+  { title: "Products", links: [
+    { label: "Marketing Workspace", href: "#workspace" },
+    { label: "Project Delivery", href: "/delivery" },
+    { label: "Portfolio", href: "/portfolio" },
+  ] },
+  { title: "Solutions", links: [
+    { label: "Businesses", href: "#businesses" },
+    { label: "Customer enquiries", href: "#customer-replies" },
+    { label: "Marketing agencies", href: "#agencies" },
+    { label: "Social media managers", href: "#managers" },
+    { label: "Creative professionals", href: "/delivery" },
+  ] },
+  { title: "Company", links: [
+    { label: "About Showwork", href: "#company" },
+    { label: "Resources", href: "/blog" },
+    { label: "Help & guides", href: "/help/workspace" },
+    { label: "Contact", href: "mailto:hello@useshowwork.com" },
+  ] },
+];
+
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4D9EFF]";
 
 export default function SiteFooter({ homepage = false }: { homepage?: boolean }) {
@@ -64,13 +85,13 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
           </Link>
         </div>
 
-        <div className="grid gap-12 py-12 sm:py-16 lg:grid-cols-[1.2fr_2fr] lg:gap-20">
+        <div className={homepage ? "grid gap-9 py-9 lg:grid-cols-[1.2fr_2fr] lg:gap-16" : "grid gap-12 py-12 sm:py-16 lg:grid-cols-[1.2fr_2fr] lg:gap-20"}>
           <div>
             <Link href="/" aria-label="Showwork home" className={`inline-block rounded-sm ${focus}`}>
               <ShowworkLogo tone="white" width={136}/>
             </Link>
             <p className="mt-5 max-w-xs text-sm leading-7 text-slate-400">
-              {homepage ? "Showwork is an intelligent marketing operations platform helping businesses and marketing professionals organise the work behind their marketing." : "Portfolios, project delivery and marketing workspaces for creators, agencies and social media teams."}
+              {homepage ? "Intelligent systems for how modern marketing and creative work gets done." : "Portfolios, project delivery and marketing workspaces for creators, agencies and social media teams."}
             </p>
             <a
               href="https://wa.me/2347018819588"
@@ -84,7 +105,7 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
             </a>
           </div>
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3">
-            {navigation.map(({ title, links }) => (
+            {(homepage ? homepageNavigation : navigation).map(({ title, links }) => (
               <div key={title}>
                 <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</h3>
                 <ul className="mt-5 space-y-4">
@@ -101,9 +122,9 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
           </nav>
         </div>
 
-        <nav aria-label="Showwork social media" className="border-y border-white/10 py-6">
+        <nav aria-label="Showwork social media" className={homepage ? "border-y border-white/10 py-4" : "border-y border-white/10 py-6"}>
           <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Find us in your feed</p>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <ul className={homepage ? "flex flex-wrap gap-x-6 gap-y-3" : "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"}>
             {socials.map(({ name, slug, handle, href }) => (
               <li key={slug}>
                 <a
@@ -111,12 +132,12 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Showwork on ${name}, @${handle} (opens in a new tab)`}
-                  className={`group flex h-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-4 transition-colors hover:border-blue-400/40 hover:bg-blue-500/10 sm:px-4 ${focus}`}
+                  className={homepage ? `inline-flex min-h-11 items-center gap-2 text-sm text-slate-300 hover:text-white ${focus}` : `group flex h-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-4 transition-colors hover:border-blue-400/40 hover:bg-blue-500/10 sm:px-4 ${focus}`}
                 >
                   <Image src={`/images/integrations/${slug}.svg`} alt="" width={20} height={20} aria-hidden="true" className="shrink-0 brightness-0 invert" />
                   <div className="min-w-0 flex-1">
                     <span className="block text-xs font-medium text-slate-200">{name}</span>
-                    <span className="mt-1 block break-all text-[10px] text-slate-400">@{handle}</span>
+                    {!homepage && <span className="mt-1 block break-all text-[10px] text-slate-400">@{handle}</span>}
                   </div>
                   <ArrowUpRight size={13} aria-hidden="true" className="shrink-0 text-slate-500 transition-colors group-hover:text-blue-300" />
                 </a>
@@ -133,7 +154,8 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
             <a href="mailto:hello@useshowwork.com" className={`rounded-sm transition-colors hover:text-white ${focus}`}>Contact</a>
           </div>
         </div>
-        <div aria-hidden="true" className="pointer-events-none select-none overflow-hidden border-t border-white/[0.06] pt-4 text-center text-[clamp(4rem,17vw,14rem)] font-semibold leading-[0.85] tracking-[-0.07em] text-white/[0.045]">
+        {homepage && <p className="border-t border-white/10 py-7 text-sm text-slate-300">Great creative work deserves a better system.</p>}
+        <div hidden={homepage} aria-hidden="true" className="pointer-events-none select-none overflow-hidden border-t border-white/[0.06] pt-4 text-center text-[clamp(4rem,17vw,14rem)] font-semibold leading-[0.85] tracking-[-0.07em] text-white/[0.045]">
           showwork
         </div>
       </div>

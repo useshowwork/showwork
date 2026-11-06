@@ -3,9 +3,9 @@ import { getCurrentCreator } from "@/lib/auth";
 import HomeClient from "./HomeClient";
 
 export const metadata: Metadata = {
-  title: "Showwork | Plan, Approve & Publish Client Content",
+  title: "Showwork | Intelligent Marketing Workspace for Modern Teams",
   description:
-    "Plan content with AI, get client approvals, and publish on supported channels. One Marketing Workspace for each client, with business knowledge and brand voice built in.",
+    "Bring business knowledge, content workflows, team coordination and customer conversations into a more connected marketing workspace with Showwork.",
   keywords: [
     "marketing operations platform",
     "marketing team collaboration",
@@ -16,28 +16,28 @@ export const metadata: Metadata = {
     "Showwork",
   ],
   openGraph: {
-    title: "Showwork | Plan, Approve & Publish Client Content",
+    title: "Showwork | Intelligent Marketing Workspace for Modern Teams",
     description:
-      "Plan content with AI, get client approvals, and publish on supported channels. One Marketing Workspace for each client, with business knowledge and brand voice built in.",
+      "Bring business knowledge, content workflows, team coordination and customer conversations into a more connected marketing workspace with Showwork.",
     url: "/",
     siteName: "Showwork",
     locale: "en_NG",
     type: "website",
     images: [
       {
-        url: "/images/work.jpg",
-        width: 1200,
-        height: 630,
+        url: "/images/landing/1.webp",
+        width: 1672,
+        height: 941,
         alt: "Showwork marketing operations platform",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Showwork | Plan, Approve & Publish Client Content",
+    title: "Showwork | Intelligent Marketing Workspace for Modern Teams",
     description:
-      "Plan content with AI, get client approvals, and publish on supported channels. One Marketing Workspace for each client, with business knowledge and brand voice built in.",
-    images: ["/images/work.jpg"],
+      "Bring business knowledge, content workflows, team coordination and customer conversations into a more connected marketing workspace with Showwork.",
+    images: ["/images/landing/1.webp"],
   },
   robots: {
     index: true,

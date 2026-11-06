@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import SubscriptionCheckoutButton from "@/components/billing/SubscriptionCheckoutButton";
 
 import { getContentWorkspaceFeatureList } from "@/lib/contentWorkspaceEntitlements";
 
@@ -921,16 +922,21 @@ function DeliverySubscription({
 ============================================================ */
 
 function ContentWorkspaceSubscription({
+  selectedTier,
   offerPrices = {},
   workspaceBilling,
   selectedCycle,
 }: {
+  selectedTier?: string | null;
   offerPrices?: OfferPrices;
   workspaceBilling:
     BillingSubscriptionsProps["workspaceBilling"];
 
   selectedCycle: BillingCycle;
 }) {
+  useEffect(() => {
+    if (selectedTier && CONTENT_WORKSPACE_PLAN_ORDER.includes(selectedTier as ContentWorkspacePlan)) document.getElementById(`workspace-plan-${selectedTier}`)?.scrollIntoView({ block: "start" });
+  }, [selectedTier]);
   const [switchRequest, setSwitchRequest] = useState<WorkspacePlanSwitchRequest | null>(null);
   const [switchBusy, setSwitchBusy] = useState(false);
 
@@ -1058,6 +1064,7 @@ function ContentWorkspaceSubscription({
         </div>
 
         <WorkspacePlanComparison
+        selectedTier={selectedTier}
           offerPrices={offerPrices}
           selectedCycle={selectedCycle}
           currentPlan={null}
@@ -1277,9 +1284,10 @@ function ContentWorkspaceSubscription({
       </div>
 
       <WorkspacePlanComparison
+        selectedTier={selectedTier}
           offerPrices={offerPrices}
         selectedCycle={selectedCycle}
-        currentPlan={plan}
+        currentPlan={billingStatus === "ACTIVE" ? plan : null}
         switching={switchBusy}
         onSelectPlan={(nextPlan) => setSwitchRequest({ plan: nextPlan, billingCycle: selectedCycle })}
       />
@@ -1322,12 +1330,14 @@ function WorkspaceMetric({
 ============================================================ */
 
 function WorkspacePlanComparison({
+  selectedTier,
   offerPrices = {},
   selectedCycle,
   currentPlan,
   switching = false,
   onSelectPlan,
 }: {
+  selectedTier?: string | null;
   offerPrices?: OfferPrices;
   selectedCycle: BillingCycle;
   currentPlan: ContentWorkspacePlan | null;
@@ -1362,8 +1372,11 @@ function WorkspacePlanComparison({
           return (
             <div
               key={planKey}
+              id={`workspace-plan-${planKey}`}
+              style={{ scrollMarginTop: 24 }}
+              data-selected={selectedTier === planKey ? "true" : undefined}
               className={`relative overflow-hidden rounded-[26px] border bg-white p-6 transition-all duration-300 ${
-                isCurrent
+                isCurrent || selectedTier === planKey
                   ? "border-[#2478FF] shadow-[0_12px_40px_rgba(36,120,255,0.10)]"
                   : "border-[#E7E9EE] hover:-translate-y-0.5 hover:border-[#D0D5DD] hover:shadow-[0_14px_40px_rgba(16,24,40,0.06)]"
               }`}
@@ -1464,13 +1477,7 @@ function WorkspacePlanComparison({
                     <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                   </button>
                 ) : (
-                  <Link
-                    href="/dashboard/calendars"
-                    className="group inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#D0D5DD] bg-white px-4 py-2.5 text-xs font-semibold text-[#344054] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#F9FAFB]"
-                  >
-                    Start with {plan.name}
-                    <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
+                  <SubscriptionCheckoutButton product="CONTENT_WORKSPACE" plan={planKey} cycle={selectedCycle} label={`Subscribe to ${plan.name}`} className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-[#2478FF] px-4 py-2.5 text-xs font-semibold text-white"/>
                 )}
               </div>
             </div>
@@ -1593,7 +1600,7 @@ export default function BillingSubscriptions({
           {selectedProduct === "delivery" ? (
             <DeliverySubscription offerPrices={offerPrices} usage={usage} selectedTier={selectedTier} selectedCycle={selectedCycle} />
           ) : (
-            <ContentWorkspaceSubscription offerPrices={offerPrices} workspaceBilling={workspaceBilling} selectedCycle={selectedCycle} />
+            <ContentWorkspaceSubscription selectedTier={selectedTier} offerPrices={offerPrices} workspaceBilling={workspaceBilling} selectedCycle={selectedCycle} />
           )}
         </section>
         <p className="mt-10 pb-8 text-center text-[10px] text-[#98A2B3]">
