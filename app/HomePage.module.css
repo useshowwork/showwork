@@ -60,3 +60,45 @@
 
 /* Give the signed-in app destination a distinct navbar action. */
 .login.dashboardButton,.mobileNav>a.dashboardButton{align-items:center;justify-content:center;min-height:44px;padding:11px 18px;border:1px solid #2478ff;border-radius:8px;background:#edf4ff;color:#155fc7;font-weight:600;transition:background .18s,border-color .18s,box-shadow .18s}.login.dashboardButton{display:inline-flex}.login.dashboardButton:hover,.mobileNav>a.dashboardButton:hover{background:#deebff;border-color:#155fc7}.dashboardButton:focus-visible{outline:3px solid #2478ff;outline-offset:3px}.mobileNav>a.dashboardButton{justify-content:space-between;margin-top:12px;padding-inline:16px}@media(max-width:760px){.login.dashboardButton{display:none}}
+
+/* Visible feature tabs: no sideways hunting on phones. */
+.explorerGuide{margin-left:0;color:#55769f;font-size:10px;letter-spacing:.08em}
+.explorerTabs>button{border-color:#e1e9f5;background:#fff;cursor:pointer}
+.explorerTabs>button:hover{border-color:#aacbfa;background:#f3f7ff}
+.explorerTabs>button[aria-selected=true]{border-color:#2478ff;background:#eaf3ff;box-shadow:inset 3px 0 #2478ff}
+.explorerTabs>button>svg:last-child{opacity:.55;transform:none}
+.explorerTabs>button[aria-selected=true]>svg:last-child{opacity:1}
+.explorerTabs>button:focus-visible{outline:3px solid #2478ff;outline-offset:3px}
+.explorerPanel{display:flex;flex-direction:column}
+.explorerVisual{order:0;min-width:0}
+.explorerStory{order:1;padding:23px 3px 0}
+.explorerStory h3{font-size:27px;font-weight:500;letter-spacing:-.04em;line-height:1.3}
+.explorerStory p{font-size:13px;line-height:1.8;color:#7188a6;max-width:600px;margin-top:9px}
+.explorerSummary{order:2;padding-top:16px}
+.explorerAccess{order:3}
+@media(max-width:900px){
+ .explorerGuide{display:block;margin:0 2px 12px;font-size:10px}
+ .explorerTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;padding:0;gap:8px}
+ .explorerTabs>button{width:100%;min-width:0;min-height:64px;gap:8px;padding:10px;border-radius:10px;white-space:normal}
+ .explorerTabs>button:last-child{grid-column:1/-1}
+ .explorerTabs>button>span:nth-child(2){min-width:0;flex:1}
+ .explorerTabs strong{font-size:12px;line-height:1.4;font-weight:600}
+ .explorerTabs>button>svg:last-child{display:block;width:14px}
+ .explorerIcon{width:28px;height:28px;color:#6486b0}
+ .explorerTabs>button[aria-selected=true] .explorerIcon{color:#1768e8}
+ .explorerStory{order:-1;padding:5px 2px 16px}
+ .explorerStory h3{font-size:25px}
+ .explorerStory p{font-size:13px;margin-top:8px}
+ .explorerSummary{padding:16px 2px 0;align-items:stretch}
+ .explorerAction{width:100%;min-height:46px;font-size:12px;justify-content:space-between;white-space:normal}
+ .explorerAccess{padding-inline:2px}
+}
+@media(max-width:550px){
+ .productExplorer{padding:14px;gap:18px}
+ .explorerTabs>button{padding:10px 8px;gap:6px}
+ .explorerTabs strong{font-size:11px}
+ .explorerIcon{width:23px;height:25px}
+ .explorerTabs>button>svg:last-child{width:12px}
+ .explorerStory h3{font-size:24px}
+ .explorerStory p{font-size:12px}
+}

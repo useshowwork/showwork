@@ -5,3 +5,20 @@
 .connections{left:0;right:auto;top:0;width:100%;height:100%;display:block;pointer-events:none}.connections path{fill:none;stroke:#bdd2ee;stroke-width:1.2;vector-effect:non-scaling-stroke}.connections path[data-active=true]{stroke:#70a8f4;stroke-width:1.6}.brandCore{animation:contextIn .24s ease-out}.posters{max-width:540px;margin-inline:auto}.sourceStack button{min-height:44px}@keyframes contextIn{from{opacity:.65;transform:translateY(4px) rotate(-1deg)}to{opacity:1;transform:translateY(0) rotate(-2deg)}}@media(prefers-reduced-motion:reduce){.brandCore{animation:none}}
 
 .posterMarkDark{filter:brightness(0);opacity:.75}
+
+@media(max-width:600px){
+ .canvas{min-height:0}
+ .caption{padding:13px 14px}
+ .knowledge{min-height:245px;padding:12px 17px 45px;gap:15px}
+ .brandCore{transform:none;padding:17px 13px 13px}
+ .brandCore>strong{font-size:18px;min-height:0}
+ .brandCore>p{min-height:0;font-size:9px}
+ .coreMark{width:34px;height:34px;margin-top:-27px;margin-bottom:10px}
+ .coreSignal{margin-top:8px}
+ .sourceStack button{padding:9px 7px;font-size:9px}
+ .knowledgeOutputs{bottom:10px;left:10px;right:10px}
+ .knowledgeOutputs>span{padding:5px 7px}
+ .team{padding-top:10px;padding-bottom:18px}
+ .reviewCard{margin-top:19px;padding:14px}
+ .intelligence{padding:15px 15px 23px}
+}
