@@ -514,6 +514,12 @@ function DeliverySubscription({
   const status = { ...getDeliveryStatus(usage.tier), ...(usage.complimentary ? { label: "Complimentary access" } : {}) };
   const planName = getDeliveryPlanName(usage.tier);
 
+  useEffect(() => {
+    if (selectedTier && ["STARTER", "GROWTH", "UNLIMITED"].includes(selectedTier)) {
+      document.getElementById(`delivery-plan-${selectedTier}`)?.scrollIntoView({ block: "start" });
+    }
+  }, [selectedTier]);
+
   const tiers = [
     {
       key: "FREE" as const,
@@ -786,6 +792,8 @@ function DeliverySubscription({
             return (
               <div
                 key={plan.key}
+                id={`delivery-plan-${plan.key}`}
+                style={{ scrollMarginTop: 24 }}
                 className={`relative overflow-hidden rounded-[24px] border bg-white p-5 transition-all duration-300 sm:p-6 ${
                   isCurrent
                     ? "border-[#2478FF] shadow-[0_12px_40px_rgba(36,120,255,0.10)]"

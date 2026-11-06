@@ -1,5 +1,6 @@
 "use client";
 
+import { productEntryHref } from "@/lib/productJourney";
 import { TIERS } from "@/lib/subscriptionTiers";
 import { CONTENT_WORKSPACE_PLANS, CONTENT_WORKSPACE_PLAN_ORDER, formatWorkspaceLimit, getContentWorkspaceFeatureList } from "@/lib/contentWorkspaceEntitlements";
 
@@ -131,7 +132,7 @@ function buildHref(
     params.set("plan", plan);
   }
 
-  return `/start?${params.toString()}`;
+  return productEntryHref(product, { plan: tier ?? plan, cycle: params.get("cycle") });
 }
 
 function CheckIcon() {
@@ -420,7 +421,7 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
 
 if (product === "delivery") {
   if (plan.name === "Free") {
-    href = "/start";
+    href = productEntryHref("delivery");
   } else {
     const tierMap: Record<string, string> = {
       Starter: "STARTER",
@@ -444,9 +445,7 @@ if (product === "delivery") {
 
   const workspacePlan = workspacePlanMap[plan.name];
 
-  href = `/signup?next=/dashboard/calendars&plan=${workspacePlan}&cycle=${
-    cycle === "monthly" ? "MONTHLY" : "ANNUAL"
-  }`;
+  href = productEntryHref("workspace", { plan: workspacePlan, cycle: cycle === "monthly" ? "MONTHLY" : "ANNUAL" });
 }
             return (
               <motion.div
@@ -611,7 +610,7 @@ if (product === "delivery") {
                 {/* CTA */}
 
                 <Link
-                  href={compact ? href.replace(/^\/start(?=\?|$)/, "/signup") : href}
+                  href={href}
                   className={`group mt-8 flex items-center justify-center gap-2 rounded-full px-5 py-3.5 text-xs font-semibold transition-all ${
                     plan.popular
                       ? "bg-[#155FC7] text-white hover:bg-[#3A88FF]"
@@ -697,7 +696,7 @@ if (product === "delivery") {
             </div>
 
             <Link
-              href="/signup?next=/dashboard/portfolio"
+              href={productEntryHref("portfolio")}
               className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-[#155FC7]"
             >
               Create portfolio

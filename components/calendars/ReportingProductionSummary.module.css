@@ -26,3 +26,16 @@
 .attachments { display: flex; align-items: center; gap: 10px; padding: 13px; border: 1px solid #dce8fa; border-radius: 12px; background: #f1f6ff; color: #6792ce; }.attachments > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }.attachments strong { color: #4e6e97; font-size: 11px; font-weight: 500; }.attachments span { color: #879dbb; font-size: 10px; }.attachments b { margin-left: auto; color: #1768e8; white-space: nowrap; font-size: 17px; }.attachments small { color: #8fa3be; font-size: 12px; font-weight: 400; }
 @media(max-width:1100px) { .grid { grid-template-columns: 1fr; } }
 @media(max-width:600px) { .heading { display: block; }.heading p { text-align: left; margin-top: 10px; }.card { padding: 19px; }.distribution { flex-direction: column; gap: 23px; }.platforms { width: 100%; }.donut { width: 150px; height: 150px; }.card h4 { font-size: 16px; }.badge { display: none; }.stages { gap: 14px; }.approval { gap: 18px; } }
+
+@media(max-width:700px) {
+  .heading { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .heading p { text-align: left; }
+  .card header { flex-wrap: wrap; }
+  .card header > div { min-width: 0; flex: 1; }
+  .approval { flex-wrap: wrap; gap: 16px; }
+  .approval p { max-width: 100%; }
+  .stages { grid-template-columns: minmax(0,1fr); }
+  .attachments { flex-wrap: wrap; }
+  .attachments > div { flex: 1 1 130px; }
+  .card { overflow-wrap: anywhere; }
+}

@@ -1,5 +1,7 @@
 "use client";
 
+import { productEntryHref } from "@/lib/productJourney";
+
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
@@ -306,7 +308,7 @@ function Hero() {
           className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
         >
           <Link
-            href="/signup?next=/dashboard/portfolio"
+            href={productEntryHref("portfolio")}
             className="group relative overflow-hidden rounded-full"
           >
             <span className="absolute -inset-2 rounded-full bg-[#2478FF]/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
@@ -685,7 +687,7 @@ function FinalCTA() {
 
         <div className="mt-9 flex justify-center">
           <Link
-            href="/signup?next=/dashboard/portfolio"
+            href={productEntryHref("portfolio")}
             className="group relative overflow-hidden rounded-full"
           >
             <span className="absolute -inset-3 rounded-full bg-[#2478FF]/30 blur-xl" />

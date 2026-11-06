@@ -5,7 +5,7 @@ import styles from "./SectionTransition.module.css";
 
 /** The content panel itself opens over the previous section as the reader scrolls. */
 export default function SectionTransition({ variant, children, className = "" }: {
-  variant: "opening" | "process" | "footer";
+  variant: "opening" | "process" | "footer" | "replies";
   children: ReactNode;
   className?: string;
 }) {
@@ -18,6 +18,7 @@ export default function SectionTransition({ variant, children, className = "" }:
     let frame = 0;
     let listening = false;
     const clear = () => {
+      backdrop?.style.removeProperty("--scene-pin-position");
       backdrop?.style.removeProperty("--scene-sticky-top");
       element.style.removeProperty("--panel-min-height");
       element.style.removeProperty("--panel-inset");
@@ -42,8 +43,9 @@ export default function SectionTransition({ variant, children, className = "" }:
       const shortCorner = longCorner * .44;
       const backdropHeight = backdrop?.offsetHeight;
       if (backdropHeight) {
-        element.style.setProperty("--panel-min-height", `${backdropHeight}px`);
+        if (variant !== "replies") element.style.setProperty("--panel-min-height", `${backdropHeight}px`);
         // Tall phone sections scroll normally until their lower content is visible, then pin.
+        backdrop.style.setProperty("--scene-pin-position", "sticky");
         backdrop.style.setProperty("--scene-sticky-top", `${Math.min(headerBottom, height - backdropHeight)}px`);
       }
       element.style.setProperty("--panel-inset", `${(inset * remaining).toFixed(2)}px`);

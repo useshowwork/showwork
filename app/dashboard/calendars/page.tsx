@@ -40,7 +40,7 @@ export default async function CalendarsPage({
   searchParams: Promise<{ page?: string; onboarding?: string; q?: string }>;
 }) {
   const creator = await getCurrentCreator();
-  if (!creator) redirect("/login");
+  if (!creator) redirect("/login?next=/dashboard/calendars");
   const params = await searchParams;
   const query = params.q?.trim() ?? "";
   const requestedPage = Number(params.page);

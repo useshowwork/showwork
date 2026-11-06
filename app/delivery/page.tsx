@@ -1,5 +1,7 @@
 "use client";
 
+import { productEntryHref } from "@/lib/productJourney";
+
 import SiteFooter from "@/components/landing/SiteFooter";
 
 import Link from "next/link";
@@ -566,7 +568,7 @@ export default function DeliveryPage() {
               className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
             >
               <Link
-                href="/start"
+                href={productEntryHref("delivery")}
                 className="group inline-flex h-14 items-center justify-center gap-3 rounded-full bg-slate-950 px-7 text-sm font-semibold text-white shadow-xl shadow-slate-950/10 transition hover:-translate-y-0.5 hover:bg-[#2478FF]"
               >
                 Start a project
@@ -1108,7 +1110,7 @@ export default function DeliveryPage() {
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="/start"
+              href={productEntryHref("delivery")}
               className="group inline-flex h-14 items-center justify-center gap-3 rounded-full bg-slate-950 px-8 text-sm font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-[#2478FF]"
             >
               Deliver your next project

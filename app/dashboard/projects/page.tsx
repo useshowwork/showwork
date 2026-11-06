@@ -22,7 +22,7 @@ export default async function ProjectDeliveryPage() {
   const creator = await getCurrentCreator();
 
   if (!creator) {
-    redirect("/login");
+    redirect("/login?next=/dashboard/projects");
   }
 
   /* ─────────────────────────────────────────

@@ -95,3 +95,27 @@ Verified against localhost in isolated headless Chrome at 1440×900, 768×1024 a
 Enabled the same pinned-backdrop panel reveal on phones at all three boundaries. Mobile surfaces retain their narrower insets and asymmetric corners, then expand to full width. For a section taller than the phone viewport, the sticky top is `min(header bottom, viewport height − section height)`: readers can scroll through the complete section before its lower content holds behind the incoming surface. Resizing recalculates this value, and teardown/reduced-motion changes remove it.
 
 Verified in isolated Chrome phone emulation at 390×844, with overflow checks at 375×812 and 320×720. All three mobile panels reached zero inset/radius at their open position; sticky backdrops held at the measured offsets, the dedicated mobile hero loaded, no horizontal overflow or console errors were observed, and reduced-motion restored natural/static flow. Captures were reviewed for the opening and process panels. Native iOS Safari was not separately tested.
+
+## Product explorer redesign
+
+Replaced the horizontal underline tabs and oversized checklist illustration with one bordered explorer: a vertical feature rail on desktop, a touch-scrollable selector on smaller screens, a visual canvas, and concise outcome copy/action beneath it. Removed the old representation renderer and obsolete homepage style rules. The new `WorkspaceFeatureVisual` component provides distinct code-native scenes for business context, content planning, team review, customer replies and recommendations; it is also reused in the dedicated customer-replies section. No screenshots or generated bitmap dashboards were introduced.
+
+The knowledge scene uses selectable Documents / Website / Brand voice inputs, connecting lines and a blue business-context core. Selecting a source updates the core text, with a polite live announcement. Other scenes represent editorial content cards, review handoffs, a contextual reply and evidence-to-action. All are labelled illustrative; commercial gates and the Agency subscription destination remain unchanged. Reduced-motion disables entry transitions.
+
+Verified all five views in isolated Chrome at 1440px and 390px, source selection, End-key tab selection/focus, and responsive overflow at 320, 375 and 768px. No console errors were recorded. TypeScript and the 16 focused homepage/help/transition checks passed. This is presentation validation, not a production AI/messaging/publishing test.
+
+## Connected customer inbox value section
+
+Replaced the AI-only enquiry illustration and longer narrative with a business-focused connected-inbox solution: “Your next customer shouldn’t have to wait.” Short copy explicitly names WhatsApp, Instagram and Facebook, shared team handling, business-aware AI replies and human takeover. The primary CTA is now “Get started with Agency”, using the existing highest-plan billing destination; the secondary opens the demo modal. Agency pricing remains configuration-driven. Opt-in, channel permissions and reply-window conditions remain in a short note. Unified inbox/drafting entitlements were not changed; this section sells the Agency automation bundle.
+
+New `ConnectedInboxVisual` uses the repository's platform logos and shows three channels converging into one inbox. Selecting a thread changes the channel, enquiry and illustrative AI reply. It does not send messages or connect accounts. Phone layouts use a compact channel selector. No screenshot assets or invented sales statistics were added.
+
+Added an incoming `replies` surface reveal in addition to the outgoing process reveal. The previous scene pins at its lower edge inside a bounded sequence. Nested surfaces use `overflow: clip` so their descendants' sticky positioning remains functional; a replies surface does not inherit the entire previous scene's minimum height. SSR/no-JS baseline remains natural flow for the new pinned scene. Reduced-motion resets the positioning and expansion.
+
+Browser validation after hydration confirmed ~77px inset/223px upper corner at the rounded state, zero inset/radius near the header, and a stationary preceding scene. Verified all three channel choices, the Agency URL, no overflow at 1440, 768, 390 and 320px, reduced motion and no console errors. Focused tests assert platform assets, Agency CTA and the new reveal. Backend inbox source checks found existing Meta/WhatsApp messaging handling; this task performed no live messaging acceptance test.
+
+### Product-specific signup journeys
+
+Product CTAs now preserve Marketing Workspace, Project Delivery or Portfolio as an internal auth return destination. Signup verification and login return directly to that app, bypassing the generic welcome page. Workspace and delivery pricing CTAs include the exact tier and monthly/annual cycle inside the encoded return URL; billing highlights the chosen plan and still requires payment confirmation. Existing sessions bypass the signup/login form. Workspace/delivery signup preselects the corresponding account role without another product choice. Legacy pricing query parameters are supported; external return URLs are rejected.
+
+Validation: mocked signup/OTP/login flows, all paid tiers and cycles, rendered pricing buttons, existing-session redirects, homepage navigation and billing regression checks. No real signup, email, payment or database migration was performed.

@@ -272,7 +272,7 @@ export default function CalendarWorkspaceShell({
   };
 
   const aiSections = visibleSections.filter(section => ["knowledge", "research", "generate"].includes(section.id));
-  const primaryMobile = (["content", "inbox", "analytics"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
+  const primaryMobile = (["content", "analytics", "inbox"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
   const moreSections = visibleSections.filter(section => !["content", "inbox", "analytics", "knowledge", "research", "generate"].includes(section.id)).sort((a, b) => Number(a.id === "overview") - Number(b.id === "overview"));
   const aiActive = aiSections.some(section => section.id === active.id);
   const moreActive = moreSections.some(section => section.id === active.id);

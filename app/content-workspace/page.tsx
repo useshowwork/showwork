@@ -1,5 +1,7 @@
 "use client";
 
+import { productEntryHref } from "@/lib/productJourney";
+
 import UiSymbol from "@/components/ui/UiSymbol";
 
 import SiteFooter from "@/components/landing/SiteFooter";
@@ -594,7 +596,7 @@ export default function ContentWorkspacePage() {
               className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
             >
               <Link
-                href="/signup?next=/dashboard/calendars"
+                href={productEntryHref("workspace")}
                 className="group inline-flex h-14 items-center justify-center gap-3 rounded-full bg-slate-950 px-7 text-sm font-semibold text-white shadow-xl shadow-slate-950/10 transition hover:-translate-y-0.5 hover:bg-[#2478FF]"
               >
                 Create a marketing workspace
@@ -1209,7 +1211,7 @@ export default function ContentWorkspacePage() {
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="/signup?next=/dashboard/calendars"
+              href={productEntryHref("workspace")}
               className="group inline-flex h-14 items-center justify-center gap-3 rounded-full bg-slate-950 px-8 text-[15px] font-semibold text-white shadow-xl shadow-slate-950/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#2478FF] hover:shadow-[0_14px_35px_rgba(36,120,255,0.20)] sm:h-[58px] sm:px-9"
             >
               Create a marketing workspace

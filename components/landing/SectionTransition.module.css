@@ -1,6 +1,8 @@
-.panel{position:relative;z-index:2;isolation:isolate;margin-top:clamp(-140px,-13svh,-80px);margin-inline:var(--panel-inset,0px);min-height:var(--panel-min-height,auto);border-radius:var(--panel-left,0px) var(--panel-right,0px) 0 0;overflow:hidden;background:#fff}
+.panel{position:relative;z-index:2;isolation:isolate;margin-top:clamp(-140px,-13svh,-80px);margin-inline:var(--panel-inset,0px);min-height:var(--panel-min-height,auto);border-radius:var(--panel-left,0px) var(--panel-right,0px) 0 0;overflow:clip;background:#fff}
 .process{background:#123466}.footer{background:#102b50;margin-top:clamp(-100px,-10svh,-60px)}
 /* The entire surface changes width, so its text remains inside the curved edges. */
 .panel:has(:focus-visible){margin-inline:0;border-radius:0}
 @media(max-width:760px){.panel{margin-top:-64px}.footer{margin-top:-48px}}
 @media(prefers-reduced-motion:reduce){.panel{margin-inline:0;border-radius:0;min-height:auto;margin-top:0}}
+
+.replies{background:#edf4ff}

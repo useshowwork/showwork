@@ -10,7 +10,7 @@ const component=load('app/HomeClient.tsx',{
 }).default;
 test('homepage leads new visitors to a workspace trial and keeps secondary tool paths available',()=>{
  const html=renderToStaticMarkup(React.createElement(component));
- assert.match(html,/href="\/signup\?next=\/dashboard\/calendars"/);
+ assert.match(html,/href="\/signup\?next=%2Fdashboard%2Fcalendars"/);
  assert.match(html,/Start your free trial/);assert.match(html,/href="\/delivery"/);assert.match(html,/href="\/portfolio"/);
  assert.equal((html.match(/<h1\b/g)||[]).length,1);
  for(const id of ['main-content','how-it-works','tools','pricing','questions'])assert.ok(html.includes(`id="${id}"`),id);
@@ -23,7 +23,7 @@ test('homepage leads new visitors to a workspace trial and keeps secondary tool 
 });
 test('signed-in visitors receive a direct route to their workspaces',()=>{
  const html=renderToStaticMarkup(React.createElement(component,{isLoggedIn:true}));
- assert.match(html,/href="\/dashboard\/calendars"/);assert.match(html,/Open your workspaces/);assert.ok(!html.includes('href="/signup?next=/dashboard/calendars"'));
+ assert.match(html,/href="\/dashboard\/calendars"/);assert.match(html,/Open your workspaces/);assert.ok(!html.includes('href="/signup?next='));
 });
 test('Randy is presented as Growth and above, with explicit confirmation and review boundaries',()=>{
  const html=renderToStaticMarkup(React.createElement(component));
@@ -81,8 +81,11 @@ test('after-hours enquiry solution leads to the highest workspace plan without s
  const html=renderToStaticMarkup(React.createElement(component));
  assert.match(html,/Enquiries go unanswered/);
  const section=html.match(/<section[^>]*id="customer-replies"[\s\S]*?<\/section>/)?.[0];
- assert.ok(section);assert.match(section,/Customer interest doesn’t/);assert.match(section,/Book a demo/);
- assert.match(section,/href="\/dashboard\/billing\?product=content-workspace&amp;tier=UNLIMITED&amp;cycle=MONTHLY#workspace-plan-UNLIMITED"/);
- assert.match(section,/59,900/);assert.match(section,/messaging windows apply/);
+ assert.ok(section);assert.match(section,/Your next customer/);assert.match(section,/Get started with Agency/);assert.match(section,/Book a demo/);
+ assert.match(section,/href="\/signup\?next=%2Fdashboard%2Fbilling%3Fproduct%3Dcontent-workspace%26tier%3DUNLIMITED%26cycle%3DMONTHLY%23workspace-plan-UNLIMITED"/);
+ assert.match(section,/59,900/);assert.match(section,/reply windows apply/);
  assert.match(section,/Automatic reply · example/);
+ for(const platform of ["whatsapp","instagram","facebook"])assert.ok(section.includes(`/images/integrations/${platform}.svg`));
+ assert.match(section,/Three channels. One place for your team/);
+ assert.match(html,/data-scroll-panel="replies"/);
 });

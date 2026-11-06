@@ -69,7 +69,7 @@ function PortfolioMark() {
 export default async function PortfolioEntryPage() {
   const creator = await getCurrentCreator();
 
-  if (!creator) redirect("/login");
+  if (!creator) redirect("/login?next=/dashboard/portfolio");
 
   /*
    * AGENCY
