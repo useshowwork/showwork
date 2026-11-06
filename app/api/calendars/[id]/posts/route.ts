@@ -35,7 +35,7 @@ export async function GET(
   // Saved content remains readable when subscription access is locked.
 
   const posts = await db.calendarPost.findMany({
-    where: { calendarId: id },
+    where: { calendarId: id, deletedAt: null },
     orderBy: { postDate: "asc" },
     include: {
       assets: { orderBy: { displayOrder: "asc" } },

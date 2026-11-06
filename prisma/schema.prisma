@@ -38,6 +38,7 @@ enum BillingCycle {
 
 enum ContentWorkspacePlan {
   CREATOR
+  GROWTH
   STUDIO
   UNLIMITED
 }
@@ -1705,6 +1706,10 @@ model SocialCalendar {
   researchPlan Json?
   // Workspace-wide permission to dispatch queued social posts.
   autoPublishEnabled Boolean @default(true)
+  // Version zero preserves existing workspaces; new ones enter guided setup.
+  setupVersion Int @default(0)
+  publishingPreferenceSetAt DateTime?
+  setupCompletedAt DateTime?
   id           String  @id @default(uuid())
   slug         String  @unique
   clientName   String
@@ -2273,6 +2278,9 @@ enum PostApprovalStatus {
 }
 
 model CalendarPost {
+  // Removed from calendars immediately; active provider evidence is retained.
+  deletedAt DateTime?
+  @@index([calendarId, deletedAt])
   creativeBrief Json?
   creativeDevelopment Json?
   id         String         @id @default(uuid())

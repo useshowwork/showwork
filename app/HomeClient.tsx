@@ -1,584 +1,102 @@
 "use client";
 
-import Image, { type StaticImageData } from "next/image";
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
-import { ArrowRight, ArrowUpRight, Sparkles, MoveUpRight, CheckCheck, MessageCircle, WandSparkles, BarChart3, CalendarDays, MessagesSquare, CheckCircle2, UsersRound } from "lucide-react";
-import Navbar from "@/components/Navbar";
+import { useEffect, useState } from "react";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { ArrowRight, ArrowUpRight, BookOpenText, CalendarDays, Check, CheckCheck, ChevronDown, FileCheck2, FolderOpen, ImageIcon, Menu, ShieldCheck, Sparkles, UsersRound, X } from "lucide-react";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
+import PlatformBrandIcon from "@/components/calendars/PlatformBrandIcon";
 import BookDemoModal from "@/components/landing/BookDemoModal";
-import SiteFooter from "@/components/landing/SiteFooter";
 import PricingSection from "@/components/landing/PricingSection";
-import IntegrationsSection from "@/components/landing/IntegrationsSection";
-import people from "@/public/images/people.png";
+import SiteFooter from "@/components/landing/SiteFooter";
+import { CONTENT_WORKSPACE_PLANS } from "@/lib/contentWorkspaceEntitlements";
 import dashboard from "@/public/images/dashboard.webp";
+import styles from "./HomePage.module.css";
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-jakarta",
-});
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-fraunces",
-});
-const focus =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current";
-
-const features = [
-  { label: "Plan", detail: "Content, beautifully organised", Icon: CalendarDays },
-  { label: "Engage", detail: "Every conversation in reach", Icon: MessagesSquare },
-  { label: "Analyse", detail: "See what is working", Icon: BarChart3 },
-  { label: "Improve", detail: "Make your next move smarter", Icon: Sparkles },
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-jakarta" });
+const workflow = [
+  { title: "Plan content", label: "One calendar. A clearer week.", description: "Keep ideas, copy and creative together, with a schedule everyone can follow.", icon: CalendarDays },
+  { title: "Review together", label: "Feedback with a clear next step.", description: "Your team reviews first. Then clients open their link to leave feedback or approve.", icon: UsersRound },
+  { title: "Publish with control", label: "Ready when your content is.", description: "Choose automatic or manual publishing on supported channels. Required approvals always come first.", icon: CheckCheck },
 ] as const;
+const faqs = [
+  { question: "What is Marketing Workspace?", answer: "A workspace for each client’s business knowledge, brand voice, content calendar, approvals and connected channels. Higher plans add tools for research, conversations, leads and performance insights." },
+  { question: "How does the free trial work?", answer: "New eligible accounts get a seven-day Marketing Workspace trial with Agency feature access. You can explore the tools before choosing your paid plan. No payment card is required to start the trial." },
+  { question: "Will AI publish content without my approval?", answer: "Generating content creates drafts for review. Publishing requires internal and client approvals, a connected eligible account, and the platform’s required settings. You choose whether automatic publishing is enabled." },
+  { question: "Which plan includes Randy?", answer: `Randy in AI Studio is included from Growth at ₦${CONTENT_WORKSPACE_PLANS.GROWTH.priceNgnMonthly.toLocaleString("en-NG")}/month. Creator includes AI content generation, business knowledge and brand voice. Existing Agency trial access includes Randy.` },
+  { question: "Can I use Project Delivery or Portfolio separately?", answer: "Yes. Project Delivery is for sharing client files, collecting feedback and managing handovers. Portfolio is for showcasing your work. You can choose the tool that fits what you need today." },
+];
 
-function ShowworkExperienceSection({ dashboard }: { dashboard: StaticImageData }) {
-  return (
-    <section id="experience" aria-labelledby="experience-heading" className="relative isolate scroll-mt-24 overflow-hidden [content-visibility:auto] [contain-intrinsic-size:auto_850px] bg-[#EAF2FF] px-5 py-20 sm:px-8 sm:py-28 lg:px-14 lg:py-32">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -left-40 top-40 h-[480px] w-[480px] rounded-full bg-[#D6F1E7]/75 md:blur-[100px]" />
-        <div className="absolute -right-40 bottom-12 h-[580px] w-[580px] rounded-full bg-[#C9DFFF]/80 md:blur-[120px]" />
-        <div className="absolute left-1/2 top-[45%] h-[620px] w-[620px] -translate-x-1/2 rounded-full border border-white/45" />
-      </div>
-      <div className="mx-auto max-w-[1280px]">
-        <div className="mx-auto max-w-[790px] text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#B9D3FA] bg-white/65 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#155FC7]">
-            <Sparkles size={14} aria-hidden="true" /> The Showwork experience
-          </div>
-          <h2 id="experience-heading" className="mt-7 text-[clamp(2.5rem,5.1vw,5rem)] font-semibold leading-[1.03] tracking-[-0.065em] text-[#102A29]">
-            Everything your marketing team needs. <em className="font-[var(--font-fraunces)] font-medium text-[#155FC7]">Together.</em>
-          </h2>
-          <p className="mx-auto mt-6 max-w-[590px] text-base leading-8 text-[#526775] sm:text-lg">From content planning to customer conversations, performance insights, and intelligent recommendations.</p>
-        </div>
-
-        <div className="relative mx-auto mt-12 max-w-[1140px] sm:mt-16">
-          <div className="relative mx-auto max-w-[970px]">
-            <div aria-hidden="true" className="absolute -inset-5 rounded-[36px] bg-white/35 blur-2xl sm:-inset-10" />
-            <div className="relative overflow-hidden rounded-[18px] border border-white/80 bg-white/65 p-2 shadow-[0_30px_90px_rgba(25,70,133,0.16)] sm:rounded-[30px] sm:p-3">
-              <Image src={dashboard} alt="Illustrative Showwork product views including content calendar, social inbox, analytics and AI recommendations" sizes="(max-width: 1023px) 100vw, 970px" className="h-auto w-full rounded-[12px] sm:rounded-[22px]" />
-              <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-white/55" />
-            </div>
-          </div>
-
-          <div aria-hidden="true" className="pointer-events-none absolute -left-3 top-[20%] hidden items-center gap-2 rounded-2xl border border-white/80 bg-white/90 px-4 py-3 shadow-[0_15px_35px_rgba(21,95,199,0.12)] xl:flex">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6F5EB] text-[#16834B]"><CalendarDays size={18} /></span>
-            <span className="text-xs font-semibold text-[#102A29]">Ideas become plans</span>
-          </div>
-          <div aria-hidden="true" className="pointer-events-none absolute -right-3 bottom-[22%] hidden items-center gap-2 rounded-2xl border border-white/80 bg-white/90 px-4 py-3 shadow-[0_15px_35px_rgba(21,95,199,0.12)] xl:flex">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E7F0FF] text-[#155FC7]"><BarChart3 size={18} /></span>
-            <span className="text-xs font-semibold text-[#102A29]">Insights drive growth</span>
-          </div>
-        </div>
-
-        <div className="mx-auto mt-12 grid max-w-[1050px] grid-cols-2 gap-3 sm:mt-16 lg:grid-cols-4 lg:gap-4">
-          {features.map(({ label, detail, Icon }, i) => (
-            <div key={label} className="group flex min-w-0 items-start gap-3 rounded-[20px] border border-white/80 bg-white/60 p-4 shadow-[0_8px_25px_rgba(25,70,133,0.04)] md:backdrop-blur-sm transition-colors hover:bg-white/90 sm:p-5">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-[#DDEBFF] text-[#155FC7] transition-colors group-hover:bg-[#D8F3A5] group-hover:text-[#102A29]"><Icon size={19} aria-hidden="true" /></span>
-              <span className="min-w-0"><span className="block text-sm font-bold text-[#102A29]">{label}</span><span className="mt-1 block text-[11px] leading-[1.5] text-[#5D7180] sm:text-xs">{detail}</span></span>
-            </div>
-          ))}
-        </div>
-        <div className="mx-auto mt-8 flex max-w-xl items-center justify-center gap-2 text-center text-xs leading-6 text-[#617386]">
-          <ArrowUpRight size={14} className="shrink-0 text-[#155FC7]" aria-hidden="true" />
-          <p>Illustrative product views. Features and metrics depend on your plan, connected channels, and permissions.</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-
-export default function HomeClient({
-  isLoggedIn = false,
-}: {
-  isLoggedIn?: boolean;
-}) {
+export default function HomeClient({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   const [demoOpen, setDemoOpen] = useState(false);
-  return (
-      <main
-        className={`${jakarta.variable} ${fraunces.variable} overflow-x-clip bg-[#F8FAF5] text-[#102A29]`}
-        style={{ fontFamily: "var(--font-jakarta), sans-serif" }}
-      >
-        <Navbar />
-        <section aria-labelledby="home-heading" className="relative isolate overflow-hidden bg-[#F8FAF5]">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -right-32 -top-48 h-[620px] w-[620px] rounded-full bg-[#E3EEFF]/80 md:blur-[110px]" />
-            <div className="absolute -left-48 bottom-0 h-[480px] w-[480px] rounded-full bg-[#E7F5DD]/65 md:blur-[110px]" />
-            <div className="absolute inset-0 opacity-[0.22] [background-image:radial-gradient(#B5C8BB_0.7px,transparent_0.7px)] [background-size:26px_26px] [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
-          </div>
-
-          <div className="relative mx-auto grid max-w-[1340px] items-center gap-12 px-5 pb-16 pt-32 sm:px-8 sm:pb-20 sm:pt-36 lg:min-h-[790px] lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:px-14 lg:pb-24 lg:pt-40">
-            <div className="relative z-20 min-w-0 max-w-[700px]">
-              <div
-                className="mb-7 inline-flex items-center gap-3 rounded-full border border-[#D6E7DA] bg-white/80 px-4 py-2.5 shadow-[0_8px_25px_rgba(16,42,41,0.04)]"
-              >
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inset-0 rounded-full bg-[#16834B] motion-safe:md:animate-ping motion-safe:opacity-30" />
-                  <span className="relative h-2.5 w-2.5 rounded-full bg-[#16834B]" />
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#31584B] sm:text-[11px]">
-                  Serious technology. Human energy.
-                </span>
-              </div>
-
-              <h1 id="home-heading" className="max-w-[740px] text-[clamp(3.3rem,5.4vw,6.15rem)] font-semibold leading-[0.99] tracking-[-0.075em] text-[#102A29]">
-                <span className="block overflow-hidden pb-[0.09em]">
-                  <span className="block">
-                    Great teams
-                  </span>
-                </span>
-                <span className="block overflow-hidden pb-[0.09em]">
-                  <span className="block">
-                    do great work.
-                  </span>
-                </span>
-                <span className="mt-2 block overflow-hidden pb-[0.11em] text-[#155FC7]">
-                  <span className="block">
-                    Showwork makes
-                  </span>
-                </span>
-                <span className="block overflow-hidden pb-[0.13em] text-[#155FC7]">
-                  <span className="inline-flex flex-wrap items-baseline gap-x-[0.23em]">
-                    <span>it</span>
-                    <span className="relative inline-block">
-                      <em className="relative z-10 font-[var(--font-fraunces)] font-medium italic">easier.</em>
-                      <span aria-hidden="true" className="absolute bottom-[0.08em] left-0 right-0 h-[0.14em] origin-left rounded-full bg-[#D8F3A5]" />
-                    </span>
-                  </span>
-                </span>
-              </h1>
-
-              <p className="mt-7 max-w-[510px] text-base leading-8 text-[#52635E] sm:text-lg">
-                One intelligent workspace to plan, create, collaborate, publish, engage, and grow together.
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-5">
-                <button type="button" onClick={() => setDemoOpen(true)} className={`group inline-flex items-center justify-between gap-8 rounded-full bg-[#155FC7] px-7 py-4 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(21,95,199,0.2)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#104CA1] hover:shadow-[0_18px_38px_rgba(21,95,199,0.28)] motion-reduce:transform-none ${focus}`}>
-                  Book a Demo
-                  <ArrowUpRight size={19} aria-hidden="true" className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </button>
-                <Link href="/signup" className={`group inline-flex items-center gap-2 rounded-full px-3 py-4 text-sm font-semibold text-[#102A29] transition-colors hover:text-[#155FC7] ${focus}`}>
-                  Explore Showwork
-                  <ArrowRight size={17} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
-              </div>
-              <div className="mt-10 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#668074]">
-                <span className="h-px w-9 bg-[#B4C9BC]" />
-                Less coordination. More creation.
-              </div>
-            </div>
-
-            <figure className="relative mx-auto w-full min-w-0 max-w-[600px] lg:max-w-none">
-              <div aria-hidden="true" className="absolute -inset-5 rounded-[65px] bg-[#D8F3A5]/55 blur-3xl sm:-inset-9" />
-              <div aria-hidden="true" className="absolute -bottom-5 -left-4 right-5 top-6 rounded-[42px] bg-[#D8F3A5] sm:-bottom-8 sm:-left-8 sm:right-8 sm:top-9 sm:rounded-[65px]" />
-              <div className="relative overflow-hidden rounded-[34px] rounded-tr-[100px] bg-[#D8F3A5] shadow-[0_35px_90px_rgba(16,42,41,0.15)] sm:rounded-[50px] sm:rounded-tr-[145px]">
-                <Image src={people} alt="Three teammates sharing ideas around a laptop in a blue studio." priority sizes="(max-width: 1023px) 100vw, (max-width: 1279px) 46vw, 600px" className="h-auto w-full" />
-                <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#102A29]/20 via-transparent to-transparent" />
-              </div>
-
-              <div className="absolute -right-2 top-[12%] hidden items-center gap-3 rounded-2xl border border-white/80 bg-white/95 px-4 py-3 shadow-[0_15px_45px_rgba(16,42,41,0.12)] sm:flex lg:-right-5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E6F5EB] text-[#16834B]"><CheckCheck size={18} aria-hidden="true" /></span>
-                <span className="text-xs font-semibold text-[#102A29]">Work, moving forward.</span>
-              </div>
-              <div className="absolute -bottom-3 left-2 flex items-center gap-2 rounded-full border border-white/80 bg-[#102A29] px-4 py-3 text-white shadow-[0_15px_40px_rgba(16,42,41,0.17)] sm:-bottom-5 sm:left-6 sm:px-5">
-                <Sparkles size={16} className="text-[#D8F3A5]" aria-hidden="true" />
-                <span className="text-[11px] font-semibold sm:text-xs">A little more together. A lot more possible.</span>
-              </div>
-            </figure>
-          </div>
-
-          <div className="relative mx-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#102A29]/15 py-5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#52635E] sm:mx-8 lg:mx-14">
-            <span>Made for the people behind the marketing</span>
-            <span className="flex items-center gap-2 text-[#155FC7]">Meet your new workspace <MoveUpRight size={14} aria-hidden="true" /></span>
-          </div>
-        </section>
-
-        <ShowworkExperienceSection dashboard={dashboard} />
-
-        <section
-          id="ai-inbox"
-          aria-labelledby="inbox-heading"
-          className="relative isolate scroll-mt-24 overflow-hidden [content-visibility:auto] [contain-intrinsic-size:auto_850px] bg-[#F8FAF5] px-5 py-20 sm:px-8 sm:py-28 lg:px-14 lg:py-32"
-        >
-          <div aria-hidden="true" className="pointer-events-none absolute -right-32 top-0 -z-10 h-[650px] w-[650px] rounded-full bg-[#DCEFE5]/50 md:blur-[110px]" />
-          <div aria-hidden="true" className="pointer-events-none absolute -bottom-60 -left-40 -z-10 h-[500px] w-[500px] rounded-full bg-[#E4EDFA]/40 md:blur-[110px]" />
-
-          <div className="mx-auto grid max-w-[1160px] items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12">
-            <div className="relative z-10 max-w-[535px]">
-              <div className="inline-flex items-center gap-2.5 rounded-full border border-[#CDE5D6] bg-white/80 px-4 py-2 shadow-sm">
-                <Sparkles size={15} className="text-[#16834B]" aria-hidden="true" />
-                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#176B45]">AI-powered conversations</span>
-              </div>
-
-              <h2 id="inbox-heading" className="mt-8 text-[clamp(2.6rem,4.5vw,4.3rem)] font-semibold leading-[1.08] tracking-[-0.06em] text-[#102A29]">
-                Every customer message. <span className="text-[#155FC7]">One inbox.</span> <span className="text-[#16834B]">Faster replies.</span>
-              </h2>
-
-              <p className="mt-7 max-w-[470px] text-[16px] leading-[1.85] text-[#60716A] sm:text-[17px]">
-  One inbox for Instagram, Facebook, and WhatsApp. Let Showwork AI help your team reply faster—or handle supported conversations automatically.
-</p>
-
-              <div className="mt-6 flex flex-wrap items-center gap-2" aria-label="Social messaging channels">
-                {(["Instagram", "Facebook", "WhatsApp"] as const).map((channel) => (
-                  <span key={channel} className="rounded-full border border-[#DCE8E1] bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-[#36584C] shadow-sm">
-                    {channel}
-                  </span>
-                ))}
-                <span className="text-[11px] font-medium text-[#718078]">One connected inbox</span>
-              </div>
-
-              <Link href="/signup" className={`group mt-9 inline-flex items-center justify-center gap-4 rounded-full bg-[#102A29] px-7 py-4 text-[14px] font-semibold text-white shadow-[0_8px_22px_rgba(16,42,41,0.12)] transition-all duration-300 motion-safe:hover:-translate-y-0.5 hover:bg-[#155FC7] ${focus}`}>
-                Explore AI Inbox
-                <ArrowUpRight size={18} className="transition-transform duration-300 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5" aria-hidden="true" />
-              </Link>
-
-              
-            </div>
-
-            <ShowworkAIConversation />
-          </div>
-        </section>
-
-        <section
-          aria-labelledby="team-heading"
-          className="relative isolate min-h-[max(760px,115svh)] overflow-clip bg-[#102A29] text-white sm:min-h-[max(800px,115svh)]"
-        >
-          {/* Sticky, viewport-sized photograph: pinned while this section scrolls.
-              Unlike background-attachment: fixed, this also works on mobile Safari. */}
-          <div aria-hidden="true" className="absolute inset-0 z-0">
-            <div className="h-full w-full overflow-hidden bg-[#102A29] lg:sticky lg:top-0 lg:h-[100svh]">
-              <picture>
-                <source media="(min-width: 768px)" srcSet="/images/team.webp" type="image/webp" />
-                <img
-                  src="/images/team-mobile.webp"
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover object-[center_45%] md:object-[center_48%]"
-                />
-              </picture>
-              {/* Selective contrast stays pinned to the photograph. */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#102A29]/80 via-[#102A29]/10 via-[44%] to-[#102A29]/85 md:bg-gradient-to-r md:from-[#102A29]/85 md:via-[#102A29]/35 md:via-[42%] md:to-transparent" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#102A29]/85 to-transparent md:h-[30%]" />
-            </div>
-          </div>
-
-          <div className="relative z-10 mx-auto flex min-h-[max(760px,115svh)] max-w-[1440px] flex-col justify-between px-5 pb-10 pt-16 sm:min-h-[max(800px,115svh)] sm:px-8 sm:pb-14 sm:pt-20 lg:px-14 lg:pb-16 lg:pt-24">
-            <div className="max-w-[850px]">
-              <div
-                className="flex items-center gap-3"
-              >
-                <span className="h-px w-9 bg-[#D8F3A5]" aria-hidden="true" />
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D8F3A5] sm:text-xs">
-                  Good work is a team sport.
-                </p>
-              </div>
-              <h2
-                id="team-heading"
-                className="mt-7 max-w-[800px] text-[clamp(2.75rem,6.1vw,6.6rem)] font-semibold leading-[0.98] tracking-[-0.065em] drop-shadow-[0_3px_20px_rgba(0,0,0,0.16)]"
-              >
-                Less back-and-forth.
-                <br />
-                <em className="mt-2 block font-[var(--font-fraunces)] font-medium leading-[1.03] text-[#D8F3A5]">
-                  More getting things done.
-                </em>
-              </h2>
-            </div>
-
-            {/* Small product-connected annotations; illustrative only. */}
-            <div
-              aria-hidden="true"
-              className="absolute right-[7%] top-[49%] hidden items-center gap-2.5 rounded-full border border-white/50 bg-[#F8FAF5]/90 px-4 py-2.5 text-[#102A29] shadow-[0_14px_45px_rgba(0,0,0,0.12)] md:backdrop-blur-md lg:flex"
-            >
-              <CheckCircle2 size={17} className="text-[#16834B]" />
-              <span className="text-xs font-semibold">Creative review approved</span>
-            </div>
-            <div
-              aria-hidden="true"
-              className="absolute right-[12%] bottom-[24%] hidden items-center gap-2 rounded-full border border-white/40 bg-[#102A29]/65 px-4 py-2.5 text-white shadow-xl md:backdrop-blur-md xl:flex"
-            >
-              <UsersRound size={16} className="text-[#D8F3A5]" />
-              <span className="text-xs font-medium">One team. One shared flow.</span>
-            </div>
-
-            <div
-              className="max-w-[550px]"
-            >
-              <p className="max-w-[470px] text-base leading-7 text-white/95 sm:text-lg sm:leading-8">
-                Your people, feedback, and approvals. Finally working together.
-              </p>
-              <p className="mt-4 text-xs font-bold uppercase tracking-[0.17em] text-[#D8F3A5]">
-                Create. Review. Approve.
-              </p>
-              <div className="mt-7 flex flex-wrap items-center gap-5">
-                <Link
-                  href="/signup"
-                  className={`group inline-flex items-center gap-4 rounded-full bg-[#D8F3A5] px-6 py-4 text-sm font-semibold text-[#102A29] transition-colors hover:bg-white ${focus}`}
-                >
-                  Find your team’s flow
-                  <ArrowUpRight size={18} aria-hidden="true" className="transition-transform motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5" />
-                </Link>
-              </div>
-              <p className="mt-5 text-[11px] leading-5 text-white/75">
-                Illustrative collaboration experience. Team access and features vary by plan.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <IntegrationsSection homepage />
-
-        <section
-          id="products"
-          aria-label="Explore Showwork products"
-          className="scroll-mt-24 bg-white px-5 pt-20 sm:px-8 lg:px-14"
-        >
-          <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-6 border-b border-slate-200 pb-8">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#155FC7]">
-                Find your kind of Showwork
-              </p>
-              <p className="mt-3 max-w-lg text-sm leading-6 text-slate-600">
-                Marketing Workspace for your team. Project Delivery for creative
-                handovers.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-5 text-sm font-semibold">
-              <Link href="/signup" className={`rounded-sm ${focus}`}>
-                Marketing Workspace{" "}
-                <ArrowUpRight className="inline" size={16} aria-hidden="true" />
-              </Link>
-              <Link href="/signup" className={`rounded-sm ${focus}`}>
-                Project Delivery{" "}
-                <ArrowUpRight className="inline" size={16} aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-        </section>
-        <PricingSection compact />
-
-        <section
-          aria-labelledby="closing-heading"
-          className="relative overflow-hidden bg-[#D8F3A5] px-5 py-20 sm:px-8 sm:py-28"
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full border-[38px] border-[#16834B]/10"
-          />
-          <div className="relative mx-auto max-w-4xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.18em]">
-              Great teams. Better work. More fun.
-            </p>
-            <h2
-              id="closing-heading"
-              className="mt-6 text-[clamp(3.1rem,7vw,7rem)] font-semibold leading-[0.98] tracking-[-0.065em]"
-            >
-              Your next great thing.
-              <br />
-              <em className="font-[var(--font-fraunces)] font-medium">
-                Starts together.
-              </em>
-            </h2>
-            <button
-              type="button"
-              onClick={() => setDemoOpen(true)}
-              className={`mt-9 inline-flex items-center gap-7 rounded-full bg-[#102A29] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#1C4946] ${focus}`}
-            >
-              Book a Demo
-              <ArrowUpRight size={20} aria-hidden="true" />
-            </button>
-            <p className="mt-5 text-sm text-[#36533E]">
-              Marketing Workspace · Seven-day trial
-            </p>
-          </div>
-        </section>
-        <SiteFooter homepage />
-        <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
-      </main>
-  );
-}
-
-
-const demoConversations = [
-  { name: "Daniel", initials: "DA", channel: "Instagram", message: "Hi! Do you offer social media management?", reply: "Hi Daniel! Yes, we do. Would you like to know more about our packages?", avatar: "bg-[#E2ECFF] text-[#155FC7]" },
-  { name: "Mike", initials: "MI", channel: "Facebook", message: "Hey! Can I get a quote for a new project?", reply: "Absolutely, Mike! We'd love to help. Could you tell us a little about your project?", avatar: "bg-[#FCE9DA] text-[#A45B26]" },
-  { name: "Sarah", initials: "SA", channel: "WhatsApp", message: "Hello! How can I book a consultation?", reply: "Hi Sarah! We'd be happy to help you get started. Would you like our booking details?", avatar: "bg-[#F1E7FF] text-[#8052B0]" },
-] as const;
-
-type DemoPhase = "idle" | "incoming" | "typing" | "reply" | "sent";
-
-function ShowworkAIConversation() {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [index, setIndex] = useState(0);
-  const [phase, setPhase] = useState<DemoPhase>("idle");
-  const [canAnimate, setCanAnimate] = useState(false);
-
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const startHref = isLoggedIn ? "/dashboard/calendars" : "/signup?next=/dashboard/calendars";
+  const startLabel = isLoggedIn ? "Open your workspaces" : "Start your free trial";
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 768px) and (prefers-reduced-motion: no-preference)");
-    const update = () => setCanAnimate(media.matches && !document.hidden);
-    update();
-    media.addEventListener("change", update);
-    document.addEventListener("visibilitychange", update);
-    return () => {
-      media.removeEventListener("change", update);
-      document.removeEventListener("visibilitychange", update);
-    };
-  }, []);
-
-  useEffect(() => {
-    const node = rootRef.current;
-    if (!node) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0.15 }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible || !canAnimate) return;
-
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    let elapsed = 0;
-    const schedule = (delay: number, callback: () => void) => {
-      elapsed += delay;
-      timers.push(setTimeout(callback, elapsed));
-    };
-
-    // Complete each conversation before advancing to the next.
-    schedule(350, () => setPhase("incoming"));
-    schedule(1000, () => setPhase("typing"));
-    schedule(1350, () => setPhase("reply"));
-    schedule(750, () => setPhase("sent"));
-    schedule(2900, () => {
-      setPhase("idle");
-      setIndex((previous) => (previous + 1) % demoConversations.length);
-    });
-
-    return () => timers.forEach(clearTimeout);
-  }, [visible, index, canAnimate]);
-
-  const current = demoConversations[index];
-  const staticView = !canAnimate;
-  const showIncoming = staticView || phase !== "idle";
-  const showTyping = !staticView && phase === "typing";
-  const showReply = staticView || phase === "reply" || phase === "sent";
-  const showSent = staticView || phase === "sent";
-
-  return (
-    <div ref={rootRef} className="relative mx-auto flex h-[475px] min-w-0 w-full max-w-[560px] items-center justify-center sm:h-[505px] lg:h-[545px]">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[8%] top-[10%] h-64 w-64 rounded-full bg-[#BDECD5]/45 md:blur-[75px]" />
-        <div className="absolute bottom-[8%] right-0 h-64 w-64 rounded-full bg-[#D4E4FF]/65 md:blur-[85px]" />
-        <div className="absolute left-1/2 top-1/2 h-[290px] w-[290px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#CFE5D9]/60 sm:h-[410px] sm:w-[410px]" />
-        <div className="absolute left-1/2 top-1/2 h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#CFE5D9]/40 sm:h-[300px] sm:w-[300px]" />
+    if (!menuOpen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setMenuOpen(false); document.getElementById("home-menu-toggle")?.focus(); } };
+    const resize = () => { if (window.innerWidth >= 900) setMenuOpen(false); };
+    document.addEventListener("keydown", close); window.addEventListener("resize", resize);
+    return () => { document.removeEventListener("keydown", close); window.removeEventListener("resize", resize); };
+  }, [menuOpen]);
+  return <div className={`${jakarta.variable} ${styles.home}`}>
+    <a className={styles.skipLink} href="#main-content">Skip to content</a>
+    <header className={styles.navbar}>
+      <div className={styles.navInner}>
+        <Link href="/" aria-label="Showwork home" className={styles.brand}><ShowworkLogo width={117}/></Link>
+        <nav className={styles.desktopNav} aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#tools">Our tools</a><a href="#pricing">Pricing</a><a href="#questions">Questions</a></nav>
+        <div className={styles.navActions}><Link className={styles.login} href={isLoggedIn ? "/dashboard" : "/login"}>{isLoggedIn ? "Dashboard" : "Log in"}</Link><Link className={styles.navCta} href={startHref}>{isLoggedIn ? "Open workspace" : "Get started"}<ArrowUpRight size={15}/></Link><button id="home-menu-toggle" type="button" className={styles.menuToggle} aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="home-mobile-menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={21}/> : <Menu size={21}/>}</button></div>
       </div>
+      {menuOpen && <nav id="home-mobile-menu" className={styles.mobileNav} aria-label="Mobile navigation">{[["How it works", "#how-it-works"], ["Our tools", "#tools"], ["Pricing", "#pricing"], ["Questions", "#questions"]].map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}<ArrowUpRight size={15}/></a>)}<Link href={isLoggedIn ? "/dashboard" : "/login"} onClick={() => setMenuOpen(false)}>{isLoggedIn ? "Dashboard" : "Log in"}<ArrowRight size={15}/></Link></nav>}
+    </header>
 
-      <div className="absolute right-0 top-3 z-20 inline-flex items-center gap-2 rounded-full border border-[#D7E9DF] bg-white/95 px-3 py-2 shadow-[0_10px_30px_rgba(16,42,41,0.06)] sm:right-3 sm:top-8">
-        <span className="h-2 w-2 rounded-full bg-[#25A86A]" />
-        <span className="text-[10px] font-semibold text-[#245C43] sm:text-[11px]">Auto-replies enabled · Demo</span>
-      </div>
-
-      <div className="relative z-10 w-full max-w-[475px] px-1 sm:px-5" aria-label="Illustrative fictional customer conversation demonstrating opt-in Showwork AI automatic replies">
-        <div className="mb-8 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#155FC7] text-white shadow-[0_8px_18px_rgba(21,95,199,0.18)]">
-              <MessageCircle size={19} aria-hidden="true" />
-            </span>
-            <span>
-              <span className="block text-[13px] font-bold text-[#15352F]">AI Inbox</span>
-              <span className="block text-[10px] text-[#71847A]">A smarter way to connect</span>
-            </span>
+    <main id="main-content">
+      <section className={styles.hero} aria-labelledby="home-heading">
+        <div className={styles.heroInner}>
+          <div className={styles.heroCopy}>
+            <span className={styles.eyebrow}><span/>MARKETING WORKSPACE</span>
+            <h1 id="home-heading">Your clients.<br/>Your content.<br/><span>One clear workspace.</span></h1>
+            <p>Plan content with AI, get client approvals, and publish on supported channels. Keep every client’s work moving in one place.</p>
+            <div className={styles.heroActions}><Link className={styles.primary} href={startHref}>{startLabel}<ArrowUpRight size={18}/></Link><button type="button" className={styles.secondary} onClick={() => setDemoOpen(true)}>Book a demo<ArrowRight size={17}/></button></div>
+            <p className={styles.trialNote}>{isLoggedIn ? "Pick up where your team left off." : "7 days to explore. No card required."}</p>
+            <div className={styles.heroBenefits}><span><Check size={14}/>Your brand voice</span><span><Check size={14}/>Client approvals</span><span><Check size={14}/>Publishing controls</span></div>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E2F3E9] px-3 py-1.5 text-[10px] font-semibold text-[#16834B]">
-            <Sparkles size={12} aria-hidden="true" /> Showwork AI
-          </span>
+          <figure className={styles.heroVisual}>
+            <div className={styles.visualTop}><span><span/>A LITTLE MORE ORGANIZED</span><span>Marketing Workspace</span></div>
+            <Image src={dashboard} alt="Illustrative Showwork content calendar with planned posts across social channels" priority sizes="(max-width: 899px) 100vw, 58vw" className={styles.productImage}/>
+            <figcaption><CalendarDays size={15}/><span>A clearer view of the work ahead.</span><span className={styles.exampleLabel}>Product illustration</span></figcaption>
+          </figure>
         </div>
+        <div className={styles.audience}><p>For the people behind the marketing.</p><div><span><UsersRound size={15}/>Social media managers</span><span><FolderOpen size={15}/>Agencies</span><span><Sparkles size={15}/>Growing businesses</span></div></div>
+      </section>
 
-        <div className="relative min-h-[145px]">
-          {showIncoming && (
-            <div key={`incoming-${index}`} className="sw-message-enter mr-6 sm:mr-14">
-              <div className="mb-2.5 flex items-center gap-2.5">
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${current.avatar}`}>{current.initials}</span>
-                <span className="text-[12px] font-bold text-[#15352F]">{current.name}</span>
-                <span className="text-[10px] text-[#82948B]">via {current.channel}</span>
-              </div>
-              <div className="ml-4 rounded-[23px] rounded-tl-[6px] border border-[#E3EAE6] bg-white px-5 py-5 shadow-[0_15px_35px_rgba(16,42,41,0.07)] sm:px-6">
-                <p className="text-[14px] font-medium leading-[1.7] text-[#25423B] sm:text-[15px]">{current.message}</p>
-              </div>
+      <section id="how-it-works" className={styles.workflowSection} aria-labelledby="workflow-heading">
+        <div className={styles.container}>
+          <div className={styles.sectionIntro}><div><span className={styles.eyebrow}>LESS CHASING. MORE CREATING.</span><h2 id="workflow-heading">From the first idea<br/>to the final approval.</h2></div><p>One connected workflow for your team and your clients. Everyone knows what comes next.</p></div>
+          <div className={styles.workflowLayout}>
+            <div className={styles.workflowChoices} role="group" aria-label="Explore the content workflow">{workflow.map((step, index) => <button key={step.title} type="button" aria-pressed={activeStep === index} aria-controls="workflow-example" onClick={() => setActiveStep(index)}><span className={styles.stepNumber}>0{index + 1}</span><span><strong>{step.title}</strong><small>{step.description}</small></span><ArrowUpRight size={17}/></button>)}</div>
+            <div id="workflow-example" className={styles.workflowExample} aria-live="polite"><div className={styles.exampleHeader}><span><ShowworkLogo mark width={20}/>Marketing Workspace</span><small>Example workflow</small></div>
+              {activeStep === 0 ? <div className={styles.calendarExample}><div className={styles.mockHeading}><span>Your content calendar</span><span>This week</span></div><div className={styles.mockDays}>{["MON", "TUE", "WED"].map((day,index) => <div key={day}><span>{day}</span><article><div className={styles.mockArt} data-tone={index}><span>{index === 0 ? "MEET THE BRAND" : index === 1 ? "A CLOSER LOOK" : "MADE FOR YOU"}</span></div><p>{["Introduce your story", "Share your process", "Answer a client question"][index]}</p><small><span/>{index === 1 ? "Ready for review" : "Planned"}</small></article></div>)}</div></div>
+                : activeStep === 1 ? <div className={styles.reviewExample}><span className={styles.reviewBadge}><FileCheck2 size={15}/>Client review</span><h3>A place for feedback.<br/>A clear way forward.</h3><div className={styles.mockComment}><span>JL</span><div><strong>Client feedback</strong><p>Love the direction. Can we shorten the opening line?</p></div></div><div className={styles.mockApproval}><CheckCheck size={18}/><div><strong>Feedback stays with the post</strong><p>Your team can update it and request another review.</p></div></div></div>
+                : <div className={styles.publishExample}><span className={styles.reviewBadge}><ShieldCheck size={15}/>You choose how to publish</span><h3>Approved first.<br/>Published with care.</h3><div className={styles.publishRow}><span><Check size={15}/>Internal review</span><strong>Approved</strong></div><div className={styles.publishRow}><span><Check size={15}/>Client review</span><strong>Approved</strong></div><div className={styles.publishRow}><span><CalendarDays size={15}/>Publishing</span><strong>At the scheduled time</strong></div><p>Supported channels, account permissions and platform-specific settings apply.</p></div>}
+              <div className={styles.exampleFooter}><span>{workflow[activeStep].label}</span><span>0{activeStep + 1} / 03</span></div>
             </div>
-          )}
-        </div>
-
-        <div className="ml-auto mr-8 h-6 w-px bg-gradient-to-b from-transparent via-[#B7DCC8] to-transparent" aria-hidden="true" />
-
-        <div className="ml-6 sm:ml-14">
-          <div className="mb-2.5 flex items-center justify-end gap-2.5">
-            <div className="text-right">
-              <p className="text-[12px] font-bold text-[#155FC7]">Showwork AI</p>
-              <p className="text-[10px] text-[#71847A]">Responding for your team</p>
-            </div>
-            <span className="flex h-9 w-9 items-center justify-center rounded-[13px] bg-[#E1F2E8] text-[#16834B]">
-              <WandSparkles size={18} aria-hidden="true" />
-            </span>
           </div>
-          <div className="relative min-h-[125px]">
-            {showTyping && (
-              <div className="sw-message-enter absolute right-0 top-0 flex items-center gap-2 rounded-[22px] rounded-tr-[6px] border border-[#CFE5D9] bg-[#ECF8F0] px-5 py-4 shadow-sm">
-                <span className="flex gap-1.5" aria-hidden="true">
-                  {[0, 1, 2].map((dot) => (
-                    <span key={dot} className="sw-typing-dot h-2 w-2 rounded-full bg-[#16834B]" style={{ animationDelay: `${dot * 160}ms` }} />
-                  ))}
-                </span>
-                <span className="ml-2 text-[11px] font-medium text-[#498068]">AI is writing</span>
-              </div>
-            )}
-            {showReply && (
-              <div key={`reply-${index}`} className="sw-message-enter rounded-[23px] rounded-tr-[6px] border border-[#BFD9FF] bg-[#155FC7] px-5 py-5 text-white shadow-[0_18px_40px_rgba(21,95,199,0.16)] sm:px-6">
-                <p className="text-[14px] font-medium leading-[1.7] sm:text-[15px]">{current.reply}</p>
-              </div>
-            )}
-          </div>
-          <div className="mt-2 flex min-h-7 items-center justify-end">
-            {showSent && (
-              <span className="sw-message-enter inline-flex items-center gap-1.5 text-right text-[10px] font-medium text-[#477864] sm:text-[11px]">
-                <CheckCheck size={15} className="shrink-0 text-[#16834B]" aria-hidden="true" />
-                Sent automatically by Showwork AI
-              </span>
-            )}
-          </div>
+          <div className={styles.channels}><p>Bring your channels into the workflow.</p><div>{["INSTAGRAM", "FACEBOOK", "TIKTOK", "LINKEDIN", "X", "WHATSAPP"].map(platform => <span key={platform}><PlatformBrandIcon platform={platform} size={19}/><span>{({INSTAGRAM:"Instagram",FACEBOOK:"Facebook",TIKTOK:"TikTok",LINKEDIN:"LinkedIn",X:"X",WHATSAPP:"WhatsApp"} as Record<string,string>)[platform]}</span></span>)}</div><small>Publishing, messaging and analytics support varies by channel and plan.</small></div>
         </div>
+      </section>
 
-        <div aria-hidden="true" className="mt-5 flex items-center justify-center gap-1.5">
-          {demoConversations.map((item, i) => (
-            <span key={item.name} className={`h-1.5 rounded-full transition-all duration-500 ${i === index ? "w-6 bg-[#155FC7]" : "w-1.5 bg-[#CBDDD2]"}`} />
-          ))}
-        </div>
-      </div>
+      <section className={styles.randySection} aria-labelledby="randy-heading"><div className={`${styles.container} ${styles.randyLayout}`}><div className={styles.randyCopy}><span className={styles.eyebrow}>MEET RANDY IN AI STUDIO</span><h2 id="randy-heading">Good ideas start<br/>with your business.</h2><p>Add your business knowledge and define your brand voice. Randy helps you explore ideas, research opportunities, and shape a stronger content brief.</p><span className={styles.planPill}>Included from Growth · ₦{CONTENT_WORKSPACE_PLANS.GROWTH.priceNgnMonthly.toLocaleString("en-NG")}/month</span><a className={styles.textLink} href="#pricing">Find your plan<ArrowRight size={17}/></a></div><div className={styles.randyExample}><div className={styles.randyIdentity}><Image src="/images/randy/avatar.webp" alt="" width={44} height={44}/><div><strong>Randy</strong><span>Your business thinking partner</span></div><span className={styles.exampleLabel}>Example chat</span></div><p className={styles.userMessage}>Let’s create content that sounds more like us.</p><div className={styles.assistantMessage}><Sparkles size={17}/><div><p>Let’s build on your brand voice. What would you like your audience to understand or feel this week?</p><span><BookOpenText size={13}/>Business knowledge & brand voice</span></div></div><div className={styles.randyNote}><ShieldCheck size={14}/>Research and knowledge updates need your confirmation.</div></div></div></section>
 
-      <span className="absolute bottom-0 right-1 rounded-full border border-[#E2ECE5] bg-white/90 px-3 py-2 text-[10px] font-medium text-[#648073] shadow-sm">
-        Illustrative conversation
-      </span>
+      <section id="tools" className={styles.toolsSection} aria-labelledby="tools-heading"><div className={styles.container}><div className={styles.sectionIntro}><div><span className={styles.eyebrow}>CHOOSE YOUR NEXT STEP</span><h2 id="tools-heading">The right tool<br/>for the work you do.</h2></div><p>Manage ongoing marketing, deliver a client project, or give your work a home.</p></div><div className={styles.toolsGrid}><Link className={styles.flagshipTool} href={startHref}><div className={styles.toolTop}><CalendarDays size={23}/><span>OUR FLAGSHIP</span><ArrowUpRight size={21}/></div><div><h3>Marketing Workspace</h3><p>For social media managers, businesses & agencies.</p><span>Plan. Approve. Publish.</span></div><div className={styles.toolBottom}>Start your workspace<ArrowRight size={18}/></div></Link><Link className={styles.toolCard} href="/delivery"><FolderOpen size={23}/><h3>Project Delivery</h3><p>For videographers and creatives delivering client work.</p><div className={styles.toolBottom}>Explore delivery<ArrowUpRight size={18}/></div></Link><Link className={styles.toolCard} href="/portfolio"><ImageIcon size={23}/><h3>Portfolio</h3><p>For creatives ready to show what they can do.</p><div className={styles.toolBottom}>Explore portfolios<ArrowUpRight size={18}/></div></Link></div></div></section>
 
-      <style jsx>{`
-        @keyframes swMessageEnter {
-          from { opacity: 0; transform: translateY(12px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes swTypingDot {
-          0%, 60%, 100% { opacity: .35; transform: translateY(0); }
-          30% { opacity: 1; transform: translateY(-5px); }
-        }
-        .sw-message-enter { animation: swMessageEnter 550ms cubic-bezier(.2,.8,.2,1) both; }
-        .sw-typing-dot { animation: swTypingDot 1s ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-message-enter, .sw-typing-dot { animation: none !important; }
-        }
-      `}</style>
-    </div>
-  );
+      <div className={styles.pricing}><PricingSection compact/></div>
+      <section id="questions" className={styles.faqSection} aria-labelledby="questions-heading"><div className={`${styles.container} ${styles.faqLayout}`}><div><span className={styles.eyebrow}>A LITTLE CLARITY</span><h2 id="questions-heading">Good questions.<br/>Clear answers.</h2><p>Need help choosing?<br/><button type="button" onClick={() => setDemoOpen(true)}>Let’s talk<ArrowUpRight size={15}/></button></p></div><div className={styles.faqList}>{faqs.map(item => <details key={item.question}><summary>{item.question}<ChevronDown size={17}/></summary><p>{item.answer}</p></details>)}</div></div></section>
+      <section className={styles.finalSection} aria-labelledby="start-heading"><div className={styles.container}><span className={styles.finalEyebrow}>A LITTLE MORE ROOM TO CREATE</span><h2 id="start-heading">Make space for<br/>your next great idea.</h2><p>Your clients. Your team. Your work, together.</p><Link href={startHref} className={styles.primary}>{startLabel}<ArrowUpRight size={18}/></Link><span className={styles.finalNote}>{isLoggedIn ? "Your workspace is ready when you are." : "Start your 7-day trial. No card required."}</span></div></section>
+    </main>
+    <SiteFooter homepage/>
+    <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)}/>
+  </div>;
 }

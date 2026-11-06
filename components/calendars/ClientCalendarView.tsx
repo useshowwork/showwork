@@ -1,4 +1,6 @@
 "use client";
+import styles from "./ClientContentCalendar.module.css";
+import { ArrowUpRight, FileText, Layers, Play } from "lucide-react";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import { useMemo, useState, useRef, useEffect } from "react";
@@ -62,16 +64,16 @@ const THEMES: Record<
   }
 > = {
   dark: {
-    pageBg: "#0A0A0A",
-    cardBg: "rgba(255,255,255,0.025)",
-    cardBorder: "rgba(255,255,255,0.06)",
-    modalBg: "#1A1A1A",
-    text: "#FFFFFF",
-    textMuted: "rgba(255,255,255,0.5)",
-    textFaint: "rgba(255,255,255,0.3)",
-    inputBg: "rgba(255,255,255,0.05)",
-    inputBorder: "rgba(255,255,255,0.1)",
-    pillBg: "rgba(255,255,255,0.06)",
+    pageBg: "#101b2b",
+    cardBg: "#142237",
+    cardBorder: "#293c55",
+    modalBg: "#1b2d47",
+    text: "#deebff",
+    textMuted: "#a3b9d6",
+    textFaint: "#8ea7c7",
+    inputBg: "#172940",
+    inputBorder: "#304663",
+    pillBg: "#1b2d47",
   },
   light: {
     pageBg: "#FFFFFF",
@@ -141,7 +143,6 @@ const APPROVAL_META: Record<ApprovalStatus, { text: string; color: string; bg: s
 // Same day-of-week color family as the manager's own view — anchored
 // by Showwork's blue (Monday) and gold (Wednesday) — so the calendar
 // looks and feels identical on both sides.
-const DAY_COLORS = ["#FF6B4A", "#2478FF", "#6C5CE7", "#FFCC00", "#00C2A8", "#FF4D8D", "#9B59F6"];
 
 function PlatformIcon({ platform, className, style }: { platform: Platform; className?: string; style?: React.CSSProperties }) {
   switch (platform) {
@@ -241,92 +242,20 @@ function IconCheck({ className }: { className?: string }) {
   );
 }
 
-function PostTile({ post, index, onClick }: { post: CalendarPostData; index: number; onClick: () => void }) {
+export function PostTile({ post, onClick }: { post: CalendarPostData; index?: number; onClick: () => void }) {
   const meta = PLATFORM_META[post.platform];
   const cover = post.assets[0];
-  const tiltDeg = index % 2 === 0 ? -3.5 : 3.5;
-  const timeLabel = new Date(post.postDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-  return (
-    <div className="relative pt-2.5" style={{ transform: `rotate(${tiltDeg}deg)`, transition: "transform 0.25s ease" }}>
-      <span
-        className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2"
-        style={{ filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.35))" }}
-      >
-        <IconPin color={meta.color} className="h-5 w-5" />
-      </span>
-
-      <button
-        onClick={onClick}
-        className="group relative h-24 w-full flex-shrink-0 overflow-hidden rounded-lg transition-transform hover:scale-[1.03] sm:h-28"
-        style={{
-          background: cover ? "#000" : `${meta.color}26`,
-          border: "3px solid #FBFAF7",
-          boxShadow: "0 6px 14px -4px rgba(0,0,0,0.45)",
-        }}
-      >
-        {cover ? (
-          cover.mediaType === "VIDEO" ? (
-            <VideoThumbnail posterUrl={cover.posterUrl} src={cover.contentUrl} className="absolute inset-0 h-full w-full object-cover" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover.contentUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          )
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <PlatformIcon platform={post.platform} className="h-7 w-7" style={{ color: meta.color }} />
-          </div>
-        )}
-
-        {cover?.mediaType === "VIDEO" && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}>
-              <IconPlay className="ml-0.5 h-4 w-4 text-white" />
-            </span>
-          </div>
-        )}
-
-        {cover && <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />}
-
-        <span
-          className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full"
-          style={{ background: "rgba(0,0,0,0.55)", color: meta.color, backdropFilter: "blur(4px)" }}
-        >
-          <PlatformIcon platform={post.platform} className="h-3 w-3" />
-        </span>
-
-        <span
-          className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] font-bold text-white"
-          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
-        >
-          {timeLabel}
-        </span>
-
-        {post.assets.length > 1 && (
-          <span
-            className="absolute left-1.5 bottom-6 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white"
-            style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
-          >
-            <IconLayers className="h-2.5 w-2.5" />
-            {post.assets.length}
-          </span>
-        )}
-
-        {cover && post.approvalStatus === "PENDING" && (
-          <span className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 rounded-full" style={{ background: "#FFCC00" }} />
-        )}
-
-        {cover && post.approvalStatus === "APPROVED" && (
-          <span
-            className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full"
-            style={{ background: "#22C55E", boxShadow: "0 0 0 2px rgba(0,0,0,0.4)" }}
-          >
-            <IconCheck className="h-3 w-3 text-white" />
-          </span>
-        )}
-      </button>
-    </div>
-  );
+  const title = post.contentIdea || post.caption || `${meta.label} post`;
+  const timeLabel = new Date(post.postDate).toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit' });
+  const statusLabel = post.approvalStatus === 'APPROVED' ? 'Approved' : post.approvalStatus === 'NEEDS_REVISION' ? 'Changes requested' : 'Awaiting review';
+  return <button type="button" className={styles.postCard} onClick={onClick} aria-haspopup="dialog" aria-label={`Open ${meta.label} post: ${title}`}>
+    <span className={styles.cardHeader}><span className={styles.platform} style={{color:post.platform==='X'?'var(--cc-ink)':meta.color}}><PlatformIcon platform={post.platform} className="h-3.5 w-3.5"/><span>{meta.label}</span></span><span className={styles.time}>{timeLabel}</span></span>
+    <span className={styles.media}>
+      {cover?.mediaType === 'VIDEO' ? <><VideoThumbnail posterUrl={cover.posterUrl} src={cover.contentUrl} className={styles.fullMedia}/><span className={styles.playBadge}><Play size={20} fill="currentColor"/></span></> : cover?.mediaType === 'PHOTO' ? <img src={cover.contentUrl} alt="" loading="lazy" className={styles.fullMedia}/> : <span className={styles.mediaPlaceholder}>{cover?<FileText size={30}/>:<PlatformIcon platform={post.platform} className="h-8 w-8"/>}<span>{cover?'Document attached':'Content is being prepared'}</span></span>}
+    </span>
+    <span className={styles.cardBody}><span className={styles.approval} data-status={post.approvalStatus}>{statusLabel}</span><span className={styles.postTitle}>{title}</span>{post.contentIdea&&post.caption&&<span className={styles.caption}>{post.caption}</span>}</span>
+    <span className={styles.cardFooter}><span className={styles.assetCount}>{post.assets.length>1?<><Layers size={12}/>{post.assets.length} files</>:cover?.mediaType==='VIDEO'?'Video':cover?.mediaType==='PHOTO'?'Photo':cover?'Document':'Post details'}</span><span className={styles.openPost}>{post.approvalStatus==='PENDING'?'Review post':'Open post'}<ArrowUpRight size={14}/></span></span>
+  </button>;
 }
 
 function PostDetailPanel({
@@ -343,7 +272,19 @@ function PostDetailPanel({
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const meta = PLATFORM_META[post.platform];
-  const approvalMeta = APPROVAL_META[post.approvalStatus];
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    dialog?.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      dialog?.close();
+      previousFocus?.focus();
+    };
+  }, []);
 const [activeAssetIdx, setActiveAssetIdx] = useState(0);
 const [requestingRevision, setRequestingRevision] = useState(false);
 const [note, setNote] = useState("");
@@ -436,682 +377,53 @@ useEffect(() => {
   }
 };
 
+  const canReview = post.assets.length > 0 || (["FACEBOOK", "LINKEDIN", "X"].includes(post.platform) && !!post.caption?.trim());
   return (
-  <div
-    className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-2 backdrop-blur-md sm:items-center sm:p-4 lg:p-6"
-    onClick={onClose}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="relative flex max-h-[96dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[24px] border border-white/[0.08] bg-[#111111] shadow-[0_30px_100px_rgba(0,0,0,0.55)] sm:max-h-[94dvh] sm:rounded-[28px]"
-    >
-      {/* Ambient glow */}
-      <div
-        className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full opacity-20 blur-3xl"
-        style={{ background: meta.color }}
-      />
-
-      {/* ─────────────────────────────────────────────
-          HEADER
-      ───────────────────────────────────────────── */}
-      <div className="relative flex shrink-0 items-start justify-between gap-4 border-b border-white/[0.07] px-4 py-4 sm:px-6 sm:py-5">
-        <div className="flex min-w-0 items-center gap-3">
-          {/* Platform */}
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-            style={{
-              color: meta.color,
-              background: `${meta.color}12`,
-              borderColor: `${meta.color}28`,
-            }}
-          >
-            <PlatformIcon platform={post.platform} className="h-5 w-5" />
+    <dialog ref={dialogRef} className={styles.reviewDialog} aria-labelledby="post-review-title" aria-busy={submitting}
+      onCancel={(event) => { event.preventDefault(); if (!submitting) onClose(); }}
+      onClick={(event) => { if (event.target === event.currentTarget && !submitting) { const box = event.currentTarget.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose(); } }}>
+      <header className={styles.reviewHeader}>
+        <div className={styles.reviewHeading}><span className={styles.reviewPlatform}><PlatformIcon platform={post.platform} className="h-5 w-5" /></span><div><p>CONTENT REVIEW</p><h2 id="post-review-title">{meta.label} <span>· {post.postType || "Post"}</span></h2><div className={styles.reviewDate}>{new Date(post.postDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · {new Date(post.postDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</div></div></div>
+        <button type="button" autoFocus className={styles.reviewClose} onClick={onClose} disabled={submitting} aria-label="Close content review">×</button>
+      </header>
+      <div className={styles.reviewBody}>
+        <section className={styles.reviewCreative} aria-label="Content preview">
+          <div className={styles.reviewSectionHeading}><h3>Content preview</h3><span>{post.assets.length} {post.assets.length === 1 ? "asset" : "assets"}</span></div>
+          <div className={styles.reviewStage}>
+            {activeAsset?.mediaType === "VIDEO" ? <video key={activeAsset.id} ref={videoRef} src={activeAsset.contentUrl} poster={activeAsset.posterUrl ?? undefined} controls playsInline preload="metadata" />
+              : activeAsset?.mediaType === "PHOTO" ? <img src={activeAsset.contentUrl} alt={post.contentIdea || "Post creative"} />
+              : activeAsset ? <div className={styles.reviewEmpty}><FileText size={36} /><h3>Document preview</h3><a href={activeAsset.contentUrl} target="_blank" rel="noopener noreferrer">Open document <ArrowUpRight size={16} /></a></div>
+              : <div className={styles.reviewEmpty}><FileText size={36} /><h3>{post.caption ? "Text post" : "Your creative is on its way"}</h3><p>{post.caption || "The preview will appear here when your team uploads it."}</p></div>}
           </div>
-
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-sm font-semibold text-white sm:text-[15px]">
-                {meta.label}
-              </span>
-
-              {post.postType && (
-                <>
-                  <span className="text-white/20">•</span>
-                  <span className="text-xs text-white/40">
-                    {post.postType}
-                  </span>
-                </>
-              )}
-            </div>
-
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-white/35">
-                {new Date(post.postDate).toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-
-              <span className="text-white/15">•</span>
-
-              <span className="text-[11px] text-white/35">
-                {new Date(post.postDate).toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </span>
-
-              {post.category && (
-                <span
-                  className="rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-                  style={{
-                    background: "rgba(255,255,255,0.035)",
-                    borderColor: "rgba(255,255,255,0.08)",
-                    color: "rgba(255,255,255,0.5)",
-                  }}
-                >
-                  {post.category}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Close */}
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-white/45 transition-all hover:border-white/15 hover:bg-white/[0.07] hover:text-white active:scale-95"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            className="h-4 w-4"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
+          {post.assets.length > 1 && <div className={styles.reviewThumbnails} aria-label="Choose an asset">{post.assets.map((asset, index) => <button key={asset.id} type="button" aria-label={`View asset ${index + 1}`} aria-pressed={index === activeAssetIdx} onClick={() => setActiveAssetIdx(index)}>{asset.mediaType === "PHOTO" ? <img src={asset.contentUrl} alt="" /> : asset.mediaType === "VIDEO" ? <Play size={20} /> : <FileText size={20} />}<span>{index + 1}</span></button>)}</div>}
+          {activeAsset?.mediaType === "VIDEO" && <div className={styles.reviewVideoComments}><CalendarVideoComments comments={comments} readOnly={false} getCurrentTime={() => videoRef.current?.currentTime ?? 0} onSeekTo={(time) => { if (videoRef.current) { videoRef.current.currentTime = time; void videoRef.current.play(); } }} onAddComment={addComment} /></div>}
+        </section>
+        <aside className={styles.reviewDetails} aria-label="Post details">
+          <div className={styles.reviewSectionHeading}><h3>Post details</h3><span className={styles.approval} data-status={reviewStatus}>{APPROVAL_META[reviewStatus].text}</span></div>
+          {post.caption && <section><h4>Caption</h4><p>{post.caption}</p></section>}
+          {post.contentIdea && <section><h4>Content idea</h4><p>{post.contentIdea}</p></section>}
+          {post.category && <section><h4>Category</h4><p>{post.category}</p></section>}
+          {post.cta && <section><h4>Call to action</h4><p>{post.cta}</p></section>}
+          {post.hashtags && <section><h4>Hashtags</h4><p>{post.hashtags}</p></section>}
+          {post.taggedAccounts && <section><h4>Tagged accounts</h4><p>{post.taggedAccounts}</p></section>}
+          {post.linkUrl && <section><h4>Link</h4><a href={post.linkUrl} target="_blank" rel="noopener noreferrer">{post.linkUrl} ↗</a></section>}
+          {post.customFields.map(field => <section key={field.id}><h4>{field.label}</h4><p>{field.value}</p></section>)}
+          {!post.caption && !post.contentIdea && <p>Your team has not added a caption yet.</p>}
+          {reviewStatus === "NEEDS_REVISION" && post.approvalNote && <section><h4>Your feedback</h4><p>{post.approvalNote}</p></section>}
+        </aside>
       </div>
-
-      {/* ─────────────────────────────────────────────
-          SCROLLABLE CONTENT
-      ───────────────────────────────────────────── */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="space-y-5 px-4 py-5 sm:space-y-6 sm:px-6 sm:py-6">
-
-          {/* ─────────────────────────────────────────
-              CONTENT PREVIEW
-          ───────────────────────────────────────── */}
-          {post.assets.length > 0 && (
-            <section>
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30">
-                    Content preview
-                  </p>
-                  <p className="mt-0.5 text-xs text-white/25">
-                    Review the final creative before approval
-                  </p>
-                </div>
-
-                <span className="rounded-full border border-white/[0.07] bg-white/[0.035] px-2.5 py-1 text-[10px] text-white/40">
-                  {post.assets.length}{" "}
-                  {post.assets.length === 1 ? "asset" : "assets"}
-                </span>
-              </div>
-
-              <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-black/30">
-                {activeAsset && (
-                  <div className="relative flex min-h-[220px] items-center justify-center bg-black sm:min-h-[340px]">
-                    {activeAsset.mediaType === "VIDEO" ? (
-                      <video preload={activeAsset.posterUrl ? "none" : "metadata"}
-                        ref={videoRef}
-                        poster={activeAsset.posterUrl ?? undefined} src={activeAsset.contentUrl}
-                        controls
-                        playsInline
-                        className="max-h-[48vh] w-full object-contain"
-                      />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={activeAsset.contentUrl}
-                        alt=""
-                        className="max-h-[48vh] w-full object-contain"
-                      />
-                    )}
-
-                    {/* Asset number */}
-                    {post.assets.length > 1 && (
-                      <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white/70 backdrop-blur-md">
-                        {activeAssetIdx + 1} / {post.assets.length}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Asset thumbnails */}
-                {post.assets.length > 1 && (
-                  <div className="border-t border-white/[0.07] bg-white/[0.02] p-2.5">
-                    <div className="flex gap-2 overflow-x-auto pb-0.5">
-                      {post.assets.map((asset, i) => {
-                        const isActive = i === activeAssetIdx;
-
-                        return (
-                          <button
-                            key={asset.id}
-                            onClick={() => setActiveAssetIdx(i)}
-                            aria-label={`View asset ${i + 1}`}
-                            className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-xl transition-all active:scale-95 sm:h-[72px] sm:w-[72px]"
-                            style={{
-                              border: isActive
-                                ? "2px solid #2478FF"
-                                : "1px solid rgba(255,255,255,0.08)",
-                              boxShadow: isActive
-                                ? "0 0 0 2px rgba(36,120,255,0.18)"
-                                : "none",
-                            }}
-                          >
-                            {asset.mediaType === "VIDEO" ? (
-                              <video preload={asset.posterUrl ? "none" : "metadata"}
-                                poster={asset.posterUrl ?? undefined} src={asset.contentUrl}
-                                muted
-                                playsInline
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={asset.contentUrl}
-                                alt=""
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                            )}
-
-                            {asset.mediaType === "VIDEO" && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm">
-                                  <IconPlay className="h-3.5 w-3.5 text-white" />
-                                </div>
-                              </div>
-                            )}
-
-                            {isActive && (
-                              <div className="absolute inset-0 rounded-[10px] ring-1 ring-inset ring-white/30" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Approval status */}
-              <div
-                className="mt-3 flex items-center gap-3 rounded-xl border px-3.5 py-3"
-                style={{
-                  background: approvalMeta.bg,
-                  borderColor: `${approvalMeta.color}25`,
-                }}
-              >
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                  style={{
-                    background: `${approvalMeta.color}18`,
-                    color: approvalMeta.color,
-                  }}
-                >
-                  {post.approvalStatus === "APPROVED" ? (
-                    <IconCheck className="h-4 w-4" />
-                  ) : (
-                    <span className="h-2 w-2 rounded-full bg-current" />
-                  )}
-                </div>
-
-                <div className="min-w-0">
-                  <p
-                    className="text-xs font-semibold"
-                    style={{ color: approvalMeta.color }}
-                  >
-                    {approvalMeta.text}
-                  </p>
-
-                  <p className="mt-0.5 text-[10px] text-white/35">
-                    {post.approvalStatus === "APPROVED"
-                      ? "This content has been approved."
-                      : post.approvalStatus === "NEEDS_REVISION"
-                        ? "Feedback is required before approval."
-                        : "Please review the content and approve or request changes."}
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
-          {/* ─────────────────────────────────────────
-              VIDEO COMMENTS
-          ───────────────────────────────────────── */}
-          {activeAsset?.mediaType === "VIDEO" && (
-            <section>
-              <CalendarVideoComments
-                comments={comments}
-                readOnly={false}
-                getCurrentTime={() =>
-                  videoRef.current?.currentTime ?? 0
-                }
-                onSeekTo={(seconds) => {
-                  const vid = videoRef.current;
-                  if (!vid) return;
-
-                  vid.currentTime = seconds;
-                  vid.play().catch(() => {});
-                }}
-                onAddComment={addComment}
-              />
-            </section>
-          )}
-
-
-          {/* ─────────────────────────────────────────
-              COPY / CONTENT
-          ───────────────────────────────────────── */}
-          {(post.caption || post.contentIdea || post.cta || post.hashtags) && (
-            <section className="space-y-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30">
-                  Post details
-                </p>
-              </div>
-
-              {post.caption && (
-                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-white/30">
-                      Caption
-                    </p>
-                  </div>
-
-                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-white/70">
-                    {post.caption}
-                  </p>
-                </div>
-              )}
-
-              {post.contentIdea && (
-                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/30">
-                    Content idea
-                  </p>
-
-                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-white/65">
-                    {post.contentIdea}
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {post.cta && (
-                  <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/30">
-                      Call to action
-                    </p>
-
-                    <p className="break-words text-sm leading-5 text-white/65">
-                      {post.cta}
-                    </p>
-                  </div>
-                )}
-
-                {post.hashtags && (
-                  <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/30">
-                      Hashtags
-                    </p>
-
-                    <p className="break-words text-sm leading-5 text-[#68B2FF]">
-                      {post.hashtags}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* ─────────────────────────────────────────
-              DISCOVERY
-          ───────────────────────────────────────── */}
-          {(post.taggedAccounts || post.linkUrl) && (
-            <section>
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30">
-                Discovery
-              </p>
-
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {post.taggedAccounts && (
-                  <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
-                    <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-white/25">
-                      Tagged accounts
-                    </p>
-
-                    <p className="break-words text-xs leading-5 text-white/60">
-                      {post.taggedAccounts}
-                    </p>
-                  </div>
-                )}
-
-                {post.linkUrl && (
-                  <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
-                    <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-white/25">
-                      Destination link
-                    </p>
-
-                    <a
-                      href={post.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block break-all text-xs leading-5 text-[#68B2FF] underline decoration-[#68B2FF]/30 underline-offset-2 transition-colors hover:text-white"
-                    >
-                      {post.linkUrl}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* ─────────────────────────────────────────
-              CUSTOM FIELDS
-          ───────────────────────────────────────── */}
-          {post.customFields.length > 0 && (
-            <section>
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30">
-                Additional information
-              </p>
-
-              <div className="overflow-hidden rounded-2xl border border-white/[0.07]">
-                {post.customFields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className={`grid grid-cols-1 gap-1 px-4 py-3.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-4 ${
-                      index !== 0 ? "border-t border-white/[0.06]" : ""
-                    }`}
-                  >
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-white/30">
-                      {field.label}
-                    </span>
-
-                    <span className="break-words text-xs leading-5 text-white/60">
-                      {field.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          
-          {/* ─────────────────────────────────────────
-    APPROVAL ACTIONS
-───────────────────────────────────────── */}
-{(post.assets.length > 0 || (["FACEBOOK", "LINKEDIN", "X"].includes(post.platform) && !!post.caption?.trim())) && (
-  <section className="border-t border-white/[0.07] pt-5">
-    {reviewStatus === "APPROVED" ? (
-      <div className="rounded-2xl border border-green-400/15 bg-green-400/[0.06] p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-400/10 text-green-400">
-            <IconCheck className="h-4 w-4" />
-          </div>
-
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-green-400">
-              Approved
-            </p>
-
-            <p className="mt-1 text-xs leading-5 text-white/40">
-              You approved this content. No further action is
-              required.
-            </p>
-          </div>
-        </div>
-      </div>
-    ) : reviewStatus === "NEEDS_REVISION" ? (
-      <div className="rounded-2xl border border-orange-400/15 bg-orange-400/[0.06] p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-400/10 text-orange-400">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-4 w-4"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path
-                d="M12 20h9"
-                strokeLinecap="round"
-              />
-              <path
-                d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-orange-400">
-              Changes requested
-            </p>
-
-            <p className="mt-1 text-xs leading-5 text-white/40">
-              Your feedback has been sent to the creator.
-              They can update the content and submit it for
-              review again.
-            </p>
-
-            {post.approvalNote && (
-              <div className="mt-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-3">
-                <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/25">
-                  Your feedback
-                </p>
-
-                <p className="whitespace-pre-wrap break-words text-xs leading-5 text-white/55">
-                  {post.approvalNote}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    ) : requestingRevision ? (
-      <div className="space-y-3">
-        <div>
-          <p className="text-sm font-semibold text-white">
-            Request changes
-          </p>
-
-          <p className="mt-1 text-xs leading-5 text-white/35">
-            Tell the creator exactly what needs to be changed.
-          </p>
-        </div>
-
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={4}
-          placeholder="e.g. Please update the headline, replace the second image and shorten the caption..."
-          style={{ fontSize: "16px" }}
-          className="w-full resize-none rounded-2xl border border-white/[0.09] bg-white/[0.04] px-4 py-3.5 text-sm leading-6 text-white outline-none transition-all placeholder:text-white/20 focus:border-[#F97316]/50 focus:bg-white/[0.055] focus:ring-4 focus:ring-[#F97316]/[0.08]"
-        />
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <button
-            onClick={() =>
-              respond("request_revision")
-            }
-            disabled={submitting || !note.trim()}
-            className="flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-            style={{
-              background:
-                "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
-              boxShadow:
-                "0 8px 24px rgba(249,115,22,0.18)",
-            }}
-          >
-            {submitting
-              ? "Sending feedback..."
-              : "Send feedback"}
-          </button>
-
-          <button
-            onClick={() => {
-              setRequestingRevision(false);
-              setNote("");
-              setError(null);
-            }}
-            disabled={submitting}
-            className="min-h-11 rounded-xl border border-white/[0.08] px-5 py-3 text-sm font-medium text-white/50 transition-all hover:bg-white/[0.05] hover:text-white disabled:opacity-40"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    ) : (
-      <div>
-        <div className="mb-4">
-          <p className="text-sm font-semibold text-white">
-            Ready to review?
-          </p>
-
-          <p className="mt-1 text-xs leading-5 text-white/35">
-            Approve the content or send feedback to the creator.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <button
-            onClick={() => respond("approve")}
-            disabled={submitting}
-            className="group relative flex min-h-12 items-center justify-center overflow-hidden rounded-xl px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(36,120,255,0.22)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
-            style={{
-              background:
-                "linear-gradient(135deg, #2478FF 0%, #0052FF 100%)",
-            }}
-          >
-            <span className="relative z-10 flex items-center gap-2">
-              <IconCheck className="h-4 w-4" />
-              {submitting
-                ? "Approving..."
-                : "Approve content"}
-            </span>
-
-            <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-          </button>
-
-          <button
-            onClick={() => {
-              setRequestingRevision(true);
-              setError(null);
-            }}
-            disabled={submitting}
-            className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white/65 transition-all hover:border-white/[0.15] hover:bg-white/[0.07] hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-4 w-4"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path
-                d="M12 20h9"
-                strokeLinecap="round"
-              />
-              <path
-                d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-
-            Request changes
-          </button>
-        </div>
-      </div>
-    )}
-
-    {error && (
-      <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/15 bg-red-500/[0.07] px-3.5 py-3">
-        <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-
-        <p className="text-xs leading-5 text-red-300">
-          {error}
-        </p>
-      </div>
-    )}
-  </section>
-)}
-          {/* Empty state */}
-          {(post.assets.length === 0 && (!["FACEBOOK", "LINKEDIN", "X"].includes(post.platform) || !post.caption?.trim())) && (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.09] bg-white/[0.02] px-6 py-12 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.035]">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="h-5 w-5 text-white/25"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                >
-                  <rect
-                    x="3"
-                    y="3"
-                    width="18"
-                    height="18"
-                    rx="2"
-                  />
-                  <path d="M8 15l2.5-3 2 2 2.5-3 3 4" />
-                </svg>
-              </div>
-
-              <p className="text-sm font-medium text-white/55">
-                No content uploaded yet
-              </p>
-
-              <p className="mt-1 max-w-xs text-xs leading-5 text-white/25">
-                The creative assets for this post will appear here once they
-                have been uploaded.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────
-          FOOTER
-      ───────────────────────────────────────────── */}
-      <div className="flex shrink-0 items-center justify-between border-t border-white/[0.07] bg-[#111111]/95 px-4 py-3 backdrop-blur-xl sm:px-6">
-        <div className="hidden text-[10px] text-white/20 sm:block">
-          Click outside to close
-        </div>
-
-        <button
-          onClick={onClose}
-          className="ml-auto flex min-h-10 items-center justify-center rounded-xl px-4 text-xs font-medium text-white/40 transition-colors hover:bg-white/[0.04] hover:text-white/70"
-        >
-          Close review
-        </button>
-      </div>
-    </div>
-  </div>
-);
+      <footer className={styles.reviewFooter}>
+        {error && <p role="alert" className={styles.reviewError}>{error}</p>}
+        {canReview && reviewStatus === "PENDING" ? requestingRevision ? <div className={styles.reviewFeedback}><label htmlFor="review-feedback">What would you like to change?</label><textarea id="review-feedback" autoFocus value={note} onChange={event => setNote(event.target.value)} rows={3} placeholder="Share a little detail so your team can get it right." disabled={submitting} /><div className={styles.reviewActions}><button type="button" onClick={() => { setRequestingRevision(false); setError(null); }} disabled={submitting}>Cancel</button><button type="button" className={styles.reviewPrimary} onClick={() => respond("request_revision")} disabled={submitting || !note.trim()}>{submitting ? "Sending…" : "Send feedback"}</button></div></div> : <><div className={styles.reviewFooterMessage}><strong>Ready to go?</strong><p>Approve this post or let your team know what to change.</p></div><div className={styles.reviewActions}><button type="button" onClick={() => setRequestingRevision(true)} disabled={submitting}>Request changes</button><button type="button" className={styles.reviewPrimary} onClick={() => respond("approve")} disabled={submitting}><IconCheck className="h-4 w-4" />{submitting ? "Approving…" : "Approve post"}</button></div></> : <><div className={styles.reviewFooterMessage}><strong>{reviewStatus === "APPROVED" ? "✓ You approved this post" : reviewStatus === "NEEDS_REVISION" ? "Feedback sent to your team" : "Not ready for review yet"}</strong><p>{reviewStatus === "APPROVED" ? "You’re all set. Your team can take it from here." : reviewStatus === "NEEDS_REVISION" ? "Your team will update the post for another look." : "Check back once your team has added the content."}</p></div><div className={styles.reviewActions}><button type="button" onClick={onClose}>Done</button></div></>}
+      </footer>
+    </dialog>
+  );
 }
 export default function ClientCalendarView({
   slug,
   planStatus,
   posts: initialPosts,
   clientName,
-  initialMonth,
   initialPostId,
   controlledTheme,
   onThemeChange,
@@ -1150,32 +462,13 @@ export default function ClientCalendarView({
 
   const t = THEMES[theme];
 
-  const firstPostTimestamp = useMemo(() => {
-    if (!initialPosts.length) return Date.now();
-
-    return initialPosts.reduce((earliest, post) => {
-      const timestamp = new Date(post.postDate).getTime();
-      return Number.isFinite(timestamp) && timestamp < earliest ? timestamp : earliest;
-    }, Number.POSITIVE_INFINITY);
-  }, [initialPosts]);
-
-  const firstPostDate = new Date(
-    Number.isFinite(firstPostTimestamp) ? firstPostTimestamp : Date.now(),
-  );
-
-  const parseMonth = (value?: string) => {
-    if (!value || !/^\\d{4}-\\d{2}$/.test(value)) {
-      return new Date(firstPostDate.getFullYear(), firstPostDate.getMonth(), 1);
-    }
-
-    const [yearValue, monthValue] = value.split("-").map(Number);
-    return new Date(yearValue, monthValue - 1, 1);
-  };
-
   const monthKey = (date: Date) =>
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 
-  const [currentMonth, setCurrentMonth] = useState(() => parseMonth(initialMonth));
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   const [posts, setPosts] = useState<CalendarPostData[]>(
     initialPosts.map((p) => ({
@@ -1205,7 +498,8 @@ export default function ClientCalendarView({
 
   const monthOptions = useMemo(() => {
     const values = new Set(posts.map((post) => monthKey(new Date(post.postDate))));
-    values.add(monthKey(firstPostDate));
+    values.add(monthKey(new Date()));
+    values.add(monthKey(currentMonth));
 
     return Array.from(values)
       .sort()
@@ -1219,7 +513,7 @@ export default function ClientCalendarView({
           }),
         };
       });
-  }, [posts, firstPostTimestamp]);
+  }, [posts, currentMonth]);
 
   const filteredPosts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -1296,6 +590,7 @@ export default function ClientCalendarView({
     });
 
   // The month is the primary scope; the other controls refine that month.
+  const monthPosts = posts.filter(post => monthKey(new Date(post.postDate)) === monthKey(currentMonth));
   const postsInMonth = filteredPosts;
   const activeDates = Array.from(
     new Set(postsInMonth.map((p) => new Date(p.postDate).getDate()))
@@ -1338,15 +633,17 @@ export default function ClientCalendarView({
 
   return (
     <div
-      className="min-w-0 transition-colors duration-300"
+      data-calendar-theme={theme}
+      className={`${styles.calendarRoot} min-w-0 transition-colors duration-300`}
       style={{
         background: t.pageBg,
         color: t.text,
       }}
     >
       {/* SOCIAL VIEW SWITCHER */}
+      <div className={styles.intro}><div><h2>Your content calendar</h2><p>Your next post, ready for a closer look.</p></div><span>Click any card to review <ArrowUpRight size={14}/></span></div>
       <div
-        className="mb-8 overflow-hidden rounded-[22px] border p-1.5 transition-colors duration-300"
+        className={`${styles.viewSwitcher} mb-6 overflow-hidden rounded-[14px] border p-1.5 transition-colors duration-300`}
         style={{
           background: t.cardBg,
           borderColor: t.cardBorder,
@@ -1362,12 +659,12 @@ export default function ClientCalendarView({
               style={{ background: "#2478FF", boxShadow: "0 0 10px rgba(36,120,255,0.55)" }}
             />
             <span className="truncate text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: t.textFaint }}>
-              Preview workspace
+              Explore channel previews
             </span>
           </div>
-          <div className="ml-auto">
+          {controlledTheme === undefined && <div className="ml-auto">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
-          </div>
+          </div>}
         </div>
         <div role="group" aria-label="Calendar and channel previews" className="grid grid-cols-3 gap-1 sm:flex sm:flex-wrap">
           {[
@@ -1388,8 +685,8 @@ export default function ClientCalendarView({
                 onClick={() => { setViewMode(tab.key); setPlatformFilter("ALL"); }}
                 className="relative flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[16px] px-3 py-2.5 text-xs font-semibold transition-all duration-300 active:scale-[0.98] sm:text-sm"
                 style={{
-                  background: active ? t.modalBg : "transparent",
-                  color: active ? (theme === "dark" ? "#fff" : "#0A0A0A") : t.textMuted,
+                  background: active ? "#1768e8" : "transparent",
+                  color: active ? "#fff" : t.textMuted,
                   boxShadow: active
                     ? theme === "dark"
                       ? "0 8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)"
@@ -1431,7 +728,7 @@ export default function ClientCalendarView({
       {viewMode === "instagram" && (
         <section className="relative overflow-hidden rounded-[28px] border px-3 py-8 transition-colors duration-300 sm:px-6 sm:py-10"
           style={{
-            background: theme === "dark" ? "#080808" : "#F7F7F8",
+            background: theme === "dark" ? "#142237" : "#F7F7F8",
             borderColor: t.cardBorder,
             boxShadow: theme === "dark" ? "0 30px 100px rgba(0,0,0,0.28)" : "0 30px 100px rgba(0,0,0,0.08)",
           }}>
@@ -1451,7 +748,7 @@ export default function ClientCalendarView({
       {viewMode === "tiktok" && (
         <section className="relative overflow-hidden rounded-[28px] border px-3 py-8 transition-colors duration-300 sm:px-6 sm:py-10"
           style={{
-            background: theme === "dark" ? "#050505" : "#F7F7F8",
+            background: theme === "dark" ? "#142237" : "#F7F7F8",
             borderColor: t.cardBorder,
             boxShadow: theme === "dark" ? "0 30px 100px rgba(0,0,0,0.28)" : "0 30px 100px rgba(0,0,0,0.08)",
           }}>
@@ -1482,7 +779,7 @@ export default function ClientCalendarView({
       {viewMode === "calendar" && (
         <>
       <div
-        className="mb-7 overflow-hidden rounded-[26px] border transition-colors duration-300"
+        className={`${styles.calendarToolbar} mb-7 overflow-hidden rounded-[18px] border transition-colors duration-300`}
         style={{
           background:
             theme === "dark"
@@ -1516,7 +813,7 @@ export default function ClientCalendarView({
                     className="text-[10px] font-bold uppercase tracking-[0.2em]"
                     style={{ color: t.textFaint }}
                   >
-                    Content calendar
+                    YOUR SCHEDULE
                   </span>
                 </div>
                 <h2
@@ -1570,7 +867,7 @@ export default function ClientCalendarView({
                     color: t.textMuted,
                   }}
                 >
-                  Today
+                  This month
                 </button>
 
                 <button
@@ -1602,7 +899,15 @@ export default function ClientCalendarView({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.8fr))]">
+            <div className={styles.scheduleSummary} aria-label="Review status shortcuts">
+              {([
+                { value: "ALL", label: "All posts", count: monthPosts.length },
+                { value: "PENDING", label: "To review", count: monthPosts.filter(post => post.approvalStatus === "PENDING").length },
+                { value: "APPROVED", label: "Approved", count: monthPosts.filter(post => post.approvalStatus === "APPROVED").length },
+                { value: "NEEDS_REVISION", label: "Changes requested", count: monthPosts.filter(post => post.approvalStatus === "NEEDS_REVISION").length },
+              ] as const).map(item => <button key={item.value} type="button" aria-pressed={approvalFilter === item.value} onClick={() => setApprovalFilter(item.value)}><span>{item.label}</span><strong>{item.count}</strong></button>)}
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.8fr))]">
               <div className="relative">
                 <svg
                   viewBox="0 0 24 24"
@@ -1618,7 +923,7 @@ export default function ClientCalendarView({
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search captions, ideas, hashtags..."
+                  placeholder="Find a post…"
                   aria-label="Search content"
                   className="h-11 w-full rounded-xl border pl-10 pr-4 text-sm outline-none transition-all placeholder:opacity-50 focus:ring-4 focus:ring-[#2478FF]/10"
                   style={{
@@ -1642,31 +947,12 @@ export default function ClientCalendarView({
                   color: t.text,
                 }}
               >
-                <option value="ALL">All platforms</option>
+                <option value="ALL">All channels</option>
                 {Object.entries(PLATFORM_META).map(([key, meta]) => (
                   <option key={key} value={key}>
                     {meta.label}
                   </option>
                 ))}
-              </select>
-
-              <select
-                value={approvalFilter}
-                onChange={(e) =>
-                  setApprovalFilter(e.target.value as ApprovalStatus | "ALL")
-                }
-                aria-label="Filter by approval status"
-                className="h-11 rounded-xl border px-3 text-sm outline-none"
-                style={{
-                  background: t.inputBg,
-                  borderColor: t.inputBorder,
-                  color: t.text,
-                }}
-              >
-                <option value="ALL">All statuses</option>
-                <option value="PENDING">Awaiting review</option>
-                <option value="APPROVED">Approved</option>
-                <option value="NEEDS_REVISION">Needs revision</option>
               </select>
 
               <select
@@ -1728,17 +1014,18 @@ export default function ClientCalendarView({
               <path d="M8 2.5v4M16 2.5v4M3 9h18" strokeLinecap="round" />
             </svg>
           </span>
-          <p className="text-sm font-semibold" style={{ color: t.textMuted }}>Nothing planned for this month yet</p>
-          <p className="max-w-xs text-xs" style={{ color: t.textFaint }}>Try a different month, or check back once your manager adds something here.</p>
+          <p className="text-sm font-semibold" style={{ color: t.textMuted }}>{monthPosts.length ? "No posts match your filters" : "A fresh month, ready for ideas"}</p>
+          <p className="max-w-xs text-xs" style={{ color: t.textFaint }}>{monthPosts.length ? "Try another channel or clear your filters to see the full schedule." : "Your team’s planned posts will appear here. You can also browse another month."}</p>
+          {monthPosts.length > 0 && <button type="button" className={styles.clearSchedule} onClick={clearFilters}>Clear filters</button>}
         </div>
       ) : (
-        <div className="flex flex-col gap-8">
+        <div className={styles.scheduleDays}>
           {activeDates.map((date) => {
-            const dayColor = DAY_COLORS[date.getDay()];
+            const dayColor = theme === "dark" ? "#9cc4ff" : "#1768e8";
             const dayPosts = postsForDate(date);
             return (
-              <div key={date.toISOString()} className="flex gap-4 sm:gap-5">
-                <div className="flex flex-shrink-0 flex-col items-center">
+              <div key={date.toISOString()} className={styles.dayRow}>
+                <div className={styles.dateRail}>
                   <div
                     className="flex h-12 w-12 flex-col items-center justify-center rounded-2xl sm:h-14 sm:w-14"
                     style={{ background: `${dayColor}1f`, border: `1.5px solid ${dayColor}55` }}
@@ -1753,7 +1040,7 @@ export default function ClientCalendarView({
                   <div className="mt-2 w-px flex-1" style={{ background: t.cardBorder }} />
                 </div>
 
-                <div className="grid flex-1 grid-cols-2 gap-3 pb-2 sm:grid-cols-3 md:grid-cols-4">
+                <div className={styles.dayGrid}>
                   {dayPosts.map((post, postIndex) => (
                     <PostTile key={post.id} post={post} index={postIndex} onClick={() => setSelectedPost(post)} />
                   ))}

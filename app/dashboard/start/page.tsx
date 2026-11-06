@@ -1,3 +1,4 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import UiSymbol from "@/components/ui/UiSymbol";
 import Link from "next/link";
 import type { CSSProperties } from "react";
@@ -225,11 +226,7 @@ export default async function StartProjectPage() {
             aria-label="Showwork Project Delivery"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/logo/swwhite.svg"
-              alt="Showwork"
-              className="h-5 w-auto opacity-80"
-            />
+            <ShowworkLogo tone="white" width={104} className="opacity-80"/>
           </Link>
         </div>
       </header>

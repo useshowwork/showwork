@@ -1,3 +1,4 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import HelpLink from "@/components/help/HelpLink";
 import { normalizeTeamRole, TEAM_ROLES } from "@/lib/calendarTeamPolicy";
 import { retryDatabaseRead } from "@/lib/retryDatabaseRead";
@@ -83,7 +84,7 @@ export default async function CalendarsPage({
           calendar: {
             include: {
               manager: { select: { name: true, email: true } },
-              _count: { select: { posts: true } },
+              _count: { select: { posts: { where: { deletedAt: null } } } },
             },
           },
         },
@@ -99,7 +100,7 @@ export default async function CalendarsPage({
     orderBy: { createdAt: "desc" },
     skip,
     take: PAGE_SIZE,
-    include: { _count: { select: { posts: true, collaborators: true } } },
+    include: { _count: { select: { posts: { where: { deletedAt: null } }, collaborators: true } } },
   }));
   const trialEnd = billing?.contentWorkspaceTrialEndsAt;
   const complimentary = Boolean(
@@ -117,7 +118,7 @@ export default async function CalendarsPage({
     : null;
 
   const planName = billing?.contentWorkspacePlan
-    ? { CREATOR: "Creator", STUDIO: "Studio", UNLIMITED: "Agency" }[
+    ? { CREATOR: "Creator", GROWTH: "Growth", STUDIO: "Studio", UNLIMITED: "Agency" }[
         billing.contentWorkspacePlan
       ]
     : "No plan";
@@ -146,8 +147,8 @@ export default async function CalendarsPage({
             href="/dashboard"
             className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-[#475467] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1768E8]"
           >
-            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            All tools
+            <ShowworkLogo width={96}/>
+            <span className="ml-2 border-l border-[#D0DCEB] pl-3 text-xs">All tools</span>
           </Link>
           <div className="flex items-center gap-1">
             <HelpLink className="px-2 text-xs text-[#607fa5]"/>

@@ -5,7 +5,7 @@ import styles from "./ClientWorkspace.module.css";
 import HelpLink from "@/components/help/HelpLink";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Moon, Sun, ChartNoAxesCombined, ArrowUpRight, CalendarDays, CheckCheck, Clock3, FileImage, ShieldCheck, MoreHorizontal, LayoutDashboard, MessageSquareText } from "lucide-react";
-import Image from "next/image";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { useSearchParams } from "next/navigation";
 import MobileDrawer, { NavigationToggle } from "@/components/navigation/MobileDrawer";
 import CalendarReportingPanel from "@/components/calendars/CalendarReportingPanel";
@@ -319,16 +319,16 @@ export default function ClientCalendarWorkspace({
   const requestedView = searchParams.get("view");
   const validViews: WorkspaceView[] = ["overview", "calendar", "instagram", "tiktok", "linkedin", "facebook", "x", "review", "analytics"];
   const activeView: WorkspaceView = validViews.includes(requestedView as WorkspaceView)
-    ? requestedView as WorkspaceView : "overview";
+    ? requestedView as WorkspaceView : "calendar";
   useEffect(() => { if (activeView === "calendar") setCalendarVisited(true); }, [activeView]);
 
   // Keyboard navigation makes the workspace feel like an application rather than
   // a collection of page anchors.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey && event.key === "1") { event.preventDefault(); navigate("overview"); }
-      if (event.altKey && event.key === "2") { event.preventDefault(); navigate("calendar"); }
-      if (event.altKey && event.key === "3") { event.preventDefault(); navigate("instagram"); }
+      if (event.altKey && event.key === "1") { event.preventDefault(); navigate("calendar"); }
+      if (event.altKey && event.key === "2") { event.preventDefault(); navigate("analytics"); }
+      if (event.altKey && event.key === "3") { event.preventDefault(); navigate("overview"); }
       if (event.altKey && event.key === "4") { event.preventDefault(); navigate("tiktok"); }
       if (event.altKey && event.key === "5") { event.preventDefault(); navigate("review"); }
     };
@@ -367,7 +367,7 @@ export default function ClientCalendarWorkspace({
     [posts],
   );
 
-  const contentScrollRef = useRef<HTMLElement>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
 
   const navigate = (view: WorkspaceView) => {
     setMobileOpen(false);
@@ -382,14 +382,7 @@ export default function ClientCalendarWorkspace({
 
   const sidebar = <>
           <div className="border-b border-[rgb(var(--client-ink))]/[0.07] px-5 py-5">
-          <Image
-              src={theme === "dark" ? "/images/logo/swwhite.svg" : "/images/logo/sw.svg"}
-              alt="Showwork"
-              width={80}
-              height={20}
-              className="h-5 w-auto"
-              priority
-            />
+          <span className={styles.sidebarLogo}><ShowworkLogo tone="white" width={104}/></span>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-5">
@@ -415,9 +408,9 @@ export default function ClientCalendarWorkspace({
               Workspace
             </div>
             <div className="space-y-1">
-              <SidebarItem active={activeView === "overview"} onClick={() => navigate("overview")} icon="grid" label="Overview" />
               <SidebarItem active={activeView === "calendar"} onClick={() => navigate("calendar")} icon="calendar" label="Content Calendar" />
               <SidebarItem active={activeView === "analytics"} onClick={() => navigate("analytics")} icon="analytics" label="Analytics & Reporting" />
+              <SidebarItem active={activeView === "overview"} onClick={() => navigate("overview")} icon="grid" label="Overview" />
             </div>
 
             <div className="mb-2 mt-7 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[rgb(var(--client-muted))]">
@@ -454,7 +447,7 @@ export default function ClientCalendarWorkspace({
                 </span>
                 <div>
                   <p className="text-[10px] font-semibold text-[rgb(var(--client-muted))]">Private workspace</p>
-                  <p className="mt-0.5 text-[9px] text-[rgb(var(--client-muted))]">Powered by Showwork</p>
+                  <div className="mt-1 flex items-center gap-1.5 text-[9px] text-[rgb(var(--client-muted))]"><span>Powered by</span><ShowworkLogo tone="white" width={62}/></div>
                 </div>
               </div>
             </div>
@@ -467,14 +460,7 @@ export default function ClientCalendarWorkspace({
       <header className={`${styles.mobileHeader} sticky top-0 z-50 border-b border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-bg))]/94 backdrop-blur-2xl lg:hidden`}>
         <div className="flex h-[68px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
           <NavigationToggle open={mobileOpen} onClick={() => setMobileOpen(true)} label="workspace navigation" />
-          <Image
-            src="/images/logo/swwhite.svg"
-            alt="Showwork"
-            width={80}
-            height={20}
-            className="h-5 w-auto shrink-0"
-            priority
-          />
+          <ShowworkLogo tone="white" width={96}/>
           <div className="h-5 w-px bg-[rgb(var(--client-ink))]/10" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-[rgb(var(--client-muted))]">{clientName}</p>
@@ -490,14 +476,14 @@ export default function ClientCalendarWorkspace({
 
       <MobileDrawer motion="fade" placement="bottom" panelClassName={styles.mobileSheet} open={mobileOpen} onClose={() => setMobileOpen(false)} label="Your workspace" className="bg-[rgb(var(--client-panel))] text-[rgb(var(--client-ink))]">{sidebar}</MobileDrawer>
 
-      <div className="flex min-h-screen lg:h-full lg:min-h-0">
+      <div className={`${styles.desktopLayout} flex min-h-screen lg:h-full lg:min-h-0`}>
         {/* Persistent desktop navigation */}
         <aside className={`${styles.sidebar} hidden h-full w-[240px] shrink-0 flex-col overflow-hidden border-r border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-panel))] lg:flex`}>
           {sidebar}
         </aside>
 
         {/* Everything below stays mounted. Only the active workspace view changes. */}
-        <section ref={contentScrollRef} aria-label="Marketing workspace content" tabIndex={0} className={`${styles.content} min-w-0 flex-1 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain`}>
+        <section aria-label="Marketing workspace content" className={`${styles.content} min-w-0 flex-1 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain`}>
           <header className={`${styles.topbar} sticky top-0 z-30 hidden h-[68px] items-center border-b border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-bg))]/90 px-6 backdrop-blur-2xl lg:flex xl:px-9`}>
             <div>
               <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[rgb(var(--client-muted))]">
@@ -525,6 +511,7 @@ export default function ClientCalendarWorkspace({
             </div>
           </header>
 
+          <div ref={contentScrollRef} tabIndex={0} className={styles.contentSurface} aria-label="Client workspace content">
           {activeView === "overview" && <section className={styles.hero} aria-label="Your client workspace">
             {(desktopBannerUrl || mobileBannerUrl) && <picture className={styles.heroImage}>{mobileBannerUrl && <source media="(max-width:639px)" srcSet={mobileBannerUrl}/>}<img src={desktopBannerUrl || mobileBannerUrl!} alt=""/></picture>}
             <div className={styles.heroCopy}><span className={styles.heroEyebrow}><ShieldCheck size={13}/>Your private review room</span><h1>{displayTitle}</h1><p>{displayDescription}</p><button type="button" onClick={() => navigate(reviewPosts.length ? "review" : "calendar")}>{reviewPosts.length ? "Review your content" : "Explore your calendar"}<ArrowUpRight size={16}/></button></div>
@@ -558,11 +545,6 @@ export default function ClientCalendarWorkspace({
 
               {(activeView === "calendar" || calendarVisited) && (
                 <div hidden={activeView !== "calendar"} className="mx-auto max-w-6xl">
-                  <ViewHeader
-                    eyebrow="Workspace / Calendar"
-                    title="Your content plan."
-                    description="Find content by month, platform, status or keyword and open any post for the full review experience."
-                  />
                   <ClientCalendarView
                     key={`${previewPostId || "calendar"}:${previewRequest}`}
                     initialPostId={previewPostId}
@@ -632,10 +614,11 @@ export default function ClientCalendarWorkspace({
 
             </div>
           </div>
+          </div>
         </section>
       </div>
 
-      <nav className={styles.mobileDock} aria-label="Client workspace navigation">{([{id:"overview",label:"Home",icon:LayoutDashboard},{id:"calendar",label:"Calendar",icon:CalendarDays},{id:"review",label:"Reviews",icon:MessageSquareText}] as const).map(item => <button key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={activeView === item.id ? "page" : undefined}><item.icon size={20}/><span>{item.label}</span></button>)}<button type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-current={["overview","calendar","review"].includes(activeView) ? undefined : "true"} aria-haspopup="dialog"><MoreHorizontal size={20}/><span>More</span></button></nav>
+      <nav className={styles.mobileDock} aria-label="Client workspace navigation">{([{id:"calendar",label:"Calendar",icon:CalendarDays},{id:"analytics",label:"Analytics",icon:ChartNoAxesCombined},{id:"overview",label:"Overview",icon:LayoutDashboard}] as const).map(item => <button key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={activeView === item.id ? "page" : undefined}><item.icon size={20}/><span>{item.label}</span></button>)}<button type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-current={["calendar","analytics","overview"].includes(activeView) ? undefined : "true"} aria-haspopup="dialog"><MoreHorizontal size={20}/><span>More</span></button></nav>
 
     </main>
   );

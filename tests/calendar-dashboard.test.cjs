@@ -11,6 +11,7 @@ function loadPage({ total = 12, matches = total, billing = null, signedIn = true
   const retryCode = ts.transpileModule(fs.readFileSync("lib/retryDatabaseRead.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   new Function("module", "exports", retryCode)(retryModule, retryModule.exports);
   const mocks = {
+    "@/components/brand/ShowworkLogo": stub,
     "@/components/help/HelpLink": stub,
     "@/lib/calendarTeamPolicy": require("./helpers/billing-fixtures.cjs").withBillingDependencies({})["@/lib/calendarTeamPolicy"],
     "@/lib/retryDatabaseRead": retryModule.exports,

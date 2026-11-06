@@ -1,3 +1,5 @@
+import { getWorkspaceSetup } from "@/lib/workspaceSetupServer";
+import { canGenerateDuringSetup } from "@/lib/workspaceSetup";
 import ReportingProductionSummary from "@/components/calendars/ReportingProductionSummary";
 import ChannelsWorkspace from "@/components/calendars/ChannelsWorkspace";
 import KnowledgeWorkspaceHeader from "@/components/calendars/KnowledgeWorkspaceHeader";
@@ -175,6 +177,7 @@ compedUntil: true,
         },
       },
       posts: {
+        where: { deletedAt: null },
         orderBy: { postDate: "asc" },
         include: {
           assets: {
@@ -199,6 +202,7 @@ compedUntil: true,
   const permissions: TeamPermission[] = access?.permissions ?? ["calendar.view", "analytics.view"];
   const can = (permission: TeamPermission) => permissions.includes(permission);
   const isOwner = calendar.managerId === creator.id;
+  const setup = await getWorkspaceSetup(calendar.id);
   const isManager = isOwner || access?.role === "MANAGER";
   const canEditWorkspace = can("calendar.edit");
   const userRole = canEditWorkspace ? "EDIT_CALENDAR" : can("creatives.upload") ? "ADD_CONTENT" : "VIEW_ONLY";
@@ -289,7 +293,7 @@ contentIdea: p.contentIdea,
     },
     {
       id: "content",
-      label: "Content",
+      label: "Content Calendar",
       eyebrow: "Production",
       title: "Build the work.",
       description:
@@ -512,6 +516,8 @@ contentIdea: p.contentIdea,
               <>
               <KnowledgeWorkspaceHeader clientName={calendar.clientName}/>
               <BusinessKnowledgeCard
+                hasBrandVoice={setup?.hasBrandVoice ?? false}
+                nextSection={setup?.hasChannels ? (can("ai.generate") ? "generate" : undefined) : (can("channels.view") ? "channels" : undefined)}
                 canEdit={can("knowledge.manage")}
                 calendarId={calendar.id}
                 aiActive={aiActive}
@@ -525,7 +531,7 @@ contentIdea: p.contentIdea,
                   websiteUrl: doc.websiteUrl,
                 }))}
               />
-              <BrandPersonalityCard key={calendar.id} calendarId={calendar.id} canEdit={can("knowledge.manage")} />
+              <BrandPersonalityCard key={calendar.id} calendarId={calendar.id} canEdit={can("knowledge.manage")} hasKnowledge={calendar.businessDocuments.some(doc => doc.id !== brandPersonalityDocumentId(calendar.id))} nextSection={setup?.hasChannels ? (can("ai.generate") ? "generate" : undefined) : (can("channels.view") ? "channels" : undefined)} />
               </>
             ),
           },
@@ -536,7 +542,7 @@ contentIdea: p.contentIdea,
             title: "Your business thinking partner.",
             description: "Chat about your business, research ideas and build your knowledge.",
             group: "AI Studio" as const,
-            content: <BusinessResearchPanel calendarId={calendar.id} canManage={can("knowledge.manage")} canGenerate={can("ai.generate")} />,
+            content: featureAccess("randyStudio") ? <BusinessResearchPanel calendarId={calendar.id} canManage={can("knowledge.manage")} canGenerate={can("ai.generate")} /> : <WorkspaceFeatureNotice feature="randyStudio" />,
           },
           {
             id: "generate" as const,
@@ -547,15 +553,12 @@ contentIdea: p.contentIdea,
               "Set the creative direction, choose the channels and generate drafts that stay grounded in this client's world.",
             group: "AI Studio" as const,
             content: (
-              <div className="relative overflow-hidden rounded-[28px] border border-[#CFE0FF] bg-[linear-gradient(145deg,#F4F8FF,#FFFFFF_48%,#EEF5FF)] p-1 shadow-[0_18px_55px_rgba(23,104,232,0.08)]">
-                <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#1768E8]/10 blur-3xl" />
-                <div className="relative">
+              <div className="min-w-0">
                   <AiContentGeneratorCard
                     calendarId={calendar.id}
                     hasBusinessSummary={calendar.businessDocuments.some(doc => doc.id !== brandPersonalityDocumentId(calendar.id))}
                     performanceRecommendationsAccess={featureAccess("performanceRecommendations")}
                   />
-                </div>
               </div>
             ),
           },
@@ -569,6 +572,7 @@ contentIdea: p.contentIdea,
     <CalendarWorkspaceShell
       clientName={calendar.clientName}
       calendarId={calendar.id}
+      setup={isOwner && setup?.enabled ? setup : undefined}
       clientUrl={can("delivery.manage") ? clientUrl : ""}
       isManager={isManager}
       settings={can("workspace.manage") ?
@@ -588,7 +592,9 @@ contentIdea: p.contentIdea,
         <>
           {agencyTrial && <WorkspaceFeatureNotice trial paidPlan={calendar.manager.contentWorkspaceBillingStatus === "ACTIVE" ? calendar.manager.contentWorkspacePlan : null} trialEndsAt={calendar.manager.contentWorkspaceTrialEndsAt} />}
           {!workspaceActive && <WorkspaceFeatureNotice />}
-          {!workspaceActive && !["overview", "analytics", "inbox", "leads", "team"].includes(section.id)
+          {section.id === "generate" && setup && !canGenerateDuringSetup(setup)
+            ? <div className="rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-blue-900">{isOwner ? "Complete your publishing choice, add business knowledge, set your brand voice, and connect a channel using the setup guide above. Then you’re ready to generate content." : "The workspace owner needs to finish setup before the team can generate content. Ask them to choose publishing preferences, add business knowledge, set the brand voice, and connect a channel."}</div>
+            : !workspaceActive && !["overview", "analytics", "inbox", "leads", "team"].includes(section.id)
             ? <fieldset disabled className="min-w-0">{section.content}</fieldset>
             : section.content}
         </>

@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./projects/ManagedTasks.module.css";
+import { CalendarDays, CheckCircle2, ChevronDown, Circle, Clock3, Files, ListTodo, Loader2, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { getFileContentType } from "@/lib/mediaFileTypes";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -9,20 +11,9 @@ import AddTaskSubSection from "@/components/AddTaskSubSection";
 const COLOR = { blue: "#2478FF", gradient: "linear-gradient(135deg, #2478FF 0%, #0052FF 100%)" };
 
 const STATUS_LABELS: Record<string, string> = { TODO: "To do", IN_PROGRESS: "In progress", DONE: "Done" };
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  TODO: { bg: "rgba(255,255,255,0.06)", text: "rgba(255,255,255,0.5)" },
-  IN_PROGRESS: { bg: "rgba(36,120,255,0.15)", text: "#2478FF" },
-  DONE: { bg: "rgba(34,197,94,0.15)", text: "#4ade80" },
-};
-const PRIORITY_COLORS: Record<string, string> = {
-  LOW: "rgba(255,255,255,0.3)",
-  MEDIUM: "rgba(255,255,255,0.5)",
-  HIGH: "#F97316",
-  URGENT: "#EF4444",
-};
 const REVIEW_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   PENDING: { bg: "rgba(245,200,66,0.15)", text: "#F5C842", label: "Awaiting your review" },
-  APPROVED: { bg: "rgba(34,197,94,0.15)", text: "#4ade80", label: "Approved" },
+  APPROVED: { bg: "rgba(34,197,94,0.15)", text: "var(--managed-success, #4ade80)", label: "Approved" },
   NEEDS_CHANGES: { bg: "rgba(239,68,68,0.15)", text: "#EF4444", label: "Needs changes" },
 };
 
@@ -349,7 +340,7 @@ function TaskAssets({
   const renderAssetRow = (asset: TaskAssetRow) => {
     const review = REVIEW_COLORS[asset.internalReviewStatus];
     return (
-      <div key={asset.id} className="rounded-md p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+      <div key={asset.id} className="rounded-md p-2.5" style={{ background: "var(--managed-soft, rgba(255,255,255,0.03))" }}>
         <div className="flex items-center justify-between gap-2">
           <a href={asset.url} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-xs font-medium underline" style={{ color: COLOR.blue }}>
             {asset.filename || "View file"}
@@ -383,7 +374,7 @@ function TaskAssets({
               </div>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => submitReview(asset.id, "APPROVED")} className="rounded-md px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80" }}>
+                <button onClick={() => submitReview(asset.id, "APPROVED")} className="rounded-md px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(34,197,94,0.15)", color: "var(--managed-success, #4ade80)" }}>
                   Approve
                 </button>
                 <button onClick={() => setReviewingId(asset.id)} className="rounded-md px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(239,68,68,0.15)", color: "#EF4444" }}>
@@ -474,17 +465,22 @@ export default function ManagedProjectTasks({
   const [priority, setPriority] = useState("MEDIUM");
   const [dueDate, setDueDate] = useState("");
 
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'TODO' | 'IN_PROGRESS' | 'DONE' | 'mine'>('all');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
+  const [notice, setNotice] = useState('');
+
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/managed-projects/${managedProjectId}/tasks`);
-      if (res.ok) {
-        const data = await res.json();
-        setTasks(data.tasks);
-      }
-    } finally {
-      setLoading(false);
-    }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'We couldn’t load the tasks. Please try again.');
+      setTasks(data.tasks); setActionError('');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'We couldn’t load the tasks. Please try again.');
+    } finally { setLoading(false); }
   }, [managedProjectId]);
 
   useEffect(() => {
@@ -513,7 +509,8 @@ export default function ManagedProjectTasks({
       setPriority("MEDIUM");
       setDueDate("");
       setShowForm(false);
-      loadTasks();
+      setNotice("Task created. Your team can start working on it.");
+      void loadTasks();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -521,185 +518,61 @@ export default function ManagedProjectTasks({
     }
   };
 
-  const updateStatus = async (taskId: string, status: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: status as TaskRow["status"] } : t)));
-    const res = await fetch(`/api/managed-projects/tasks/${taskId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (!res.ok) loadTasks();
+  const updateStatus = async (taskId: string, status: TaskRow['status']) => {
+    if (busyId) return;
+    setBusyId(taskId); setActionError(''); setNotice('');
+    try {
+      const res = await fetch(`/api/managed-projects/tasks/${taskId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw Error(data.error || 'We couldn’t update this task. Please try again.'); }
+      setTasks(current => current.map(task => task.id === taskId ? { ...task, status } : task));
+      setNotice(`Task moved to ${STATUS_LABELS[status].toLowerCase()}.`);
+    } catch(error) { setActionError(error instanceof Error ? error.message : 'Please try again.'); }
+    finally { setBusyId(null); }
   };
-
   const deleteTask = async (taskId: string) => {
-    if (!window.confirm("Delete this task?")) return;
-    const res = await fetch(`/api/managed-projects/tasks/${taskId}`, { method: "DELETE" });
-    if (res.ok) loadTasks();
+    if (busyId || !window.confirm('Delete this task and its linked work? This cannot be undone.')) return;
+    setBusyId(taskId); setActionError(''); setNotice('');
+    try {
+      const res = await fetch(`/api/managed-projects/tasks/${taskId}`, { method: 'DELETE' });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw Error(data.error || 'We couldn’t remove this task. Please try again.'); }
+      setTasks(current => current.filter(task => task.id !== taskId)); setNotice('Task removed.');
+    } catch(error) { setActionError(error instanceof Error ? error.message : 'Please try again.'); }
+    finally { setBusyId(null); }
   };
-
-  const doneCount = tasks.filter((t) => t.status === "DONE").length;
-  const progressPercent = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
-
-  return (
-    <div className="rounded-2xl p-6" style={{ background: "#1A1A1A" }}>
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-white">Tasks</p>
-          {tasks.length > 0 && (
-            <p className="mt-0.5 text-xs text-white/40">
-              {doneCount} of {tasks.length} done · {progressPercent}%
-            </p>
-          )}
-        </div>
-        {isOwner && (
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-lg px-4 py-2 text-xs font-semibold text-white transition-transform hover:scale-[1.02]"
-            style={{ background: COLOR.gradient }}
-          >
-            {showForm ? "Cancel" : "+ New task"}
-          </button>
-        )}
-      </div>
-
-      {tasks.length > 0 && (
-        <div className="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progressPercent}%`, background: COLOR.blue }} />
-        </div>
-      )}
-
-      {showForm && (
-        <form onSubmit={createTask} className="mb-6 flex flex-col gap-3 rounded-lg p-4" style={{ background: "rgba(255,255,255,0.04)" }}>
-          <div>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title"
-              required
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
-            />
-            {/* Not just an internal label — once this task's work is
-                published, this exact title becomes the section
-                heading your client sees on their delivery page. Worth
-                a real, client-facing name, not shorthand only your
-                team would understand. */}
-            <p className="mt-1.5 text-[11px] text-white/30">
-              Becomes the section name your client sees once this is published — name it accordingly.
-            </p>
-          </div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description (optional)"
-            rows={2}
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
-          />
-          <div className="grid grid-cols-3 gap-3">
-            <select
-              value={assignedToCreatorId}
-              onChange={(e) => setAssignedToCreatorId(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
-            >
-              <option value="">Assign to...</option>
-              {assigneeOptions.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.id === currentCreatorId ? "Me" : a.name || a.email}
-                </option>
-              ))}
-            </select>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
-            >
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="URGENT">Urgent</option>
-            </select>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
-              style={{ colorScheme: "dark" }}
-            />
-          </div>
-          {formError && <p className="text-xs text-red-400">{formError}</p>}
-          <button
-            type="submit"
-            disabled={creating}
-            className="w-fit rounded-lg px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-            style={{ background: COLOR.gradient }}
-          >
-            {creating ? "Creating..." : "Create task"}
-          </button>
-        </form>
-      )}
-
-      {loading ? (
-        <p className="text-xs text-white/30">Loading...</p>
-      ) : tasks.length === 0 ? (
-        <p className="text-xs text-white/30">No tasks yet.</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {tasks.map((task) => {
-            const canUpdateStatus = isOwner || task.assignedTo.id === currentCreatorId;
-            const canUpload = isOwner || task.assignedTo.id === currentCreatorId;
-            return (
-              <div key={task.id} className="rounded-lg p-4" style={{ background: "rgba(255,255,255,0.04)" }}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: PRIORITY_COLORS[task.priority] }} title={task.priority} />
-                      <p className="text-sm font-medium text-white">{task.title}</p>
-                    </div>
-                    {task.description && <p className="mt-1 text-xs text-white/50">{task.description}</p>}
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/40">
-                      <span>{task.assignedTo.id === currentCreatorId ? "Assigned to you" : `Assigned to ${task.assignedTo.name || task.assignedTo.email}`}</span>
-                      {task.dueDate && <span>Due {new Date(task.dueDate).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</span>}
-                    </div>
-                  </div>
-                  {isOwner && (
-                    <button onClick={() => deleteTask(task.id)} className="flex-shrink-0 text-xs text-white/25 transition-colors hover:text-red-400">
-                      Delete
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-3 flex items-center gap-1.5">
-                  {(["TODO", "IN_PROGRESS", "DONE"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => canUpdateStatus && updateStatus(task.id, s)}
-                      disabled={!canUpdateStatus}
-                      className="rounded-full px-3 py-1 text-[11px] font-semibold transition-opacity disabled:cursor-default"
-                      style={{
-                        background: task.status === s ? STATUS_COLORS[s].bg : "transparent",
-                        color: task.status === s ? STATUS_COLORS[s].text : "rgba(255,255,255,0.25)",
-                        border: task.status === s ? "none" : "1px solid rgba(255,255,255,0.08)",
-                        opacity: canUpdateStatus ? 1 : 0.5,
-                      }}
-                    >
-                      {STATUS_LABELS[s]}
-                    </button>
-                  ))}
-                </div>
-
-                <TaskAssets
-                  taskId={task.id}
-                  assets={task.linkedAssets}
-                  folders={task.folders}
-                  canUpload={canUpload}
-                  isOwner={isOwner}
-                  onChanged={loadTasks}
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  const doneCount = tasks.filter(task => task.status === 'DONE').length;
+  const progressPercent = tasks.length ? Math.round(doneCount / tasks.length * 100) : 0;
+  const visible = tasks.filter(task => (filter === 'all' || (filter === 'mine' ? task.assignedTo.id === currentCreatorId : task.status === filter)) && `${task.title} ${task.description || ''} ${task.assignedTo.name || ''} ${task.assignedTo.email}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const filters = [
+    { id:'all' as const, label:'All tasks', count:tasks.length },
+    { id:'TODO' as const, label:'To do', count:tasks.filter(task=>task.status==='TODO').length },
+    { id:'IN_PROGRESS' as const, label:'In progress', count:tasks.filter(task=>task.status==='IN_PROGRESS').length },
+    { id:'DONE' as const, label:'Done', count:doneCount },
+    { id:'mine' as const, label:'Assigned to me', count:tasks.filter(task=>task.assignedTo.id===currentCreatorId).length },
+  ];
+  return <div data-managed-task-studio="true" className={styles.studio}>
+    <div className={styles.toolbar}><div><h3>Your task list</h3><p>{tasks.length ? `${doneCount} of ${tasks.length} tasks complete` : 'Break the project into clear, assigned pieces of work.'}</p></div>{isOwner&&<button type="button" className={styles.primary} aria-expanded={showForm} aria-controls="managed-new-task" disabled={creating} onClick={()=>{setShowForm(value=>!value);setFormError(null);}}>{showForm?<X size={15}/>:<Plus size={15}/>}{showForm?'Close form':'New task'}</button>}</div>
+    {tasks.length>0&&<div className={styles.completion}><div role="progressbar" aria-label="Tasks completed" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}><span style={{width:`${progressPercent}%`}}/></div><span>{progressPercent}% complete</span></div>}
+    {showForm&&isOwner&&<form id="managed-new-task" onSubmit={createTask} className={styles.form}><div className={styles.formHeading}><h4>Create a task</h4><p>Give it a clear name, assign someone, and set the priority.</p></div><fieldset disabled={creating}>
+      <label>Task name<input autoFocus required value={title} onChange={event=>setTitle(event.target.value)} placeholder="e.g. Brand film — first cut"/><small>This becomes the section name on the client’s delivery when published.</small></label>
+      <label>Description <span>Optional</span><textarea rows={3} value={description} onChange={event=>setDescription(event.target.value)} placeholder="What needs to be done? Add context or acceptance criteria."/></label>
+      <div className={styles.formGrid}><label>Assign to<select required value={assignedToCreatorId} onChange={event=>setAssignedToCreatorId(event.target.value)}><option value="">Choose a person</option>{assigneeOptions.map(person=><option key={person.id} value={person.id}>{person.id===currentCreatorId?'Me':person.name||person.email}</option>)}</select></label><label>Priority<select value={priority} onChange={event=>setPriority(event.target.value)}>{['LOW','MEDIUM','HIGH','URGENT'].map(value=><option key={value} value={value}>{value[0]+value.slice(1).toLowerCase()}</option>)}</select></label><label>Due date <span>Optional</span><input type="date" value={dueDate} onChange={event=>setDueDate(event.target.value)}/></label></div>
+      {formError&&<p role="alert" className={styles.error}>{formError}</p>}
+      <div className={styles.formActions}><button type="submit" className={styles.primary}>{creating?<Loader2 size={15} className={styles.spinner}/>:<Plus size={15}/>}{creating?'Creating…':'Create task'}</button><button type="button" className={styles.secondary} onClick={()=>setShowForm(false)}>Cancel</button></div>
+    </fieldset></form>}
+    {actionError&&<div role="alert" className={styles.error}>{actionError}{!tasks.length&&<button type="button" onClick={()=>void loadTasks()}>Try again</button>}</div>}
+    {notice&&<p role="status" className={styles.notice}><CheckCircle2 size={15}/>{notice}</p>}
+    <div className={styles.listTools}><div className={styles.filters} role="group" aria-label="Filter tasks">{filters.map(tab=><button key={tab.id} type="button" aria-pressed={filter===tab.id} onClick={()=>setFilter(tab.id)}>{tab.label}<span>{tab.count}</span></button>)}</div><label className={styles.search}><Search size={15}/><span className="sr-only">Search tasks by name or assignee</span><input type="search" placeholder="Find a task or person" value={query} onChange={event=>setQuery(event.target.value)}/></label></div>
+    {loading&&!tasks.length?<div role="status" className={styles.empty}><Loader2 size={23} className={styles.spinner}/><p>Loading your tasks…</p></div>:actionError&&!tasks.length?null:!visible.length?<div className={styles.empty}><span><ListTodo size={29}/></span><h4>{tasks.length?'No tasks match this view.':'Give the next step a name.'}</h4><p>{tasks.length?'Try another filter or search term.':isOwner?'Create your first task and assign it to someone on the project.':'Tasks assigned by the project owner will appear here.'}</p>{tasks.length>0&&<button type="button" className={styles.secondary} onClick={()=>{setFilter('all');setQuery('');}}>Show all tasks</button>}</div>:<div className={styles.list} aria-busy={loading}>{visible.map(task=>{
+      const canUpdateStatus=isOwner||task.assignedTo.id===currentCreatorId;
+      const mine=task.assignedTo.id===currentCreatorId;
+      const StatusIcon=task.status==='DONE'?CheckCircle2:task.status==='IN_PROGRESS'?Clock3:Circle;
+      return <article key={task.id} className={styles.task}>
+        <div className={styles.taskTop}><span className={styles.status} data-status={task.status}><StatusIcon size={13}/>{STATUS_LABELS[task.status]}</span><span className={styles.priority} data-priority={task.priority}>{task.priority[0]+task.priority.slice(1).toLowerCase()} priority</span>{isOwner&&<button type="button" aria-label={`Delete ${task.title}`} className={styles.delete} disabled={!!busyId} onClick={()=>void deleteTask(task.id)}><Trash2 size={15}/></button>}</div>
+        <h4>{task.title}</h4>{task.description&&<p className={styles.description}>{task.description}</p>}
+        <div className={styles.meta}><span><UserRound size={14}/>{mine?'Assigned to you':task.assignedTo.name||task.assignedTo.email}</span>{task.dueDate&&<span><CalendarDays size={14}/>Due {new Date(task.dueDate).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric',timeZone:'Africa/Lagos'})}</span>}</div>
+        <div className={styles.statusRow}><span>{canUpdateStatus?'Move task to':'Task status'}</span><div role="group" aria-label={`Status for ${task.title}`}>{(['TODO','IN_PROGRESS','DONE']as const).map(status=><button key={status} type="button" aria-pressed={task.status===status} disabled={!canUpdateStatus||!!busyId||task.status===status} onClick={()=>void updateStatus(task.id,status)}>{busyId===task.id&&task.status!==status?<Loader2 size={12} className={styles.spinner}/>:null}{STATUS_LABELS[status]}</button>)}</div></div>
+        <details className={styles.assets}><summary><Files size={16}/><span>{task.linkedAssets.length?'Files & internal review':canUpdateStatus?'Upload work & manage files':'Files & internal review'}</span><small>{task.linkedAssets.length} {task.linkedAssets.length===1?'file':'files'}</small><ChevronDown size={15}/></summary><div><TaskAssets taskId={task.id} assets={task.linkedAssets} folders={task.folders} canUpload={canUpdateStatus} isOwner={isOwner} onChanged={loadTasks}/></div></details>
+      </article>;
+    })}</div>}
+  </div>;
 }

@@ -44,10 +44,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
 
-  if (body.plan !== undefined && body.plan !== "CREATOR" && body.plan !== "STUDIO") {
-    return NextResponse.json({ error: "Choose Creator or Studio to downgrade." }, { status: 400 });
+  if (body.plan !== undefined && body.plan !== "CREATOR" && body.plan !== "GROWTH" && body.plan !== "STUDIO") {
+    return NextResponse.json({ error: "Choose Creator, Growth or Studio to downgrade." }, { status: 400 });
   }
-  const targetPlan: ContentWorkspacePlan = body.plan === "STUDIO" ? "STUDIO" : "CREATOR";
+  const targetPlan: ContentWorkspacePlan = body.plan === "STUDIO" ? "STUDIO" : body.plan === "GROWTH" ? "GROWTH" : "CREATOR";
   const limits = CONTENT_WORKSPACE_PLANS[targetPlan];
 
   const payNow =

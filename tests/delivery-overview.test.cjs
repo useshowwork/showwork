@@ -1,0 +1,10 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {load}=require('./helpers/load-typescript.cjs');
+const {deliveryNextStep}=load('components/projects/DeliveryOverview.tsx',{'next/link':{default:()=>null},'@/components/CopyLinkButton':{default:()=>null},'@/components/DeliveryStatusControl':{default:()=>null}});
+const base={totalFiles:3,approvedCount:0,revisionCount:0,pendingCount:3,status:'DELIVERED'};
+test('empty deliveries lead to adding files rather than approval or payment',()=>{const next=deliveryNextStep({...base,totalFiles:0,pendingCount:0});assert.equal(next.view,'work');assert.equal(next.action,'Add your first files');});
+test('revision requests take priority over pending reviews',()=>{const next=deliveryNextStep({...base,revisionCount:1,pendingCount:2});assert.equal(next.view,'work');assert.equal(next.action,'Review requested changes');});
+test('pending work leads to client access without claiming approval',()=>{const next=deliveryNextStep(base);assert.equal(next.view,'access');assert.doesNotMatch(next.title,/approved/);});
+test('file approval never implies payment or unlocked downloads',()=>{for(const status of ['DELIVERED','APPROVED']){const next=deliveryNextStep({...base,approvedCount:3,pendingCount:0,status});assert.equal(next.view,'status');assert.match(next.description,/only after you have received it/);}});
+test('paid deliveries lead to the client portal when files need no further decisions',()=>{const next=deliveryNextStep({...base,approvedCount:3,pendingCount:0,status:'PAID'});assert.equal(next.view,'portal');assert.match(next.description,/downloads are unlocked/);});

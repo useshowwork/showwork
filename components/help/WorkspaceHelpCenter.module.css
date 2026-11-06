@@ -28,3 +28,5 @@
 .askRandy:hover { background:#125dce; }.mobileRandy { display:none; }
 @media(max-width:700px) { .mobileRandy { display:block; margin:0 23px; padding:0 12px 12px; border-inline:1px solid #d4e4fb; background:#fff; }.mobileRandy .askRandy { margin-top:12px; width:100%; } }
 @media print { .askRandy,.mobileRandy { display:none; } }
+
+.footerBrand{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}

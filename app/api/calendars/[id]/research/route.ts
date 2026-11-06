@@ -1,6 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
-import { hasCalendarPermission, canAccessCalendarById } from "@/lib/calendarPermissions";
+import { hasCalendarPermission, canAccessCalendarById, calendarFeatureGate } from "@/lib/calendarPermissions";
 import { db } from "@/lib/db";
 import { executeBusinessResearch, queueBusinessResearch } from "@/lib/knowledge/research";
 import { parseResearchPlan } from "@/lib/knowledge/researchPlan";
@@ -16,6 +16,8 @@ async function authorized(id: string, manage = false) {
 export async function GET(_req: NextRequest, { params }: Context) {
   const { id } = await params;
   if (!await authorized(id)) return NextResponse.json({ error: "Access denied." }, { status: 403 });
+  const featureGate = await calendarFeatureGate(id, "randyStudio");
+  if (featureGate) return featureGate;
   await db.businessResearchRun.updateMany({ where: { calendarId: id, status: { in: ["QUEUED", "RUNNING"] }, createdAt: { lt: new Date(Date.now() - 15 * 60000) } }, data: { status: "FAILED", phase: "Research interrupted", error: "Research did not finish. Please start a new run.", completedAt: new Date() } });
   const [runs, sources, calendar] = await Promise.all([
     db.businessResearchRun.findMany({ where: { calendarId: id }, orderBy: { createdAt: "desc" }, take: 20 }),
@@ -27,6 +29,8 @@ export async function GET(_req: NextRequest, { params }: Context) {
 export async function POST(req: NextRequest, { params }: Context) {
   const { id } = await params;
   if (!await authorized(id, true) || !await canAccessCalendarById(id)) return NextResponse.json({ error: "An active workspace and knowledge management permission are required." }, { status: 403 });
+  const featureGate = await calendarFeatureGate(id, "randyStudio");
+  if (featureGate) return featureGate;
   const body = await req.json().catch(() => null);
   if (typeof body?.focus !== "string" || body.focus.trim().length < 10 || body.focus.length > 1200) return NextResponse.json({ error: "Describe a research focus between 10 and 1,200 characters." }, { status: 400 });
   try {
@@ -42,6 +46,8 @@ export async function POST(req: NextRequest, { params }: Context) {
 export async function PATCH(req: NextRequest, { params }: Context) {
   const { id } = await params;
   if (!await authorized(id, true)) return NextResponse.json({ error: "Access denied." }, { status: 403 });
+  const featureGate = await calendarFeatureGate(id, "randyStudio");
+  if (featureGate) return featureGate;
   const body = await req.json().catch(() => null);
   if (body?.action === "savePlan") {
     try {

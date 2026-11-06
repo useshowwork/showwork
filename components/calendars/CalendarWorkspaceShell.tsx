@@ -1,5 +1,6 @@
 "use client";
 
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { CircleHelp, MoreHorizontal, Sparkles, ArrowLeft, LayoutDashboard, CalendarRange, UsersRound, ChartNoAxesCombined, MessagesSquare, ContactRound, PanelsTopLeft, Cable, BrainCircuit, BookOpenText, WandSparkles, SendHorizontal, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
 import menuStyles from "./WorkspaceMenu.module.css";
 import headerStyles from "./WorkspaceHeader.module.css";
@@ -8,7 +9,8 @@ import { useSearchParams } from "next/navigation";
 import MobileDrawer from "@/components/navigation/MobileDrawer";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import WorkspaceTour from "@/components/calendars/WorkspaceTour";
+import WorkspaceSetup from "@/components/calendars/WorkspaceSetup";
+import type { WorkspaceSetupState } from "@/lib/workspaceSetup";
 import WorkspaceUploadTray from "@/components/uploads/WorkspaceUploadTray";
 import InboxHandoffAlert from "./InboxHandoffAlert";
 
@@ -95,6 +97,7 @@ export default function CalendarWorkspaceShell({
   isManager,
   settings,
   publishAction,
+  setup,
   sections,
 }: {
   calendarId?: string;
@@ -103,14 +106,16 @@ export default function CalendarWorkspaceShell({
   isManager: boolean;
   settings?: ReactNode;
   publishAction?: ReactNode;
+  setup?: WorkspaceSetupState;
   sections: WorkspaceSection[];
 }) {
   const searchParams = useSearchParams();
   const requestedView = searchParams.get("view");
   // Read the URL during render: refreshes and OAuth returns must never paint
-  // Overview first and then switch to the requested section in an effect.
+  // The content calendar is the landing page; explicit section links remain valid.
   const activeId = sections.find(section => section.id === requestedView)?.id
-    ?? sections[0]?.id ?? "overview";
+    ?? sections.find(section => section.id === "content")?.id
+    ?? sections[0]?.id ?? "content";
   const [mobileSheet, setMobileSheet] = useState<"more" | "ai">("more");
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
@@ -197,7 +202,6 @@ export default function CalendarWorkspaceShell({
   {
     label: "Workspace",
     items: compact([
-      byId("overview"),
       byId("content"),
     ]),
   },
@@ -243,6 +247,10 @@ export default function CalendarWorkspaceShell({
       byId("access"),
     ]),
   },
+  {
+    label: "Summary",
+    items: compact([byId("overview")]),
+  },
 ].filter((cluster) => cluster.items.length > 0);
   }, [visibleSections]);
 
@@ -264,8 +272,8 @@ export default function CalendarWorkspaceShell({
   };
 
   const aiSections = visibleSections.filter(section => ["knowledge", "research", "generate"].includes(section.id));
-  const primaryMobile = (["overview", "content", "inbox"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
-  const moreSections = visibleSections.filter(section => !["overview", "content", "inbox", "knowledge", "research", "generate"].includes(section.id));
+  const primaryMobile = (["content", "inbox", "analytics"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
+  const moreSections = visibleSections.filter(section => !["content", "inbox", "analytics", "knowledge", "research", "generate"].includes(section.id)).sort((a, b) => Number(a.id === "overview") - Number(b.id === "overview"));
   const aiActive = aiSections.some(section => section.id === active.id);
   const moreActive = moreSections.some(section => section.id === active.id);
   const openSheet = (sheet: "more" | "ai") => { setMobileSheet(sheet); setMobileOpen(true); };
@@ -282,6 +290,7 @@ export default function CalendarWorkspaceShell({
       </div>)}
     </nav>
     <div className={menuStyles.footer}>
+      <Link href="/dashboard/calendars" className={menuStyles.helpLink}><ArrowLeft size={16}/><span>All workspaces</span></Link>
       <a href="/help/workspace" target="_blank" rel="noopener noreferrer" className={menuStyles.helpLink}><CircleHelp size={16}/><span>Help & guides</span><span className="sr-only"> (opens in a new tab)</span><ArrowUpRight className="h-3.5 w-3.5"/></a>
       {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={menuStyles.clientLink}><span className={menuStyles.clientIcon}><PanelsTopLeft size={17}/></span><span><strong>Client view</strong><small>See their side of the story</small></span><ArrowUpRight/></a>}
       {publishAction}
@@ -289,7 +298,7 @@ export default function CalendarWorkspaceShell({
   </>;
 
   return (
-    <div data-marketing-workspace="true" className="min-h-screen w-full min-w-0 bg-[#F7F8FA] text-[#101828]">
+    <div data-marketing-workspace="true" data-sidebar-collapsed={sidebarCollapsed} className={`${menuStyles.desktopFrame} min-h-screen w-full min-w-0 bg-[#F7F8FA] text-[#101828]`}>
       {calendarId && <WorkspaceUploadTray workspaceId={calendarId} />}
       <header className={headerStyles.header}>
         <div className={headerStyles.inner}>
@@ -314,16 +323,16 @@ export default function CalendarWorkspaceShell({
         </div>}
       </MobileDrawer>
       <nav aria-label="Mobile workspace navigation" data-workspace-bottom-nav hidden={keyboardOpen} className={`${menuStyles.bottomNav} lg:hidden`}>
-        {primaryMobile.map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === "overview" ? "Home" : item.label}</button>)}
+        {primaryMobile.map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === "content" ? "Calendar" : item.id === "analytics" ? "Analytics" : item.label}</button>)}
         {!!aiSections.length && <button onClick={() => openSheet("ai")} aria-current={aiActive ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "ai"} aria-haspopup="dialog" className={menuStyles.dockItem}><Sparkles size={20}/>AI Studio</button>}
         <button onClick={() => openSheet("more")} aria-current={moreActive ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog" className={menuStyles.dockItem}><MoreHorizontal size={20}/>More</button>
       </nav>
 
-      <div className={`mx-auto grid max-w-[1800px] ${sidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[224px_minmax(0,1fr)]"}`}>
-        {/* QUIET LEFT RAIL */}
+      <div className={`${menuStyles.desktopLayout} mx-auto grid max-w-[1800px] ${sidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[224px_minmax(0,1fr)]"}`}>
+        {/* WORKSPACE NAVIGATION */}
         <aside className={`${menuStyles.rail} sticky top-[72px] hidden h-[calc(100dvh-72px)] flex-col lg:flex`} data-collapsed={sidebarCollapsed}>
           <div className={menuStyles.railHeader}>
-            {!sidebarCollapsed && <div className={menuStyles.workspaceIdentity}><span className={menuStyles.workspaceMark}><LayersMark/></span><span><strong>Marketing workspace</strong><small>Your creative home</small></span></div>}
+            {!sidebarCollapsed && <div className={menuStyles.workspaceIdentity}><Link href="/dashboard" className={menuStyles.workspaceBrand}><ShowworkLogo tone="white" width={104}/><small title={clientName}>{clientName}</small></Link></div>}
             <button type="button" onClick={toggleSidebar} aria-expanded={!sidebarCollapsed} aria-controls="workspace-desktop-navigation"
               aria-label={sidebarCollapsed ? "Expand workspace menu" : "Collapse workspace menu"} title={sidebarCollapsed ? "Expand workspace menu" : "Collapse workspace menu"}
               className={menuStyles.collapseButton}>{sidebarCollapsed ? <ChevronsRight size={16} aria-hidden="true"/> : <ChevronsLeft size={16} aria-hidden="true"/>}</button>
@@ -338,11 +347,11 @@ export default function CalendarWorkspaceShell({
                 </div>)}
               </nav>
               <a href="/help/workspace" target="_blank" rel="noopener noreferrer" title="Workspace help (opens in a new tab)" aria-label="Workspace help (opens in a new tab)" className={menuStyles.collapsedHelp}><CircleHelp size={19}/></a>
-              {clientUrl && <div className="shrink-0 border-t border-[#E7ECF3] p-3">
+              {clientUrl && <div className={menuStyles.collapsedFooter}>
                 <a href={clientUrl} target="_blank" rel="noopener noreferrer" title="Open client view" aria-label="Open client view"
-                  className="flex h-11 items-center justify-center rounded-xl bg-white text-[#1768E8] hover:bg-[#EAF2FF]"><ArrowUpRight className="h-5 w-5" /></a>
+                  className={menuStyles.collapsedAction}><ArrowUpRight className="h-5 w-5" /></a>
               </div>}
-              {publishAction && <div className="shrink-0 border-t border-slate-100 p-3"><button type="button" onClick={toggleSidebar} title="Publishing actions" aria-label="Expand menu for publishing actions" className="flex h-11 w-full items-center justify-center rounded-xl text-slate-500 hover:bg-blue-50 hover:text-blue-700"><SectionIcon name="publish" className="h-5 w-5"/></button></div>}
+              {publishAction && <div className={menuStyles.collapsedFooter}><button type="button" onClick={toggleSidebar} title="Publishing actions" aria-label="Expand menu for publishing actions" className={menuStyles.collapsedAction}><SectionIcon name="publish" className="h-5 w-5"/></button></div>}
             </> : sidebar}
           </div>
         </aside>
@@ -350,7 +359,7 @@ export default function CalendarWorkspaceShell({
         {/* ACTIVE WORKSPACE */}
         <main id="workspace-main" className="min-w-0 pb-[calc(104px+env(safe-area-inset-bottom))] lg:pb-0">
           <div
-            className={`mx-auto ${
+            className={`${menuStyles.contentSurface} mx-auto ${
               active.id === "content" ? "max-w-none" : "max-w-[1480px]"
             } ${["inbox", "team", "analytics"].includes(active.id) ? "px-3 py-4 sm:px-4 lg:px-5" : "px-4 py-6 sm:px-5 md:py-8 lg:px-7 xl:px-9"}`}
           >
@@ -383,6 +392,7 @@ export default function CalendarWorkspaceShell({
             </div>
             )}
 
+            {calendarId && setup && <WorkspaceSetup calendarId={calendarId} initialState={setup} activeSection={active.id} onNavigate={select} />}
             {/* Keep visited panels mounted so navigation preserves local work. */}
             {visibleSections.map((section) => {
               if (section.id !== active.id && !mountedInsightViews.has(section.id)) return null;
@@ -392,16 +402,13 @@ export default function CalendarWorkspaceShell({
             })}
 
             {active.id !== "inbox" && <div className="mt-8 flex items-center justify-between border-t border-[#E4E9F0] pt-5 text-[9px] font-semibold uppercase tracking-[0.13em] text-[#A0A8B4]">
-              <span>Showwork · Marketing Workspace</span>
+              <span className="inline-flex items-center gap-3"><ShowworkLogo width={80}/><span>Marketing Workspace</span></span>
               <span className="hidden sm:inline">{clientName}</span>
             </div>}
           </div>
         </main>
            </div>
 
-      <WorkspaceTour
-        availableSections={visibleSections.map((section) => section.id)}
-      />
 
       <style jsx global>{`
         [data-marketing-workspace] [data-workspace-bottom-nav][hidden] { display: none; }

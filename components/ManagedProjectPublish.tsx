@@ -73,12 +73,12 @@ export default function ManagedProjectPublish({
   };
 
   return (
-    <div className="rounded-2xl p-6" style={{ background: "#1A1A1A" }}>
+    <div className="rounded-2xl p-6" style={{ background: "var(--managed-surface, #1A1A1A)" }}>
       <p className="mb-4 text-sm font-semibold text-white">Publish to client</p>
 
       <div className="flex flex-col gap-4">
         {publishedAt ? (
-          <p className="text-xs" style={{ color: "#4ade80" }}>
+          <p className="text-xs" style={{ color: "var(--managed-success, #4ade80)" }}>
             Published {new Date(publishedAt).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })} —
             the client portal now shows the finished files.
           </p>
@@ -99,7 +99,7 @@ export default function ManagedProjectPublish({
         <p className="text-xs text-white/30">
           Publishing gives your client access to the approved files immediately.
         </p>
-        {publishResult && <p className="text-xs" style={{ color: "#4ade80" }}>{publishResult}</p>}
+        {publishResult && <p className="text-xs" style={{ color: "var(--managed-success, #4ade80)" }}>{publishResult}</p>}
       </div>
 
       {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
@@ -129,7 +129,7 @@ export default function ManagedProjectPublish({
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-md overflow-hidden rounded-2xl"
-              style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 24px 64px rgba(0,0,0,0.5)" }}
+              style={{ background: "var(--managed-surface, #161616)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 24px 64px rgba(0,0,0,0.5)" }}
             >
               <div className="px-7 pt-8 text-center">
                 <PublishIcon />
@@ -142,7 +142,7 @@ export default function ManagedProjectPublish({
               </div>
 
               <div className="px-7">
-                <div className="flex flex-col gap-3.5 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <div className="flex flex-col gap-3.5 rounded-xl p-4" style={{ background: "var(--managed-soft, rgba(255,255,255,0.03))" }}>
                   <div className="flex items-start gap-2.5">
                     <CheckIcon />
                     <p className="text-sm leading-relaxed text-white/70">

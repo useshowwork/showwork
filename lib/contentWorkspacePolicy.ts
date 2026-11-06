@@ -63,7 +63,7 @@ export function getContentWorkspacePlan(
 
   const complimentary = workspaceComplimentaryPlan(account);
   if (complimentary) {
-    const order = ["CREATOR", "STUDIO", "UNLIMITED"];
+    const order = ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"];
     return account.contentWorkspaceBillingStatus === "ACTIVE" && account.contentWorkspacePlan &&
       order.indexOf(account.contentWorkspacePlan) > order.indexOf(complimentary)
       ? account.contentWorkspacePlan : complimentary;

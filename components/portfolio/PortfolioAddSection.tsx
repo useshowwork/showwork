@@ -2,6 +2,8 @@
 
 import { IMAGE_FILE_ACCEPT, VIDEO_FILE_ACCEPT, getFileContentType } from "@/lib/mediaFileTypes";
 
+import workStyles from "./PortfolioWorkStudio.module.css";
+import { Plus } from "lucide-react";
 import UiSymbol from "@/components/ui/UiSymbol";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -261,8 +263,10 @@ function mediaTypeIcon(mediaType: MediaType | null) {
 
 export default function PortfolioAddSection({
   hasSections,
+  compact = false,
 }: {
   hasSections: boolean;
+  compact?: boolean;
 }) {
   const router = useRouter();
 
@@ -1001,6 +1005,10 @@ export default function PortfolioAddSection({
     }
   };
 
+  if (step === "closed" && compact) {
+    return <button type="button" className={workStyles.addButton} onClick={() => setStep("type")}><Plus size={16}/>{hasSections ? "Add section" : "Add your first section"}</button>;
+  }
+
   if (step === "closed") {
     return hasSections ? (
       <button
@@ -1516,9 +1524,7 @@ export default function PortfolioAddSection({
               </div>
 
               <p className="text-center text-[10px] leading-5 text-slate-400">
-                Large files automatically use resumable
-                multipart uploads so an interrupted upload
-                can continue without starting from zero.
+                Keep this page open until your uploads finish.
               </p>
             </div>
           </div>

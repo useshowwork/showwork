@@ -1,4 +1,5 @@
 "use client";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 
 import UiSymbol from "@/components/ui/UiSymbol";
 import { useEffect, useState } from "react";
@@ -305,7 +306,7 @@ export default function AgencyPortfolioList({
           </Link>
 
           <div className="hidden items-center gap-2 text-xs text-slate-400 sm:flex">
-            <span>Showwork</span>
+            <ShowworkLogo width={85}/>
             <span>/</span>
             <span className="font-medium text-slate-700">
               Portfolio Studio

@@ -21,10 +21,10 @@ export function deliveryComplimentaryTier(account: ComplimentaryAccount, now = n
     ? account.deliveryCompedTier as PaidTier : null;
 }
 export function workspaceComplimentaryPlan(account: ComplimentaryAccount, now = new Date()): ContentWorkspacePlan | null {
-  const projected = projectedPlan(account, "CONTENT_WORKSPACE", ["CREATOR", "STUDIO", "UNLIMITED"], now);
+  const projected = projectedPlan(account, "CONTENT_WORKSPACE", ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"], now);
   const cached = account.workspaceCompedPlan && account.workspaceCompedUntil && account.workspaceCompedUntil > now ? account.workspaceCompedPlan : null;
   const legacy = account.isComped && (!account.compedUntil || account.compedUntil > now) ? "STUDIO" : null;
-  const order = ["CREATOR", "STUDIO", "UNLIMITED"];
+  const order = ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"];
   return [projected, cached, legacy].filter((p): p is ContentWorkspacePlan => !!p).sort((a,b) => order.indexOf(b) - order.indexOf(a))[0] ?? null;
 }
 export function workspaceComplimentaryEndsAt(account: ComplimentaryAccount, now = new Date()): Date | null {

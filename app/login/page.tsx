@@ -1,4 +1,5 @@
 "use client";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,7 +17,7 @@ const inputClass =
 function Brand() {
   return (
     <Link href="/" aria-label="Showwork home" className="inline-flex items-center rounded-md text-[25px] font-extrabold tracking-[-0.075em] text-[#102A29] outline-offset-4 focus-visible:outline-2 focus-visible:outline-[#155FC7]">
-      Show<span className="text-[#155FC7]">work</span><span className="text-[#16834B]">.</span>
+      <ShowworkLogo width={117}/>
     </Link>
   );
 }

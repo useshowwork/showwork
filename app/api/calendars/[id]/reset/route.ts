@@ -19,9 +19,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (body?.confirmation !== "RESET") return NextResponse.json({ error: "Confirm the reset by typing RESET." }, { status: 400 });
 
   try {
-    return NextResponse.json(await removeWorkspaceContent({ actorId: creator.id, mode: "reset", calendarId: id }));
+    return NextResponse.json(await removeWorkspaceContent({ actorId: creator.id, mode: "reset", calendarId: id, removeBlocked: body.removeBlocked === true }));
   } catch (error) {
-    if (error instanceof WorkspaceDeletionConflict) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error instanceof WorkspaceDeletionConflict) return NextResponse.json({ error: error.message, code: "PUBLISHING_BLOCKS_REMOVAL", blockingPosts: error.blockingPosts }, { status: 409 });
     console.error("Calendar reset failed");
     return NextResponse.json({ error: "The calendar could not be reset. Please try again." }, { status: 500 });
   }

@@ -13,7 +13,7 @@ export function parseBillingOffer(body: any, now = new Date()) {
   const deliveryTier = body.product === "CONTENT_WORKSPACE" ? null : (body.deliveryTier || null);
   const workspacePlan = body.product === "DELIVERY" ? null : (body.workspacePlan || null);
   if (deliveryTier && !PAID_TIER_ORDER.includes(deliveryTier)) throw new Error("Select a valid Delivery plan");
-  if (workspacePlan && !["CREATOR", "STUDIO", "UNLIMITED"].includes(workspacePlan)) throw new Error("Select a valid Marketing Workspace plan");
+  if (workspacePlan && !["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"].includes(workspacePlan)) throw new Error("Select a valid Marketing Workspace plan");
   if (!Array.isArray(body.creatorIds) || body.creatorIds.some((id: unknown) => typeof id !== "string" || !id || id.length > 100)) throw new Error("Invalid selected accounts");
   const creatorIds = body.audience === "SELECTED" ? [...new Set<string>(body.creatorIds)] : [];
   if (body.audience === "SELECTED" && (creatorIds.length === 0 || creatorIds.length > 500)) throw new Error("Select between 1 and 500 accounts");

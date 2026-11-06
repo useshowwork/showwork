@@ -1,4 +1,5 @@
 "use client";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 
 import { IMAGE_FILE_ACCEPT, VIDEO_FILE_ACCEPT, getFileContentType } from "@/lib/mediaFileTypes";
 
@@ -2262,22 +2263,7 @@ export default function StartPage() {
 /* -------------------------------------------------------------------------- */
 
 function Logo({ dark = false }: { dark?: boolean }) {
-  return (
-    <span
-      className={`text-xl font-extrabold tracking-[-0.055em] ${
-        dark ? "text-white" : "text-[#0A0A0A]"
-      }`}
-    >
-      Show
-      <span
-        style={{
-          color: COLOR.yellow,
-        }}
-      >
-        work
-      </span>
-    </span>
-  );
+  return <ShowworkLogo tone={dark ? "white" : "dark"} width={112}/>;
 }
 
 function StepBadge({

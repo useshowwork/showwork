@@ -1,3 +1,4 @@
+import { calendarSlugCandidate } from "@/lib/calendarSlug";
 import { queueWorkspaceStorageCleanup } from "@/lib/workspaceStorageCleanup";
 import { removeWorkspaceContent, WorkspaceDeletionConflict } from "@/lib/workspaceDeletion";
 import { lockWorkspaceUploadReservation } from "@/lib/workspaceUploadLocks";
@@ -89,21 +90,27 @@ export async function PATCH(
   // ─────────────────────────────────────────────
 
   if (action === "update_details") {
-    if (!clientName || !clientName.trim()) {
+    if (typeof clientName !== "string" || !clientName.trim()) {
       return NextResponse.json(
         { error: "Client name is required" },
         { status: 400 }
       );
     }
 
-    const updated = await db.socialCalendar.update({
-      where: { id },
-      data: {
-        clientName: clientName.trim(),
-      },
-    });
-
-    return NextResponse.json({ calendar: updated });
+    const name = clientName.trim();
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const slug = name === calendar.clientName ? calendar.slug : calendarSlugCandidate(name, attempt);
+      const existing = await db.socialCalendar.findUnique({ where: { slug }, select: { id: true } });
+      if (existing && existing.id !== id) continue;
+      try {
+        const updated = await db.socialCalendar.update({ where: { id }, data: { clientName: name, slug } });
+        return NextResponse.json({ calendar: updated });
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "P2002") continue;
+        throw error;
+      }
+    }
+    return NextResponse.json({ error: "Couldn’t reserve the new calendar link. Try a more specific name." }, { status: 409 });
   }
 
   // ─────────────────────────────────────────────

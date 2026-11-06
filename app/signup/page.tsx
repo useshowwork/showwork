@@ -1,4 +1,5 @@
 "use client";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 
 import { useState, Suspense, type FormEvent, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -34,7 +35,7 @@ const OPTIONS = [
     type: "SOCIAL_MEDIA_MANAGER" as const,
     title: "Social media manager",
     description: "Manage client content, leads and performance.",
-    detail: "Marketing Workspace plans start at ₦4,900/month for 1 active marketing workspace.",
+    detail: "Marketing Workspace plans start at ₦4,900/month for up to 5 active marketing workspaces.",
     Icon: UsersRound,
     tag: null,
   },
@@ -70,7 +71,7 @@ function Field({
 function Brand() {
   return (
     <Link href="/" aria-label="Showwork home" className="inline-flex items-center rounded-md text-[25px] font-extrabold tracking-[-0.075em] text-[#102A29] outline-offset-4 focus-visible:outline-2 focus-visible:outline-[#155FC7]">
-      Show<span className="text-[#155FC7]">work</span><span className="text-[#16834B]">.</span>
+      <ShowworkLogo width={117}/>
     </Link>
   );
 }

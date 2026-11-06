@@ -75,3 +75,95 @@
 .sheetLinks > a:hover { background:#edf4ff; }
 @media(min-width:1024px) { .bottomNav { display:none; } }
 @media(prefers-reduced-motion:reduce) { .dockItem,.dockItem > svg,.sheetItem,.sheetLinks > a,.mobilePanel { transition:none !important; } }
+
+/* Brand navigation stays distinct from the light working canvas. */
+.rail { background:#123568; border-color:#25497a; color:#edf4ff; }
+.rail .workspaceMark { background:#ffffff0d; border-color:#ffffff20; color:#c9deff; box-shadow:none; }
+.rail .workspaceIdentity strong { color:#fff; }
+.rail .workspaceIdentity small { color:#b5c9e7; }
+.rail .collapseButton { background:transparent; border-color:#ffffff30; color:#d7e6fb; box-shadow:none; }
+.rail .collapseButton:hover { background:#244b7c; border-color:#7fa6de; }
+.rail .navigation,.rail .iconNavigation { scrollbar-color:#5577a7 transparent; }
+.rail .clusterHeading,.rail .cluster[data-featured=true] .clusterHeading { color:#afc6e7; }
+.rail .cluster[data-featured=true] { border-color:transparent; background:transparent; }
+.rail .navItem { color:#edf4ff; border-radius:10px; transition:background .16s ease; }
+.rail .navItem:hover,.rail .iconItem:hover { color:#fff; background:#244b7c; border-color:transparent; }
+.rail .iconWell { background:transparent; border-color:transparent; color:#bad3f5; box-shadow:none; }
+.rail .navItem[aria-current=page],.rail .iconItem[aria-current=page] { background:#1768e8; border-color:#4a8df1; color:#fff; box-shadow:none; }
+.rail .navItem[aria-current=page] .iconWell { color:#fff; background:transparent; border-color:transparent; box-shadow:none; }
+.rail .activeArrow { border:0; color:#fff; }
+.rail .footer,.rail .iconCluster { border-color:#ffffff20; }
+.rail .clientLink { background:#ffffff08; border-color:#ffffff25; color:#d0e1f9; }
+.rail .clientLink:hover { background:#244b7c; }
+.rail .clientIcon { background:transparent; color:#bad3f5; }
+.rail .clientLink strong { color:#edf4ff; }
+.rail .clientLink small { color:#b5c9e7; }
+.rail .helpLink { color:#c5d9f5; }
+.rail .helpLink:hover { background:#244b7c; color:#fff; }
+.rail .iconItem { color:#c5d9f5; }
+.rail .iconActiveDot { background:#b8d5ff; }
+.rail .collapsedHelp { background:transparent; border-color:#ffffff25; color:#c5d9f5; }
+.rail .collapsedHelp:hover { background:#244b7c; color:#fff; }
+.rail :focus-visible { outline-color:#b4d4ff; }
+.collapsedFooter { flex-shrink:0; border-top:1px solid #ffffff20; padding:12px; }
+.collapsedAction { display:flex; align-items:center; justify-content:center; width:100%; min-height:44px; border-radius:11px; color:#c5d9f5; }
+.collapsedAction:hover { background:#244b7c; color:#fff; }
+
+/* Carry the same blue navigation into the mobile dock and menu. */
+.bottomNav { background:#123568; border-color:#335789; box-shadow:0 10px 30px #102b5040; }
+.dockItem { color:#d4e4fa; }
+.bottomNav > .dockItem[aria-current],.bottomNav > .dockItem[aria-expanded=true] { background:#1768e8; border-color:#4a8df1; box-shadow:none; }
+.dockItem:focus-visible { outline-color:#b4d4ff; }
+.mobilePanel { background:#123568 !important; border-color:#335789; box-shadow:0 24px 90px #0a234859; color:#edf4ff; }
+.mobilePanel > div:first-child { background:#7898c2; }
+.mobilePanel > div:nth-child(2) { border-color:#ffffff20; }
+.mobilePanel > div:nth-child(2) > span { color:#fff; }
+.mobilePanel > div:nth-child(2) > button { background:transparent; border-color:#ffffff30; color:#d7e6fb; }
+.mobilePanel .sheetIntro { color:#b5c9e7; }
+.mobilePanel .sheetItem { background:#1c4173; border-color:#375886; box-shadow:none; color:#edf4ff; }
+.mobilePanel .iconWell { background:transparent; border-color:transparent; color:#bad3f5; }
+.mobilePanel .sheetChevron { color:#bad3f5; }
+.mobilePanel .sheetItem[aria-current=page] { background:#1768e8; border-color:#4a8df1; color:#fff; box-shadow:none; }
+.mobilePanel .sheetItem[aria-current=page] .iconWell { color:#fff; }
+.mobilePanel .sheetLinks { border-color:#ffffff20; }
+.mobilePanel .sheetLinks > a { color:#d4e4fa; }
+.mobilePanel .sheetLinks > a:hover { background:#244b7c; color:#fff; }
+.mobilePanel :focus-visible { outline-color:#b4d4ff; }
+/* The guided tour uses the full navigation inside the mobile menu. */
+.mobilePanel .clusterHeading { color:#afc6e7; }
+.mobilePanel .cluster[data-featured=true] { background:transparent; border-color:transparent; }
+.mobilePanel .cluster[data-featured=true] .clusterHeading { color:#afc6e7; }
+.mobilePanel .navItem { color:#edf4ff; }
+.mobilePanel .navItem:hover { background:#244b7c; border-color:transparent; }
+.mobilePanel .navItem[aria-current=page] { background:#1768e8; border-color:#4a8df1; color:#fff; box-shadow:none; }
+.mobilePanel .footer { border-color:#ffffff20; }
+.mobilePanel .helpLink,.mobilePanel .clientLink { color:#d4e4fa; }
+.mobilePanel .helpLink:hover { background:#244b7c; color:#fff; }
+.mobilePanel .clientLink { background:#ffffff08; border-color:#ffffff25; }
+.mobilePanel .clientLink strong { color:#edf4ff; }
+.mobilePanel .clientLink small { color:#b5c9e7; }
+.mobilePanel .clientIcon { background:transparent; color:#bad3f5; }
+@media(prefers-reduced-motion:reduce) { .rail .navItem { transition:none; } }
+
+/* Desktop reference: a full-height rail beside a slim bar and content surface. */
+@media (min-width:1024px) {
+  .desktopFrame[data-marketing-workspace] { display:grid; grid-template-columns:240px minmax(0,1fr); grid-template-rows:56px minmax(0,1fr); align-items:start; gap:24px; padding:12px; background:#eef1f6; }
+  .desktopFrame[data-sidebar-collapsed=true] { grid-template-columns:76px minmax(0,1fr); }
+  .desktopFrame .desktopLayout { display:contents; }
+  .desktopFrame .rail { grid-column:1; grid-row:1 / span 2; top:12px; height:calc(100dvh - 24px); border:1px solid #25497a; border-radius:16px; box-shadow:0 8px 24px -6px #16325714; overflow:hidden; }
+  .railHeader { min-height:64px; padding:14px 12px; }
+  .workspaceIdentity strong { font-size:16px; letter-spacing:-.04em; }
+  .workspaceIdentity small { max-width:132px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+  .rail .navItem { min-height:40px; border-radius:999px; padding:4px 10px; gap:8px; }
+  .rail .iconWell { width:26px; height:28px; }
+  .rail .cluster { margin-bottom:18px; }
+  .rail .cluster[data-featured=true] { padding:0; }
+  .rail .cluster[data-featured=true] .clusterHeading { padding-inline:12px; }
+  .rail .navLabel { font-size:12px; }
+  .rail .footer { gap:6px; padding:12px; }
+  .desktopFrame > main { grid-column:2; grid-row:2; min-width:0; }
+  .desktopFrame .desktopLayout > main { grid-column:2; grid-row:2; min-width:0; }
+  .desktopFrame .contentSurface { width:100%; max-width:none; min-height:calc(100dvh - 104px); padding:24px; border:1px solid #e4e9f1; border-radius:16px; background:#fff; box-shadow:0 8px 24px -6px #1632570a; }
+}
+
+.workspaceBrand{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;padding-block:4px}

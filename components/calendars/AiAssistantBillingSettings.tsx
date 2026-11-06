@@ -9,7 +9,7 @@ type BillingStatus =
   | "ACTIVE"
   | "OFFLINE";
 
-type ContentWorkspacePlan = "CREATOR" | "STUDIO" | "UNLIMITED";
+type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
 
 export default function AiAssistantBillingSettings({
   billingStatus,

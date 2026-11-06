@@ -364,7 +364,7 @@ export default function SectionHeader({
 
   if (editing) {
     return (
-      <div className="mb-4 flex items-center gap-2">
+      <div data-delivery-section-header="true" className="mb-4 flex items-center gap-2">
         <input
           autoFocus
           type="text"
@@ -390,7 +390,7 @@ export default function SectionHeader({
   }
 
   return (
-    <div className="mb-4">
+    <div data-delivery-section-header="true" className="mb-4">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-sm font-semibold uppercase text-white/40" style={{ letterSpacing: "0.05em" }}>
           {name} ({fileCount})

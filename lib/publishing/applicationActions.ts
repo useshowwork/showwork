@@ -1,3 +1,4 @@
+import { calendarSlugCandidate } from "@/lib/calendarSlug";
 import { brandPersonalityDocumentId } from "../knowledge/brandPersonality";
 import { parseCreativeBrief } from "../content/brief";
 import { generationCount, scheduledContentDate } from "../content/schedule";
@@ -474,7 +475,22 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
    const {v}=services(tx);await v.lockForPolicyChange(tx);await v.validateWorkspacePermission(tx,{actor:input.actor,calendarId:input.calendarId,permission:'workspace.manage'});
    const alphabet='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
    const password=input.action==='regenerate_password'?Array.from({length:10},()=>alphabet[randomInt(alphabet.length)]).join(''):input.password as string;
-   const row=input.action==='update_details'?(await tx.query(`UPDATE "SocialCalendar" SET "clientName"=$2,"updatedAt"=clock_timestamp() WHERE id=$1 RETURNING *`,[input.calendarId,(input.clientName as string).trim()])).rows[0]:(await tx.query(`UPDATE "SocialCalendar" SET "passwordHash"=$2,"accessCode"=$3,"updatedAt"=clock_timestamp() WHERE id=$1 RETURNING *`,[input.calendarId,await deps.hashViewerPassword!(password),password])).rows[0];
+   let row;
+   if(input.action==='update_details'){
+    await tx.query(`SELECT pg_advisory_xact_lock(hashtext('showwork-calendar-slugs'))`);
+    const current=(await tx.query(`SELECT "clientName",slug FROM "SocialCalendar" WHERE id=$1 FOR UPDATE`,[input.calendarId])).rows[0];
+    if(!current)throw Error('Calendar not found');
+    const name=(input.clientName as string).trim();
+    let slug=current.slug;
+    if(name!==current.clientName){
+     for(let attempt=0;attempt<100;attempt++){
+      const candidate=calendarSlugCandidate(name,attempt);
+      if(!(await tx.query(`SELECT id FROM "SocialCalendar" WHERE slug=$1 AND id<>$2`,[candidate,input.calendarId])).rows.length){slug=candidate;break;}
+      if(attempt===99)throw Error('CALENDAR_SLUG_UNAVAILABLE');
+     }
+    }
+    row=(await tx.query(`UPDATE "SocialCalendar" SET "clientName"=$2,slug=$3,"updatedAt"=clock_timestamp() WHERE id=$1 RETURNING *`,[input.calendarId,name,slug])).rows[0];
+   }else row=(await tx.query(`UPDATE "SocialCalendar" SET "passwordHash"=$2,"accessCode"=$3,"updatedAt"=clock_timestamp() WHERE id=$1 RETURNING *`,[input.calendarId,await deps.hashViewerPassword!(password),password])).rows[0];
    if(!row)throw Error('Calendar not found');return {calendar:JSON.parse(JSON.stringify(row,(_key,value)=>typeof value==='bigint'?Number(value):value)),...(input.action!=='update_details'?{newPassword:password}:{})};
   });
  }

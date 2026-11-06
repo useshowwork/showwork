@@ -1,3 +1,4 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { TOOL_COPY } from "@/components/dashboard/toolCopy";
 import WorkspaceCard from "@/components/dashboard/WorkspaceCard";
 import workspaceStyles from "@/components/dashboard/WorkspaceCard.module.css";
@@ -35,7 +36,7 @@ export default function WelcomePage() {
         <div className="mx-auto flex min-h-20 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
           <Link href="/dashboard" aria-label="Showwork dashboard" className="rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#175CD3]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/logo/swwhite.svg" alt="Showwork" className="h-7 w-auto brightness-0" />
+            <ShowworkLogo width={117}/>
           </Link>
           <Link href="/dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#DCE2EA] px-4 py-2 text-sm font-semibold text-[#475467] hover:bg-[#F8FAFF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#175CD3]">
             Skip for now <ArrowRight size={16} aria-hidden="true" />

@@ -6,7 +6,7 @@ export interface RecentContent { platform: string; hook: string; idea: string; c
 export async function recentContentMemory(calendarId: string): Promise<RecentContent[]> {
   if (!creativeGenerationEnabled() && process.env.CONTENT_BRIEF_GENERATION_ENABLED === "false") return [];
   const posts = await db.calendarPost.findMany({
-    where: { calendarId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 60,
+    where: { calendarId, deletedAt: null }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 60,
     select: { platform: true, hook: true, contentIdea: true, caption: true },
   });
   const seen = new Set<string>();

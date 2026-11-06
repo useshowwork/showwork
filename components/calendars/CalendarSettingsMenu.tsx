@@ -1,4 +1,5 @@
 "use client";
+import ResetCalendarButton from "@/components/calendars/ResetCalendarButton";
 import headerStyles from "./WorkspaceHeader.module.css";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
@@ -247,11 +248,12 @@ export default function CalendarSettingsMenu({
                       </span>
 
                       <span className="mt-0.5 block text-[10px] text-[#98A2B3]">
-                        Change the marketing workspace name
+                        Update the name and public calendar link
                       </span>
                     </span>
                   </button>
 
+                  {isManager && <div className="border-t border-[#EEF0F3] px-3 py-3"><ResetCalendarButton calendarId={calendarId} onReset={() => { window.dispatchEvent(new CustomEvent("showwork-calendar-reset", { detail: { calendarId } })); closeMenu(); }} /></div>}
                   {isManager && (
                     <button
                       type="button"
@@ -316,6 +318,8 @@ export default function CalendarSettingsMenu({
                   autoFocus
                   className="mt-1.5 w-full rounded-xl border border-[#D9DEE7] bg-[#F9FAFB] px-3 py-2.5 text-[16px] text-[#101828] outline-none transition-colors focus:border-[#1768E8] focus:bg-white focus:ring-4 focus:ring-[#1768E8]/10"
                 />
+
+                <p className="mt-2 text-[11px] leading-5 text-[#667085]">This updates the client-facing name and calendar URL. Share the new link after renaming.</p>
 
                 {nameError && (
                   <p className="mt-2 text-[11px] text-[#D92D20]">

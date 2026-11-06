@@ -17,7 +17,7 @@ export default function ProjectDashboardTheme({ children, initialTheme = "light"
     catch { /* Theme switching still works when preference storage is blocked. */ }
   }
   return <ThemeContext.Provider value={{ theme, toggle }}>
-    <main data-project-theme={theme} className={`${styles.theme} min-h-screen overflow-x-hidden bg-[var(--pd-page)] text-[var(--pd-text)]`}>{children}</main>
+    <main data-project-theme={theme} className={`${styles.theme} min-h-screen overflow-x-clip bg-[var(--pd-page)] text-[var(--pd-text)]`}>{children}</main>
   </ThemeContext.Provider>;
 }
 export function ProjectThemeToggle() {

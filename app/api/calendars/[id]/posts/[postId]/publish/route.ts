@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!(await hasCalendarPermission(creator.id, id, "publishing.manage")) || !(await canAccessCalendarById(id))) return NextResponse.json({ error: "You cannot publish in this workspace." }, { status: 403 });
   const body = await req.json().catch(() => ({}));
   if (!body || !["save", "schedule", "publish", "cancel", "retry"].includes(body.action)) return NextResponse.json({ error: "Choose a publishing action." }, { status: 400 });
-  const post = await db.calendarPost.findFirst({ where: { id: postId, calendarId: id }, include: { assets: true } });
+  const post = await db.calendarPost.findFirst({ where: { id: postId, calendarId: id, deletedAt: null }, include: { assets: true } });
   if (!post) return NextResponse.json({ error: "Post not found." }, { status: 404 });
   if (post.platform === "TIKTOK") return authorizeTikTokPost(post, creator.id, body);
   if (!["schedule", "cancel", "retry"].includes(body.action)) return NextResponse.json({ error: "Unsupported publishing action." }, { status: 400 });
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       validatePublishContent(post.platform, post.assets, buildCaption(post), post.postType, !post.creativeBrief || !!post.caption?.trim());
     } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid content" }, { status: 400 }); }
   }
-  const updated = await db.calendarPost.updateMany({ where: { id: postId, updatedAt: post.updatedAt, ...statusWhere(post.platform, status), approvalStatus: post.approvalStatus }, data: {
+  const updated = await db.calendarPost.updateMany({ where: { id: postId, deletedAt: null, updatedAt: post.updatedAt, ...statusWhere(post.platform, status), approvalStatus: post.approvalStatus }, data: {
     ...statusUpdate(post.platform, body.action === "cancel" ? "NOT_SCHEDULED" : "SCHEDULED"), publishWorkerStartedAt: null,
   } });
   if (!updated.count) return NextResponse.json({ error: "Post status changed. Refresh and try again." }, { status: 409 });

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { after, NextRequest, NextResponse } from 'next/server';
 import { getCurrentCreator } from '@/lib/auth';
-import { hasCalendarPermission, canAccessCalendarById } from '@/lib/calendarPermissions';
+import { hasCalendarPermission, canAccessCalendarById, calendarFeatureGate } from '@/lib/calendarPermissions';
 import { db } from '@/lib/db';
 import { finishBusinessChat } from '@/lib/knowledge/randy/service';
 import { researchRequested, isAffirmativeGoAhead, type BusinessChatAnswer } from '@/lib/knowledge/randy/answer';
@@ -18,6 +18,8 @@ async function access(id: string) {
 export async function GET(req: NextRequest, { params }: Context) {
  const { id } = await params; const creator = await access(id);
  if (!creator) return reply({ error: 'Access denied.' }, 403);
+ const featureGate = await calendarFeatureGate(id, 'randyStudio');
+ if (featureGate) return featureGate;
  try {
   const conversationId = req.nextUrl.searchParams.get('conversation');
   if (conversationId) {
@@ -34,6 +36,8 @@ export async function GET(req: NextRequest, { params }: Context) {
 export async function POST(req: NextRequest, { params }: Context) {
  const { id } = await params; const creator = await access(id);
  if (!creator || !await canAccessCalendarById(id)) return reply({ error: 'An active workspace and knowledge access are required.' }, 403);
+ const featureGate = await calendarFeatureGate(id, 'randyStudio');
+ if (featureGate) return featureGate;
  if (req.headers.get('origin') && req.headers.get('origin') !== req.nextUrl.origin) return reply({ error: 'Open Randy from Showwork.' }, 403);
  if (!req.headers.get('content-type')?.includes('application/json')) return reply({ error: 'Send a JSON message.' }, 415);
  const reader = req.body?.getReader(); if (!reader) return reply({ error: 'Enter a message.' }, 400);

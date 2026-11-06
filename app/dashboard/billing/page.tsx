@@ -304,7 +304,7 @@ export default async function BillingPage({
         compedUntil: workspaceComplimentaryEndsAt(workspaceBilling),
         contentWorkspacePlan: workspaceComplimentaryPlan(workspaceBilling) &&
           (workspaceBilling.contentWorkspaceBillingStatus !== "ACTIVE" || !workspaceBilling.contentWorkspacePlan ||
-           ["CREATOR", "STUDIO", "UNLIMITED"].indexOf(workspaceComplimentaryPlan(workspaceBilling)!) > ["CREATOR", "STUDIO", "UNLIMITED"].indexOf(workspaceBilling.contentWorkspacePlan))
+           ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"].indexOf(workspaceComplimentaryPlan(workspaceBilling)!) > ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"].indexOf(workspaceBilling.contentWorkspacePlan))
           ? workspaceComplimentaryPlan(workspaceBilling) : workspaceBilling.contentWorkspacePlan,
       } : null}
       selectedProduct={selectedProduct}

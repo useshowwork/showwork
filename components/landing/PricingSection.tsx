@@ -86,13 +86,14 @@ const WORKSPACE_PLANS: PricingPlan[] = CONTENT_WORKSPACE_PLAN_ORDER.map((key) =>
     name: plan.name,
     monthly: plan.priceNgnMonthly,
     annual: plan.priceNgnAnnual,
-    description: key === "CREATOR" ? "For independent social media managers." : key === "STUDIO" ? "For small marketing teams and agencies." : "For businesses and agencies coordinating larger teams.",
+    description: key === "CREATOR" ? "For independent social media managers." : key === "GROWTH" ? "For social media managers growing their client base." : key === "STUDIO" ? "For small marketing teams and agencies." : "For businesses and agencies coordinating larger teams.",
     features: [
       key === "UNLIMITED" ? "Unlimited active marketing workspaces" : `${formatWorkspaceLimit(plan.activeWorkspaces)} active marketing workspace${plan.activeWorkspaces === 1 ? "" : "s"}`,
       key === "UNLIMITED" ? "Unlimited collaborators" : `Up to ${plan.collaborators} collaborators`,
       `${plan.storageBytes / 1_000_000_000} GB storage`,
       `${plan.aiGenerations.toLocaleString("en-NG")} AI generations / month`,
-      ...getContentWorkspaceFeatureList(key),
+      ...(key !== "CREATOR" ? ["Randy in AI Studio"] : []),
+      ...getContentWorkspaceFeatureList(key).filter(feature => feature !== "Randy in AI Studio"),
     ],
     cta: "Start 7-day trial",
     href: `/signup?next=/dashboard/calendars&plan=${key}&cycle=MONTHLY`,
@@ -297,16 +298,16 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
             <span className="h-px w-8 bg-[#155FC7]" />
           </div>
 
-          <h2 className="mt-6 font-[var(--font-fraunces)] text-[clamp(3rem,6vw,6rem)] font-normal leading-[0.92] tracking-[-0.05em] text-[#101216]">
-            {compact ? "Find your team’s" : "One connected platform."}
+          <h2 className={compact ? "mt-5 text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.18] tracking-[-0.045em] text-[#294669]" : "mt-6 font-[var(--font-fraunces)] text-[clamp(3rem,6vw,6rem)] font-normal leading-[0.92] tracking-[-0.05em] text-[#101216]"}>
+            {compact ? "A plan for every" : "One connected platform."}
             <br />
             <span className="text-[#155FC7]">
-              {compact ? "next home." : "Plans for different ways of working."}
+              {compact ? "stage of your work." : "Plans for different ways of working."}
             </span>
           </h2>
 
           <p className="mx-auto mt-7 max-w-[590px] text-sm leading-7 text-[#626974] sm:text-base">
-            Whether you’re managing your own marketing clients or coordinating a business marketing team, choose the workspace that fits your operation.
+            Choose the client capacity, AI allowance and tools that fit your team.
           </p>
         </div>
 
@@ -406,7 +407,7 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
           className={`mt-12 grid gap-4 ${
             product === "delivery"
               ? "lg:grid-cols-4"
-              : "mx-auto max-w-[1200px] md:grid-cols-3"
+              : "mx-auto max-w-[1440px] md:grid-cols-2 xl:grid-cols-4"
           }`}
         >
           {plans.map((plan) => {
@@ -436,6 +437,7 @@ if (product === "delivery") {
 } else {
   const workspacePlanMap: Record<string, string> = {
     Creator: "CREATOR",
+    Growth: "GROWTH",
     Studio: "STUDIO",
     Agency: "UNLIMITED",
   };
@@ -463,11 +465,13 @@ if (product === "delivery") {
               >
                 {/* Popular badge */}
 
-                {plan.popular && (
-                  <div className="absolute right-6 top-6 rounded-full bg-[#155FC7] px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white">
-                    {product === "workspace" ? "Recommended for teams" : "Most popular"}
-                  </div>
-                )}
+                <div className="mb-4 flex min-h-7 items-center">
+                  {plan.popular && (
+                    <span className="inline-flex max-w-full items-center rounded-full bg-[#155FC7] px-3 py-1.5 text-[9px] font-bold uppercase leading-4 tracking-[0.08em] text-white">
+                      {product === "workspace" ? "Recommended for teams" : "Most popular"}
+                    </span>
+                  )}
+                </div>
 
                 {/* Plan heading */}
 

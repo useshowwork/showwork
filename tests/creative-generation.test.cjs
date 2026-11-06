@@ -10,7 +10,7 @@ const api=()=>load('lib/content/creativeGeneration.ts',{'@/lib/db':{db:{}}});
 test('memory reads only the workspace and deduplicates shared-platform copies',async()=>{
  process.env.CONTENT_CREATIVE_PIPELINE_ENABLED='true';let query;
  const mod=load('lib/content/creativeGeneration.ts',{'@/lib/db':{db:{calendarPost:{findMany:async q=>{query=q;return [{platform:'INSTAGRAM',hook:'h',contentIdea:'idea',caption:'caption'},{platform:'FACEBOOK',hook:'h',contentIdea:'idea',caption:'caption'}];}}}}});
- const rows=await mod.recentContentMemory('workspace-a');assert.deepEqual(query.where,{calendarId:'workspace-a'});assert.equal(query.take,60);assert.equal(rows.length,1);
+ const rows=await mod.recentContentMemory('workspace-a');assert.deepEqual(query.where,{calendarId:'workspace-a',deletedAt:null});assert.equal(query.take,60);assert.equal(rows.length,1);
 });
 test('disabled creative pipeline does not read content memory',async()=>{delete process.env.CONTENT_CREATIVE_PIPELINE_ENABLED;assert.deepEqual(await api().recentContentMemory('workspace'),[]);});
 test('planner receives business facts, request, history and stream boundaries',async()=>{

@@ -2,7 +2,7 @@
 import contentStyles from "./ContentPlanner.module.css";
 import CreativeBriefEditor from "./CreativeBriefEditor";
 import type { CreativeBrief, CreativeDevelopment } from "@/lib/content/brief";
-import { FilePenLine, ShieldCheck, Users, Send, X, Plus, CalendarDays, Layers3 } from "lucide-react";
+import { FilePenLine, ShieldCheck, Users, Send, X, Plus, CalendarDays, Layers3, Sparkles } from "lucide-react";
 import ContentWorkflow from "@/components/calendars/ContentWorkflow";
 import { calendarWorkflow, matchesCalendarStage, type CalendarStageFilter } from "@/lib/calendarWorkflow";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
@@ -24,7 +24,6 @@ import TikTokPreview from "@/components/calendars/TikTokPreview";
 import TikTokPrivacySelect from "@/components/calendars/TikTokPrivacySelect";
 import AutoPublishToggle from "@/components/calendars/AutoPublishToggle";
 import SocialPostPublishing from "@/components/calendars/SocialPostPublishing";
-import ResetCalendarButton from "@/components/calendars/ResetCalendarButton";
 import ImportCalendar from "@/components/calendars/ImportCalendar";
 import { uploadWorkspaceAsset } from "@/lib/workspaceVideoClient";
 import { workspaceUploadQueue } from "@/lib/workspaceUploadQueue";
@@ -539,7 +538,7 @@ function PostTile({ post, onClick, canDelete, onDelete }: { post: CalendarPostDa
       <div className={contentStyles.postStatus} data-tone={workflow.tone}><span/>{workflow.label}</div>
       {post.assets.length > 1 && <span className={contentStyles.assetCount}><IconLayers className="h-3 w-3"/>{post.assets.length} files</span>}
     </button>
-    {canDelete && <div className={contentStyles.deleteArea}>{!confirmingDelete ? <button type="button" onClick={() => setConfirmingDelete(true)} aria-label="Delete post" className={contentStyles.deleteTrigger}><X size={12}/></button> : <div className={contentStyles.confirmDelete}><span>Delete this post?</span><button disabled={deleting} onClick={async () => { setDeleting(true); setDeleteError(""); try { await onDelete(); } catch { setDeleteError("Could not delete. Try again."); } finally { setDeleting(false); } }}>{deleting ? "Deleting…" : "Delete"}</button><button disabled={deleting} onClick={() => setConfirmingDelete(false)}>Cancel</button></div>}{deleteError && <p role="alert">{deleteError}</p>}</div>}
+    {canDelete && <div className={contentStyles.deleteArea}>{!confirmingDelete ? <button type="button" onClick={() => setConfirmingDelete(true)} aria-label="Delete post" className={contentStyles.deleteTrigger}><X size={12}/></button> : <div className={contentStyles.confirmDelete}><span>Remove from calendar? Live social posts stay live.</span><button disabled={deleting} onClick={async () => { setDeleting(true); setDeleteError(""); try { await onDelete(); } catch (error) { setDeleteError(error instanceof Error ? error.message : "Could not delete. Try again."); } finally { setDeleting(false); } }}>{deleting ? "Deleting…" : "Delete"}</button><button disabled={deleting} onClick={() => setConfirmingDelete(false)}>Cancel</button></div>}{deleteError && <p role="alert">{deleteError}</p>}</div>}
   </article>;
 }
 
@@ -3147,7 +3146,7 @@ caption: draftDetails.caption,
                       color: t.text,
                     }}
                   >
-                    {post.contentIdea || post.hook || `${platformMeta.label} content`}
+                    {`${platformMeta.label} post`}
                   </h2>
 
                   {post.postType && (
@@ -3261,8 +3260,8 @@ caption: draftDetails.caption,
         {/* A single scroll surface keeps long captions and publishing controls reachable. */}
         <div ref={detailScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-wrap:anywhere]">
           <div className="px-4 pt-4 sm:px-7 sm:pt-6"><ContentWorkflow post={post} onNavigate={setDetailTab} dark={theme === "dark"} /></div>
-          <div className={detailTab === "content" ? "grid min-w-0 gap-7 p-4 sm:p-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8" : "hidden"}>
-            <div className="min-w-0">
+          <div className={detailTab === "content" ? `${contentStyles.editorColumns} grid min-w-0 gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-6` : "hidden"}>
+            <div className={`${contentStyles.editorMedia} min-w-0`}>
             {/* MEDIA */}
             <section>
               <div className="mb-3 flex items-end justify-between gap-3">
@@ -3282,7 +3281,7 @@ caption: draftDetails.caption,
                       color: t.textFaint,
                     }}
                   >
-                    Review the media attached to this post.
+                    Preview your post and manage its files.
                   </p>
                 </div>
 
@@ -3767,7 +3766,7 @@ caption: draftDetails.caption,
                   >
                     {isApproved
                       ? "The client approved this post. Its details are now locked."
-                      : "Everything planned for this piece of content. You can keep refining it until the client approves it."}
+                      : "Check the caption and creative, then continue to review."}
                   </p>
                 </div>
 
@@ -3791,7 +3790,7 @@ caption: draftDetails.caption,
   setAiEditError("");
   setAiEditFields([]);
 }}
-  className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
+  className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-[#1768e8] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#1059cd]"
 >
   <span className="text-sm"><UiSymbol name="sparkles" /></span>
   Edit with AI
@@ -5059,7 +5058,7 @@ caption: draftDetails.caption,
           {!editingDetails && detailTab === "content" && (
             <button type="button" onClick={() => setDetailTab(internallyApproved ? "client" : "internal")}
               className="min-h-11 flex-1 rounded-xl bg-[#155FC7] px-5 py-2.5 text-xs font-semibold text-white sm:flex-none">
-              {internallyApproved ? "Client review" : "Internal review"}
+              {internallyApproved ? "Continue to client review" : "Continue to internal review"}
             </button>
           )}
           <button
@@ -5193,6 +5192,15 @@ export default function CalendarGrid({
     useState<CalendarPostData | null>(
       null
     );
+
+  useEffect(() => {
+    const reset = (event: Event) => {
+      if ((event as CustomEvent<{calendarId: string}>).detail?.calendarId !== calendarId) return;
+      setPosts([]); setSelectedPost(null); setAddingDate(null);
+    };
+    window.addEventListener("showwork-calendar-reset", reset);
+    return () => window.removeEventListener("showwork-calendar-reset", reset);
+  }, [calendarId]);
 
   useEffect(() => {
     const previewReady = (event: Event) => {
@@ -5385,9 +5393,9 @@ export default function CalendarGrid({
   ) => {
     const res = await calendarMutationFetch(
       `/api/calendars/${calendarId}/posts/${postId}`,
-      { method: "DELETE" }
+      { method: "DELETE", headers: { "Content-Type": "application/json" }, ...(isOwner ? { body: JSON.stringify({ confirmation: "DELETE", removeBlocked: true }) } : {}) }
     );
-    if (!res.ok) throw new Error("Could not delete this post.");
+    if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "Could not delete this post."); }
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
 
@@ -5496,31 +5504,11 @@ export default function CalendarGrid({
 
   return (
     <div className={contentStyles.planner} data-theme={theme} style={{ background: t.pageBg, color: t.text, "--planner-text": t.text, "--planner-muted": t.textMuted, "--planner-surface": t.modalBg, "--planner-border": t.cardBorder, "--planner-soft": t.pillBg } as React.CSSProperties}>
-      <section className={contentStyles.intro}>
-        <div><p className={contentStyles.eyebrow}><span/> Your content, connected</p><h1>From the first idea.<br/><span>To out in the world.</span></h1><p>Plan the story, bring your team together and give every post a clear path to publishing.</p></div>
-        {userRole === "EDIT_CALENDAR" && <button type="button" onClick={() => setAddingDate(new Date())} className={contentStyles.create}><Plus size={17}/> Plan a post</button>}
-      </section>
-      <p className={contentStyles.summaryLabel}>Workspace totals · Select a stage to filter</p>
-      <div className={contentStyles.stageGrid} role="group" aria-label="Filter content by workflow stage">{([
-        {id:"all",label:"All content",note:"Your complete workspace",icon:Layers3},
-        {id:"internal",label:"Internal review",note:"Private to your team",icon:ShieldCheck},
-        {id:"client",label:"Client review",note:"Ready for client feedback",icon:Users},
-        {id:"publishing",label:"Publishing",note:"Approved, scheduled & live",icon:Send},
-      ] as const).map(item => { const Icon = item.icon; const count = posts.filter(post => matchesCalendarStage(post, item.id)).length; return <button type="button" key={item.id} aria-pressed={stageFilter === item.id} onClick={() => setStageFilter(item.id)} className={contentStyles.stageCard}><span className={contentStyles.stageTop}>{item.label}<Icon size={17}/></span><strong>{count}</strong><span className={contentStyles.stageNote}>{item.note}</span></button>; })}</div>
       {/* =====================================================
           CALENDAR HEADER
           ===================================================== */}
 
-      <AutoPublishToggle compact calendarId={calendarId} canManage={isOwner || (permissions ? permissions.includes("publishing.manage") : userRole === "EDIT_CALENDAR")} />
-      <div className="
-        mb-5
-        flex
-        flex-wrap
-        items-center
-        justify-between
-        gap-3
-        sm:mb-6
-      ">
+      <div className={contentStyles.compactHeader}>
         <div className="min-w-0">
           <p
             className="
@@ -5575,16 +5563,9 @@ export default function CalendarGrid({
           gap-1.5
           sm:gap-2
         ">
-          <div className={contentStyles.toolbarActions} role="group" aria-label="Calendar actions">
-          {isOwner && <ResetCalendarButton calendarId={calendarId} onReset={() => {
-            setPosts([]);
-            setSelectedPost(null);
-            setAddingDate(null);
-            clearFilters();
-            setViewMode("calendar");
-            const now = new Date();
-            setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
-          }} />}
+          <AutoPublishToggle compact calendarId={calendarId} canManage={isOwner || (permissions ? permissions.includes("publishing.manage") : userRole === "EDIT_CALENDAR")} />
+          {(permissions ? permissions.includes("ai.generate") : userRole === "EDIT_CALENDAR") && <button type="button" className={contentStyles.aiShortcut} onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "generate" } }))}><Sparkles size={15}/><span>Generate with AI</span><small>~2 min</small></button>}
+          {userRole === "EDIT_CALENDAR" && <button type="button" onClick={() => setAddingDate(new Date())} className={contentStyles.addShortcut}><Plus size={15}/>Add post</button>}
           {userRole === "EDIT_CALENDAR" && <ImportCalendar calendarId={calendarId} theme={theme} onImported={(importedPosts, firstDate) => {
             setPosts(importedPosts.map(normalize));
             clearFilters();
@@ -5594,12 +5575,16 @@ export default function CalendarGrid({
               setViewMode("calendar");
             }
           }} />}
+          <details className={contentStyles.moreActions}><summary>More <span aria-hidden="true">⌄</span></summary>
+          <div className={contentStyles.morePanel} role="group" aria-label="More calendar actions">
+          <label className={contentStyles.previewSelect}>Preview<select aria-label="Choose calendar or channel preview" value={viewMode} onChange={event => { setViewMode(event.target.value as typeof viewMode); setPlatformFilter("ALL"); }}>{([['calendar','Calendar'],['instagram','Instagram'],['tiktok','TikTok'],['linkedin','LinkedIn'],['facebook','Facebook'],['x','X']] as const).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <ThemeToggle
             theme={theme}
             onToggle={toggleTheme}
           />
 
           </div>
+          </details>
           {viewMode === "calendar" && (
             <>
               <button
@@ -5667,12 +5652,12 @@ export default function CalendarGrid({
       >
         <div className="
           flex flex-col gap-2 p-2
-          sm:flex-row sm:items-center
+          sm:flex-row sm:flex-wrap sm:items-center
         ">
           <div
             className="
               flex min-w-0 flex-1 items-center gap-2.5
-              rounded-xl border px-3.5 py-2.5
+              rounded-xl border px-3.5 py-2.5 sm:min-w-[180px]
             "
             style={{
               background: t.inputBg,
@@ -5721,6 +5706,9 @@ export default function CalendarGrid({
             )}
           </div>
 
+          <select className={contentStyles.stageSelect} aria-label="Filter by workflow stage" value={stageFilter} onChange={event => setStageFilter(event.target.value as CalendarStageFilter)}>{([
+            { id: "all", label: "All stages" }, { id: "internal", label: "Internal review" }, { id: "client", label: "Client review" }, { id: "publishing", label: "Publishing" },
+          ] as const).map(item => <option key={item.id} value={item.id}>{item.label} ({posts.filter(post => matchesCalendarStage(post, item.id)).length})</option>)}</select>
           {viewMode === "calendar" && (
             <>
               <label
@@ -6064,73 +6052,6 @@ export default function CalendarGrid({
           CALENDAR AND CHANNEL PREVIEWS
           ===================================================== */}
 
-      <div
-        role="group"
-        aria-label="Calendar and channel previews"
-        className={contentStyles.previewTabs}
-        style={{
-          background:
-            theme === "dark"
-              ? "rgba(255,255,255,0.04)"
-              : "rgba(0,0,0,0.035)",
-        }}
-      >
-        {(
-          [
-            { key: "calendar", label: "Calendar" },
-            { key: "instagram", label: "Instagram" },
-            { key: "tiktok", label: "TikTok" },
-            { key: "linkedin", label: "LinkedIn" },
-            { key: "facebook", label: "Facebook" },
-            { key: "x", label: "X" },
-          ] as const
-        ).map((tab) => {
-          const active = viewMode === tab.key;
-          const accentColor =
-            tab.key === "instagram"
-              ? "#D62976"
-              : tab.key === "tiktok"
-                ? "#FE2C55"
-                : "#2478FF";
-
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => {
-                setViewMode(tab.key);
-                setPlatformFilter("ALL");
-              }}
-              className="
-                min-h-11 flex-1 shrink-0 whitespace-nowrap
-                rounded-xl
-                px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#2478FF]
-                text-xs
-                font-semibold
-                transition-all
-                active:scale-[0.98]
-              "
-              style={{
-                background: active
-                  ? t.modalBg
-                  : "transparent",
-                color: active
-                  ? accentColor
-                  : t.textMuted,
-                boxShadow: active
-                  ? theme === "dark"
-                    ? "0 4px 14px rgba(0,0,0,0.35)"
-                    : "0 4px 14px rgba(0,0,0,0.08)"
-                  : "none",
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
       {viewMode === "instagram" && (
         <InstagramPreview
           posts={filteredPosts}
@@ -6305,7 +6226,7 @@ export default function CalendarGrid({
                           }
                           canDelete={
                             userRole === "EDIT_CALENDAR" &&
-                            post.approvalStatus !== "APPROVED"
+                            (isOwner || post.approvalStatus !== "APPROVED")
                           }
                           onDelete={() =>
                             handleDeletePost(
@@ -6575,7 +6496,7 @@ export default function CalendarGrid({
                             }
                             canDelete={
                               userRole === "EDIT_CALENDAR" &&
-                              post.approvalStatus !== "APPROVED"
+                              (isOwner || post.approvalStatus !== "APPROVED")
                             }
                             onDelete={() =>
                               handleDeletePost(

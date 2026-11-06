@@ -1,5 +1,6 @@
 "use client";
 
+import styles from "./projects/ProjectDeliveryDashboard.module.css";
 import UiSymbol from "@/components/ui/UiSymbol";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -113,13 +114,14 @@ export default function DashboardProjectList({ initialData }: { initialData: Das
   return (
     <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity 0.15s ease" }}>
       {/* SEARCH */}
-      <div className="relative mb-8 max-w-md">
+      <div className="relative mb-6 max-w-md">
         <IconSearch
           className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2"
           style={{ color: "var(--pd-subtle)" }}
         />
         <input
-          type="text"
+          type="search"
+          aria-label="Search projects by client name"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your projects by client name"
@@ -160,24 +162,24 @@ export default function DashboardProjectList({ initialData }: { initialData: Das
         <>
           {totalCount > 0 && (
             <>
-              <div className="mb-8 flex flex-col gap-2">
+              <div className="mb-5 flex flex-col gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="h-[3px] w-10" style={{ background: COLOR.accent }} aria-hidden />
-                  <h2 className="text-xl font-semibold text-[var(--pd-text)]">Your projects</h2>
+
+                  <h2 className="text-lg font-semibold text-[var(--pd-text)]">Your projects</h2>
                 </div>
                 <p className="text-sm text-[var(--pd-subtle)]">
-                  Click any project below to manage its files, publish it, or see what your client approved.
+                  Choose a project to continue.
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {ownedProjects.map((project) => (
-                  <Link
+                  <article
                     key={project.id}
-                    href={`/dashboard/${project.id}`}
-                    className="group relative flex flex-col gap-4 rounded-xl p-6 transition-all duration-300 hover:-translate-y-0.5"
+                    className={`${styles.projectCard} group relative flex flex-col gap-4 rounded-xl p-6 transition-all duration-300 hover:-translate-y-0.5`}
                     style={{ background: COLOR.charcoal, boxShadow: "0 0 0 1px var(--pd-border)" }}
                   >
+                    <Link href={`/dashboard/${project.id}`} aria-label={`Open ${project.clientName}`} className={styles.projectCardLink} />
                     <DeleteProjectButton projectId={project.id} clientName={project.clientName} />
 
                     <div className="flex items-start justify-between">
@@ -185,7 +187,7 @@ export default function DashboardProjectList({ initialData }: { initialData: Das
                         className="rounded-full px-3 py-1 text-xs font-semibold"
                         style={{ background: "rgba(36,120,255,0.15)", color: COLOR.blue }}
                       >
-                        Live
+                        Delivery
                       </span>
                     </div>
 
@@ -223,10 +225,10 @@ export default function DashboardProjectList({ initialData }: { initialData: Das
                       className="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold"
                       style={{ background: "rgba(36,120,255,0.1)", color: COLOR.blue }}
                     >
-                      View project
+                      Open project
                       <span className="transition-transform group-hover:translate-x-0.5" aria-hidden><><UiSymbol name="right" /></></span>
                     </div>
-                  </Link>
+                  </article>
                 ))}
               </div>
 
@@ -264,10 +266,10 @@ export default function DashboardProjectList({ initialData }: { initialData: Das
 
           {sharedProjects.length > 0 && (
             <div className={totalCount > 0 ? "mt-14" : ""}>
-              <div className="mb-8 flex flex-col gap-2">
+              <div className="mb-5 flex flex-col gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="h-[3px] w-10" style={{ background: COLOR.blue }} aria-hidden />
-                  <h2 className="text-xl font-semibold text-[var(--pd-text)]">Shared with you</h2>
+
+                  <h2 className="text-lg font-semibold text-[var(--pd-text)]">Shared with you</h2>
                 </div>
                 <p className="text-sm text-[var(--pd-subtle)]">
                   Projects other creators have invited you to collaborate on.
@@ -316,7 +318,7 @@ export default function DashboardProjectList({ initialData }: { initialData: Das
                       className="flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold"
                       style={{ background: "rgba(36,120,255,0.1)", color: COLOR.blue }}
                     >
-                      View project
+                      Open project
                       <span className="transition-transform group-hover:translate-x-0.5" aria-hidden><><UiSymbol name="right" /></></span>
                     </div>
                   </Link>

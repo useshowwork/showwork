@@ -8,7 +8,7 @@ import KnowledgeClarification, { type ClarificationPrompt, type ClarificationRes
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import { readAiGenerationResponse, waitForAiGeneration } from "@/lib/aiGenerationResponse";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { consumeReportingRecommendation, REPORTING_RECOMMENDATION_EVENT } from "@/lib/reporting/recommendationHandoff";
 import WorkspaceFeatureNotice from "@/components/calendars/WorkspaceFeatureNotice";
 import AiDraftReviewModal from "@/components/calendars/AiDraftReviewModal";
@@ -74,6 +74,10 @@ export default function AiContentGeneratorCard({
   }, [calendarId]);
   const [reportingRecommendationLoaded, setReportingRecommendationLoaded] = useState(false);
  const [platforms, setPlatforms] = useState<string[]>(["INSTAGRAM"]);
+ const advancedRef = useRef<HTMLDetailsElement>(null);
+ useEffect(() => {
+   if (platforms.length > 1 && advancedRef.current) advancedRef.current.open = true;
+ }, [platforms.length]);
 const [contentStrategy, setContentStrategy] = useState<
   "SAME_CONTENT" | "DIFFERENT_CONTENT" | "CUSTOM_GROUPS"
 >("SAME_CONTENT");
@@ -234,10 +238,7 @@ const togglePlatform = (platform: string) => {
   return (
     <>
       <section className={studioStyles.studio}>
-        <header className={studioStyles.hero}>
-          <div><p className={studioStyles.eyebrow}><Sparkles size={14}/> AI Studio / Generate</p><h1>Your knowledge.<br/><span>A fresh creative direction.</span></h1><p>Shape the brief. Choose your channels. Give your team something worth creating.</p></div>
-          <div className={studioStyles.heroArt} aria-hidden="true"><span className={studioStyles.orbitOne}/><span className={studioStyles.orbitTwo}/><div className={studioStyles.artMain}><WandSparkles size={35} strokeWidth={1.4}/></div><span className={studioStyles.artMini}><BookOpenText size={19}/></span><span className={studioStyles.artMiniTwo}><Layers3 size={20}/></span></div>
-        </header>
+        <header className={studioStyles.simpleHeader}><div><h1>Generate content</h1><p>Choose your schedule and channels. Your business knowledge and brand voice guide the drafts.</p></div><span><ShieldCheck size={14}/>Drafts for review</span></header>
         <div className={`${studioStyles.layout} ${!hasBusinessSummaryState ? studioStyles.singleColumn : ""}`}>
         <div className={studioStyles.form}>
           {reportingRecommendationLoaded && (
@@ -247,88 +248,11 @@ const togglePlatform = (platform: string) => {
           )}
 
           {!hasBusinessSummaryState ? (
-            <div className="relative mt-6 overflow-hidden rounded-[22px] border border-[#E4E7EC] bg-[#F8FAFC] p-5 sm:p-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#98A2B3] shadow-sm ring-1 ring-[#E4E7EC]">
-                  <SparkIcon />
-                </div>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-  <div className="flex min-w-0 items-start gap-3">
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D6E4FF] bg-[#EEF5FF]">
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <path
-          d="M12 3L14.8 9.2L21 12L14.8 14.8L12 21L9.2 14.8L3 12L9.2 9.2L12 3Z"
-          stroke="#2563EB"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
-
-    <div className="min-w-0">
-      <p className="text-xs font-semibold text-[#101828]">
-        Build the business context first
-      </p>
-
-      <p className="mt-1.5 max-w-xl text-[11px] leading-5 text-[#667085]">
-        Upload a business document so the AI understands this client before
-        generating content. This keeps drafts grounded in the actual business
-        rather than generic ideas.
-      </p>
-    </div>
-  </div>
-
-  <button
-    type="button"
-    onClick={() => {
-      window.dispatchEvent(
-        new CustomEvent("showwork-workspace-navigate", {
-          detail: { id: "knowledge" },
-        }),
-      );
-    }}
-    className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#101828] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#1D2939] hover:shadow-md"
-  >
-    <span>Go to Knowledge</span>
-
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="transition-transform group-hover:translate-x-0.5"
-      aria-hidden="true"
-    >
-      <path
-        d="M5 12H19M13 6L19 12L13 18"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  </button>
-</div>
-              </div>
-
-              <div className="mt-5 flex items-center gap-2 text-[10px] font-semibold text-[#98A2B3]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#CBD5E1]" />
-                Business knowledge required
-              </div>
-            </div>
+            <div className={studioStyles.missingKnowledge}><BookOpenText size={25}/><h2>Add business knowledge first</h2><p>Add your documents or website and set your brand voice to give these drafts the right foundation.</p><button type="button" onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "knowledge" } }))}>Set up business knowledge <ArrowIcon/></button></div>
           ) : (
             <>
-              <div className={studioStyles.contextStrip}><BookOpenText size={17}/><div><strong>Grounded in your business</strong><span>Your knowledge and saved brand personality guide this batch.</span></div><span className={studioStyles.draftBadge}><ShieldCheck size={13}/> Drafts only</span></div>
-              <div className={studioStyles.sectionTitle}><span>01</span><div><h2>Give it a purpose.</h2><p>What should this content help you achieve?</p></div><Target size={20}/></div>
+
+              <div className={studioStyles.sectionTitle}><span>01</span><div><h2>Campaign goal</h2><p>Choose a goal, or use your business context.</p></div><Target size={20}/></div>
               <label className="mt-4 block text-xs font-semibold text-slate-700">Campaign objective <span className="font-normal text-slate-400">Optional</span><select value={campaignObjective} onChange={e=>setCampaignObjective(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm"><option value="">Let the strategy follow my business knowledge</option>{["Brand Awareness","Engagement","Audience Education","Lead Generation","Product Adoption","Sales / Conversion","Custom Objective"].map(objective=><option key={objective}>{objective}</option>)}</select></label>
               {campaignObjective==="Custom Objective"&&<p className="mt-1 text-xs text-slate-500">Describe your objective in Creative direction below.</p>}
               {researchLoaded && <p role="status" className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">Research opportunity added to your instructions. Review the brief settings before generating.</p>}
@@ -344,7 +268,7 @@ const togglePlatform = (platform: string) => {
                 </div>
               )}
 
-              <div className={studioStyles.sectionTitle}><span>02</span><div><h2>Find your rhythm.</h2><p>Set the date range and a pace that works for your team.</p></div><CalendarRange size={20}/></div>
+              <div className={studioStyles.sectionTitle}><span>02</span><div><h2>Schedule</h2><p>Choose your dates and posts per week.</p></div><CalendarRange size={20}/></div>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <label className="block min-w-0">
                   <span className="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-[#667085]">
@@ -432,7 +356,7 @@ const togglePlatform = (platform: string) => {
               </div>
 
               <div className="mt-5">
-                <div className={studioStyles.sectionTitle}><span>03</span><div><h2>Choose your channels.</h2><p>Each platform gets content adapted to its audience.</p></div><Layers3 size={20}/></div>
+                <div className={studioStyles.sectionTitle}><span>03</span><div><h2>Channels</h2><p>Select where you want to create content.</p></div><Layers3 size={20}/></div>
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold text-[#101828]">
@@ -499,6 +423,9 @@ const togglePlatform = (platform: string) => {
                 </div>
               </div>
 
+              <details ref={advancedRef} className={studioStyles.advanced}>
+                <summary><span>Advanced settings</span><small>Content grouping & publishing schedules</small></summary>
+                <div className={studioStyles.advancedBody}>
                             {platforms.length > 1 && (
   <div className="mt-5 rounded-[22px] border border-[#E4E7EC] bg-[#F8FAFC] p-4 sm:p-5">
     <div>
@@ -957,8 +884,10 @@ const togglePlatform = (platform: string) => {
   </div>
 )}
 
+                </div>
+              </details>
               {!performanceRecommendationsAccess && <WorkspaceFeatureNotice compact feature="performanceRecommendations" />}
-              <div className={studioStyles.sectionTitle}><span>04</span><div><h2>Make it yours.</h2><p>Share an angle, an audience need or a thought to build on.</p></div><PenLine size={20}/></div>
+              <div className={studioStyles.sectionTitle}><span>04</span><div><h2>Creative direction</h2><p>Add a focus for this batch, if you have one.</p></div><PenLine size={20}/></div>
               <label className="mt-5 block">
                 <div className="flex items-end justify-between gap-4">
                   <div>
@@ -977,8 +906,8 @@ const togglePlatform = (platform: string) => {
                 <textarea
                   value={customInstructions}
                   onChange={(event) => { setCustomInstructions(event.target.value); if (!event.target.value.trim()) setReportingRecommendationLoaded(false); }}
-                  rows={6}
-                  placeholder="What should this campaign achieve? Share priorities, audience needs, tone or exclusions. AI will generate hooks, specific objectives, audiences, complete captions, flexible creative direction, CTAs and relevant hashtags. Scripts are optional."
+                  rows={4}
+                  placeholder="For example: Focus on our new service, address common customer questions, and use a friendly tone."
                   className="mt-3 w-full resize-y rounded-2xl border border-[#D9E2EC] bg-white px-4 py-3.5 text-[11px] leading-6 text-[#344054] outline-none transition-all placeholder:text-[#98A2B3] hover:border-[#B9C7D8] focus:border-[#2478FF] focus:ring-4 focus:ring-[#2478FF]/10"
                 />
                 <div className="mt-1.5 text-right text-[9px] text-[#98A2B3]">
@@ -990,34 +919,18 @@ const togglePlatform = (platform: string) => {
         </div>
 
         {hasBusinessSummaryState && <aside className={studioStyles.summary} aria-label="Generation summary">
-          <div className={studioStyles.summaryTop}><span><WandSparkles size={17}/> Your creative batch</span><span className={studioStyles.previewBadge}>Preview</span></div>
-          <h2>A clear brief.<br/><span>Better possibilities.</span></h2>
+          <div className={studioStyles.summaryTop}><span><WandSparkles size={17}/> Batch summary</span><span className={studioStyles.previewBadge}>{generating ? "Creating…" : "Drafts"}</span></div>
+          <h2>Your content batch</h2>
           <div className={studioStyles.batchNumbers} aria-live="polite"><div><strong>{expected?.ideas ?? "—"}</strong><span>creative ideas</span></div><div><strong>{expected?.drafts ?? "—"}</strong><span>calendar drafts</span></div></div>
           {!expected && <p className={studioStyles.summaryHelp}>Complete your dates and platform groups to calculate this batch.</p>}
           <div className={studioStyles.summaryPlatforms}>{platforms.length ? platforms.map(platform => <span key={platform} title={PLATFORMS.find(p => p.value === platform)?.label}><PlatformBrandIcon platform={platform} size={20}/><span className="sr-only">{PLATFORMS.find(p => p.value === platform)?.label}</span></span>) : <p>Choose at least one platform.</p>}</div>
           <dl className={studioStyles.summaryDetails}><div><dt>Objective</dt><dd>{campaignObjective || "Guided by your business"}</dd></div><div><dt>Date range</dt><dd>{startDate || "Choose start"}<br/>{endDate || "Choose end"}</dd></div><div><dt>Weekly rhythm</dt><dd>{postsPerWeek} per week</dd></div><div><dt>Time zone</dt><dd>{timeZone}</dd></div>{platforms.length > 1 && <div><dt>Content approach</dt><dd>{contentStrategy === "SAME_CONTENT" ? "Shared ideas, adapted" : contentStrategy === "DIFFERENT_CONTENT" ? "Distinct ideas per platform" : "Custom platform groups"}</dd></div>}</dl>
           <details className={studioStyles.scheduleNote}><summary>How draft counts work</summary><p>Monday-based weeks. Partial weeks include only selected publishing days. {postsPerWeek > 7 ? "Two daily slots are used where needed." : "One slot per publishing day, per platform."}</p></details>
-          <div className={studioStyles.reviewNote}><ShieldCheck size={18}/><p><strong>You stay in creative control.</strong>Review and edit the drafts before moving them into your workflow. Nothing is published by generating.</p></div>
-        </aside>}
-        </div>
-
-        {billingBlocked && <div className="px-5 sm:px-7"><WorkspaceFeatureNotice compact message="Your current subscription or AI allowance does not cover this generation. Upgrade for more access, or wait for your monthly allowance to reset." /></div>}
-        {hasBusinessSummaryState && (
-          <div className={studioStyles.footer}>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-[#101828]">
-                Ready to create your batch?
-              </p>
-              <p className="mt-1 text-[10px] leading-5 text-[#667085]">
-                Your drafts will open in review before anything is published.
-              </p>
-            </div>
-
             <button
               type="button"
               onClick={() => void generate()}
               disabled={generating || platforms.length === 0 || !expected?.drafts}
-              className="group mt-4 inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#2478FF] px-5 py-3 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(36,120,255,0.20)] transition-all hover:-translate-y-0.5 hover:bg-[#1768E8] hover:shadow-[0_16px_34px_rgba(36,120,255,0.24)] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-50 sm:mt-0 sm:w-auto"
+              className={studioStyles.generateButton}
             >
               {generating ? (
                 <>
@@ -1026,15 +939,18 @@ const togglePlatform = (platform: string) => {
                 </>
               ) : (
                 <>
-                  Create content
+                  Generate content
                   <span className="transition-transform group-hover:translate-x-0.5">
                     <ArrowIcon />
                   </span>
                 </>
               )}
             </button>
-          </div>
-        )}
+          <div className={studioStyles.reviewNote}><ShieldCheck size={18}/><p><strong>Review comes first.</strong>Review every draft before approval. Generating content does not publish it.</p></div>
+        </aside>}
+        </div>
+
+        {billingBlocked && <div className="px-5 sm:px-7"><WorkspaceFeatureNotice compact message="Your current subscription or AI allowance does not cover this generation. Upgrade for more access, or wait for your monthly allowance to reset." /></div>}
         {activeJobId && !reviewOpen && (
           <div className="mx-5 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-xs text-blue-900 sm:mx-7">
             <div className="flex items-center gap-2.5">

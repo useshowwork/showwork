@@ -73,7 +73,7 @@ export async function POST(
     },
   });
 
-  if (!post || post.calendarId !== calendar.id || post.isAiDraft || post.internalReviewStatus !== "APPROVED") {
+  if (!post || post.deletedAt || post.calendarId !== calendar.id || post.isAiDraft || post.internalReviewStatus !== "APPROVED") {
     return NextResponse.json(
       { error: "Post not found" },
       { status: 404 }

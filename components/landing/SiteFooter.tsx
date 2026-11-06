@@ -1,3 +1,4 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, MessageCircle } from "lucide-react";
@@ -66,7 +67,7 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
         <div className="grid gap-12 py-12 sm:py-16 lg:grid-cols-[1.2fr_2fr] lg:gap-20">
           <div>
             <Link href="/" aria-label="Showwork home" className={`inline-block rounded-sm ${focus}`}>
-              <Image src="/images/logo/swwhite.svg" alt="Showwork" width={180} height={30} className="h-auto w-40" />
+              <ShowworkLogo tone="white" width={136}/>
             </Link>
             <p className="mt-5 max-w-xs text-sm leading-7 text-slate-400">
               {homepage ? "Showwork is an intelligent marketing operations platform helping businesses and marketing professionals organise the work behind their marketing." : "Portfolios, project delivery and marketing workspaces for creators, agencies and social media teams."}

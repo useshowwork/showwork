@@ -21,13 +21,17 @@ export async function runPublishJob(postId: string, platform: SocialPlatform, di
     ...(platform === "TIKTOK" ? { tikTokPublishId: null } : {}),
   }, data: statusUpdate(platform, "SCHEDULED") });
   const claimed = await db.calendarPost.updateMany({ where: {
-    id: postId, OR: [{ calendar: { autoPublishEnabled: true } },
+    id: postId, OR: [{ deletedAt: null, calendar: { autoPublishEnabled: true } },
       ...(platform === "TIKTOK" ? [{ tikTokPublishId: { not: null } }] : [])],
     ...statusWhere(platform, "PUBLISHING"), approvalStatus: "APPROVED", internalReviewStatus: "APPROVED", isAiDraft: false, publishWorkerStartedAt: null, updatedAt: dispatchedAt,
   }, data: { publishWorkerStartedAt: new Date() } });
   if (claimed.count !== 1) return;
   try {
     const post = await db.calendarPost.findUniqueOrThrow({ where: { id: postId }, include: { assets: { orderBy: { displayOrder: "asc" } } } });
+    if (post.deletedAt && !(platform === "TIKTOK" && post.tikTokPublishId)) {
+      await db.calendarPost.updateMany({ where: { id: postId, deletedAt: { not: null } }, data: { ...statusUpdate(platform, "NOT_SCHEDULED"), publishWorkerStartedAt: null } });
+      return;
+    }
     validatePublishContent(platform, post.assets, buildCaption(post), post.postType, !post.creativeBrief || !!post.caption?.trim());
     if (!(await canAccessCalendarById(post.calendarId))) throw new Error("This workspace is no longer active. Renew access before publishing.");
     if (platform === "INSTAGRAM") await publishPostToInstagram(postId);

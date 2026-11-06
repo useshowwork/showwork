@@ -78,7 +78,7 @@ export default function FileGridItem({
   const isDocLike = type === "PDF" || type === "DOCUMENT";
 
   return (
-    <div className="flex flex-col gap-2">
+    <div data-delivery-file-status={approvalStatus} className="flex flex-col gap-2">
       <div
         className={`group relative cursor-pointer overflow-hidden rounded-xl bg-white/5 ${
           isDocLike ? "aspect-[3/4]" : "aspect-square"

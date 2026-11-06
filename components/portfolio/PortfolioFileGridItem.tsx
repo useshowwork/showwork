@@ -1,9 +1,9 @@
 "use client";
 import { calendarMutationFetch as fetch } from "@/lib/publishing/clientRequests";
 
+import styles from "./PortfolioWorkStudio.module.css";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import PortfolioAutoplayVideo from "@/components/portfolio/PortfolioAutoplayVideo";
 
 type MediaKind = "PHOTO" | "VIDEO" | "DOCUMENT" | "PDF";
 
@@ -55,7 +55,7 @@ export default function PortfolioFileGridItem({
   return (
     <div className={`group relative overflow-hidden rounded-xl bg-white/5 ${isDocLike ? "aspect-[3/4]" : "aspect-square"}`}>
       {type === "VIDEO" ? (
-        <PortfolioAutoplayVideo poster={posterUrl} src={url} className="h-full w-full object-cover" />
+        <video poster={posterUrl ?? undefined} src={url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
       ) : type === "PHOTO" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt={filename} className="h-full w-full object-cover" />
@@ -74,14 +74,14 @@ export default function PortfolioFileGridItem({
         </div>
       )}
 
-      <div className="absolute inset-0 flex items-start justify-end gap-1.5 p-2 opacity-0 transition-opacity duration-300 group-hover:bg-black/30 group-hover:opacity-100">
+      <div className={`${styles.mediaActions} pointer-events-none absolute inset-0 flex items-start justify-end gap-1.5 p-2 opacity-0 transition-opacity duration-300 group-hover:bg-black/30 group-hover:opacity-100 group-focus-within:bg-black/30 group-focus-within:opacity-100`}>
         {!isCover && (
           <button
             onClick={handleSetCover}
             disabled={settingCover}
             aria-label="Set as section cover"
             title="Set as section cover"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 transition-transform hover:scale-105 disabled:opacity-50"
+            className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full bg-white/90 transition-transform hover:scale-105 disabled:opacity-50"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#080808" strokeWidth="1.6">
               <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5-4.8-4.6 6.6-.9L12 2.5Z" strokeLinejoin="round" />
@@ -91,7 +91,7 @@ export default function PortfolioFileGridItem({
         <button
           onClick={() => setConfirmDelete(true)}
           aria-label="Delete file"
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 transition-transform hover:scale-105"
+          className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full bg-white/90 transition-transform hover:scale-105"
         >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
             <path d="M2 3h7M4 3V1.8h3V3M3 3v6.2h5V3" stroke="#080808" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />

@@ -1,4 +1,5 @@
 "use client";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 
 import {
   useEffect,
@@ -75,25 +76,8 @@ function Logo() {
       aria-label="Showwork home"
       className="group relative flex shrink-0 items-center"
     >
-      <div
-        role="img"
-        aria-label="Showwork"
-        className="relative z-10"
-        style={{
-          height: 24,
-          width: 112,
-          background:
-            "linear-gradient(90deg, #080808 0%, #080808 68%, #2478FF 100%)",
-          WebkitMaskImage: "url(/images/logo/sw.svg)",
-          maskImage: "url(/images/logo/sw.svg)",
-          WebkitMaskRepeat: "no-repeat",
-          maskRepeat: "no-repeat",
-          WebkitMaskPosition: "left center",
-          maskPosition: "left center",
-          WebkitMaskSize: "contain",
-          maskSize: "contain",
-        }}
-      />
+      <ShowworkLogo width={112}/>
+
 
       <span
         aria-hidden="true"

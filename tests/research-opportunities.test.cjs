@@ -29,7 +29,7 @@ function apiHarness() {
   const api=load('app/api/calendars/[id]/research/route.ts',{
     'next/server':{NextResponse:{json:(body,opts)=>({body,status:opts?.status??200})},after:()=>{throw Error('Unexpected paid research');}},
     '@/lib/auth':{getCurrentCreator:async()=>({id:'manager'})},
-    '@/lib/calendarPermissions':{hasCalendarPermission:async()=>allowed,canAccessCalendarById:async()=>true},
+    '@/lib/calendarPermissions':{hasCalendarPermission:async()=>allowed,canAccessCalendarById:async()=>true,calendarFeatureGate:async()=>null},
     '@/lib/db':{db},'@/lib/knowledge/research':{},'@/lib/knowledge/retrieval':{},
   });
   return {writes,api,setAllowed:v=>allowed=v,patch:(id,body)=>api.PATCH({json:async()=>body},{params:Promise.resolve({id})})};

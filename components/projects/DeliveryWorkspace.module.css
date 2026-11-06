@@ -1,0 +1,46 @@
+.brand{display:inline-flex;align-items:center;min-height:32px;font-size:21px;font-weight:650;letter-spacing:-.055em;color:#fff;margin-bottom:20px}
+@media(min-width:1024px){
+.frame[data-theme-root]{display:grid;grid-template-columns:240px minmax(0,1fr);grid-template-rows:56px minmax(0,1fr);align-items:start;gap:24px;padding:12px;background:#eef1f6;min-height:100dvh}
+.frame .ambient{display:none}
+.frame .layout{display:contents;padding:0;min-height:0}
+.frame .toolbar{grid-column:2;grid-row:1;position:sticky;inset:auto;top:12px;min-width:0;border:1px solid #e4e9f1;border-radius:16px;background:#fff;background-image:none;color:#26466d;box-shadow:0 8px 24px -6px #1632570a}
+.toolbar .toolbarInner{height:54px;max-width:none;padding:0 18px;gap:12px}
+.toolbar a,.toolbar label{color:#4c6a90;background:transparent;border-color:#dce5f0}
+.toolbar a:hover,.toolbar label:hover{background:#eff5ff;color:#1768e8}
+.toolbarInner>div>div>span:first-child{color:#527098}
+.toolbarInner>div>div>span:last-child{background:#dce5f0}
+.toolbarInner>div>span[data-live=true]{border-color:#cde8da;background:#eff8f3;color:#397c5c}
+.toolbarInner>div>span[data-live=false]{border-color:#ead7ce;background:#fff5ef;color:#9b6a4c}
+.toolbarInner>div>span[data-live=false]>span{background:#c9936c;animation:none}
+.frame .rail{position:fixed;left:12px;top:12px;bottom:12px;width:240px;height:calc(100dvh - 24px);border:1px solid #25497a;border-radius:16px;overflow:hidden;background:#123568;background-image:none;color:#edf4ff;box-shadow:0 8px 24px -6px #16325714}
+.rail>div[aria-hidden]{display:none}
+.rail .railIdentity{padding:18px;border-color:#ffffff20}
+.railIdentity>p{font-size:9px;letter-spacing:.1em;color:#afc6e7}
+.railIdentity>div:first-of-type{margin-top:10px}
+.railIdentity>div:first-of-type :is(span,p,button){font-size:15px}
+.rail .progressCard{margin-top:18px;padding:13px;border-color:#ffffff25;border-radius:11px;background:#ffffff06;box-shadow:none;backdrop-filter:none}
+.rail :global(.showwork-nav-link){min-height:42px;padding:6px 10px;border-radius:999px;gap:8px;color:#edf4ff;transition:background .16s ease}
+.rail :global(.showwork-nav-link):hover{transform:none;background:#244b7c}
+.rail :global(.showwork-nav-link) :global(.showwork-nav-icon){width:28px;height:28px;background:transparent;color:#bad3f5;border:0;box-shadow:none}
+.rail :global(.showwork-nav-link[data-active="true"]){box-shadow:none}
+.rail :global(.showwork-nav-link[data-active="true"]) :global(.showwork-nav-icon){color:#fff}
+.rail :global(.showwork-nav-link)>span:last-child>span:last-child:not(:first-child){display:none}
+.rail nav{padding:14px 12px;scrollbar-width:thin;scrollbar-color:#5577a7 transparent}
+.rail nav>p{color:#afc6e7}
+.rail>div:last-child{padding:12px;border-color:#ffffff20}
+.rail>div:last-child>a:first-child{border-radius:10px;background:#ffffff08;color:#edf4ff;border-color:#ffffff25}
+.rail>div:last-child>a:hover{background:#244b7c}
+.rail :focus-visible{outline:2px solid #b4d4ff;outline-offset:3px}
+.frame .content{grid-column:2;grid-row:2;min-width:0;min-height:calc(100dvh - 104px);padding:0;border:1px solid #e4e9f1;border-radius:16px;background:#fff;box-shadow:0 8px 24px -6px #1632570a}
+.content .contentInner{max-width:none;padding:24px}
+.content .contentHeading{margin-bottom:24px;padding-bottom:22px}
+.contentHeading h1{margin-top:10px;font-size:32px;line-height:1.15}
+.contentHeading p:last-child{margin-top:10px}
+.toolbar :focus-visible{outline:2px solid #1768e8;outline-offset:3px}
+.frame:has(:global(#theme-toggle:checked)){background:#0d1420}
+.frame:has(:global(#theme-toggle:checked)) .toolbar{background:#101722;border-color:#29374b;color:#d4e4fa}
+.frame:has(:global(#theme-toggle:checked)) .toolbar a,.frame:has(:global(#theme-toggle:checked)) .toolbar label{color:#c5d9f5;border-color:#334764}
+.frame:has(:global(#theme-toggle:checked)) .toolbarInner>div>div>span:first-child{color:#c5d9f5}
+.frame:has(:global(#theme-toggle:checked)) .content{border-color:#29374b}
+}
+@media(prefers-reduced-motion:reduce){.rail :global(.showwork-nav-link){transition:none}}

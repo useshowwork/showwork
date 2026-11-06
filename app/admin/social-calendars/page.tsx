@@ -463,7 +463,7 @@ export default async function AdminSocialCalendarsPage({
     workspaceFilters.push({
       manager: {
         contentWorkspacePlan:
-          planFilter as "CREATOR" | "STUDIO" | "UNLIMITED",
+          planFilter as "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED",
       },
     });
   }
@@ -1198,6 +1198,7 @@ export default async function AdminSocialCalendarsPage({
                     "CREATOR",
                     "Creator",
                   ],
+                  ["GROWTH", "Growth"],
                   [
                     "STUDIO",
                     "Studio",

@@ -17,7 +17,7 @@ import {
 function resolvePlan(
   value: unknown
 ): ContentWorkspacePlan | null {
-  if (value === "CREATOR" || value === "STUDIO" || value === "UNLIMITED") {
+  if (value === "CREATOR" || value === "GROWTH" || value === "STUDIO" || value === "UNLIMITED") {
     return value;
   }
 

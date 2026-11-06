@@ -2,8 +2,9 @@
 
 import { IMAGE_FILE_ACCEPT, MEDIA_FILE_ACCEPT, getFileContentType } from "@/lib/mediaFileTypes";
 
-import UiSymbol from "@/components/ui/UiSymbol";
-import { useState } from "react";
+import { useState, type InputHTMLAttributes } from "react";
+import { ArrowRight, Check, CheckCircle2, ImagePlus, Loader2, Mail, Monitor, Plus, Save, Smartphone, Upload, UserRound, X } from "lucide-react";
+import styles from "./PortfolioIdentity.module.css";
 import { useRouter } from "next/navigation";
 import { putFileWithProgress } from "@/lib/uploadClient";
 
@@ -195,385 +196,133 @@ export default function PortfolioDetailsForm({
     setBioSkills(bioSkills.filter((s) => s !== skill));
   };
 
+  const [activeTab, setActiveTab] = useState<'basics' | 'banner' | 'about' | 'contact'>('basics');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const values = {
+    companyName: name, heroTagline: tagline, heroMediaId: selectedHero,
+    heroBannerDesktopUrl: bannerDesktopUrl, heroBannerDesktopType: bannerDesktopType,
+    heroBannerMobileUrl: bannerMobileUrl, heroBannerMobileType: bannerMobileType,
+    contactEmail: email, whatsappNumber: whatsapp, ctaText: cta,
+    instagramUrl: instagram, twitterUrl: twitter, linkedinUrl: linkedin,
+    tiktokUrl: tiktok, facebookUrl: facebook, youtubeUrl: youtube,
+    bioText, bioSkills, bioStat, bioPhotoUrl,
+  };
+  const serialized = JSON.stringify(values);
+  const [lastSaved, setLastSaved] = useState(serialized);
+  const dirty = serialized !== lastSaved;
+  const uploading = uploadingDesktopBanner || uploadingMobileBanner || uploadingPhoto;
+  const tabs = [
+    { id: 'basics' as const, label: 'Basics', icon: UserRound },
+    { id: 'banner' as const, label: 'Banner', icon: ImagePlus },
+    { id: 'about' as const, label: 'About you', icon: UserRound },
+    { id: 'contact' as const, label: 'Contact', icon: Mail },
+  ];
   const save = async () => {
-    setSaving(true);
-    await fetch("/api/portfolio", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-               companyName: name,
-        heroTagline: tagline,
-        heroMediaId: selectedHero,
-                heroBannerDesktopUrl: bannerDesktopUrl,
-        heroBannerDesktopType: bannerDesktopType,
-        heroBannerMobileUrl: bannerMobileUrl,
-        heroBannerMobileType: bannerMobileType,
-        contactEmail: email,
-        whatsappNumber: whatsapp,
-        ctaText: cta,
-        instagramUrl: instagram,
-        twitterUrl: twitter,
-        linkedinUrl: linkedin,
-        tiktokUrl: tiktok,
-        facebookUrl: facebook,
-        youtubeUrl: youtube,
-        bioText,
-        bioSkills,
-        bioStat,
-        bioPhotoUrl,
-      }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    router.refresh();
+    if (saving || uploading || !dirty) return;
+    if (!name.trim()) { setActiveTab('basics'); setSaveError('Add your name or brand name before saving.'); return; }
+    setSaving(true); setSaved(false); setSaveError(null);
+    try {
+      const response = await fetch('/api/portfolio', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: serialized,
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'We couldn’t save your changes. Please try again.');
+      }
+      setLastSaved(serialized); setSaved(true); router.refresh();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'We couldn’t save your changes. Please try again.');
+    } finally { setSaving(false); }
   };
 
-  return (
-    <div className="flex flex-col gap-5">
-      {uploadError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{uploadError}</p>}
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-          Company / brand name
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-          Tagline
-        </label>
-        <input
-          type="text"
-          value={tagline}
-          onChange={(e) => setTagline(e.target.value)}
-          placeholder="e.g. Director & Cinematographer"
-          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-        />
-      </div>
-
-            {/* ── Banner — two dedicated uploads, one per screen shape.
-          A single image can't look right on both a wide desktop
-          screen and a tall phone screen at once: a landscape photo
-          either gets awkwardly cropped on mobile, or shrinks down
-          with empty space above and below it. Two purpose-shot
-          images, each matching the screen it's actually for, is what
-          lets the banner genuinely fill the screen properly on both. ── */}
-      <div className="rounded-xl p-5" style={{ background: "linear-gradient(135deg, rgba(36,120,255,0.06), rgba(36,120,255,0.02))", border: "1px solid rgba(36,120,255,0.18)" }}>
-        <h3 className="mb-1 text-sm font-semibold text-slate-950">Your portfolio's banner</h3>
-        <p className="mb-4 text-xs leading-relaxed text-slate-500">
-          Upload two versions of your banner — one shaped for wide desktop screens, one shaped for tall phone screens.
-          Visitors automatically see the version for their screen. Banner images are resized and saved as high-quality WebP; gallery originals are unchanged.
-        </p>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-              Desktop banner
-            </label>
-            <p className="mb-2 text-[11px] text-slate-400">
-              Landscape — wider than it is tall. Recommended around 1920×1080px. Image or video.
-            </p>
-            {bannerDesktopUrl && (
-              bannerDesktopType === "VIDEO" ? (
-                <video src={bannerDesktopUrl} muted className="mb-2 aspect-video w-full rounded-lg object-cover" />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={bannerDesktopUrl} alt="" className="mb-2 aspect-video w-full rounded-lg object-cover" />
-              )
-            )}
-            <label className="block cursor-pointer rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-center text-xs text-slate-500 hover:border-slate-300">
-              {uploadingDesktopBanner ? `Uploading ${desktopBannerProgress}%` : bannerDesktopUrl ? "Change desktop banner" : "Upload desktop banner"}
-              <input
-                type="file"
-                accept={MEDIA_FILE_ACCEPT}
-                className="hidden"
-                disabled={uploadingDesktopBanner}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.currentTarget.value = "";
-                  if (file) uploadBanner(file, setBannerDesktopUrl, setBannerDesktopType, setUploadingDesktopBanner, setDesktopBannerProgress, 1920);
-                }}
-              />
-            </label>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-              Mobile banner
-            </label>
-            <p className="mb-2 text-[11px] text-slate-400">
-              Portrait — taller than it is wide. Recommended around 1080×1350px. Image or video.
-            </p>
-            {bannerMobileUrl && (
-              bannerMobileType === "VIDEO" ? (
-                <video src={bannerMobileUrl} muted className="mb-2 aspect-[4/5] w-full rounded-lg object-cover" />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={bannerMobileUrl} alt="" className="mb-2 aspect-[4/5] w-full rounded-lg object-cover" />
-              )
-            )}
-            <label className="block cursor-pointer rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-center text-xs text-slate-500 hover:border-slate-300">
-              {uploadingMobileBanner ? `Uploading ${mobileBannerProgress}%` : bannerMobileUrl ? "Change mobile banner" : "Upload mobile banner"}
-              <input
-                type="file"
-                accept={MEDIA_FILE_ACCEPT}
-                className="hidden"
-                disabled={uploadingMobileBanner}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.currentTarget.value = "";
-                  if (file) uploadBanner(file, setBannerMobileUrl, setBannerMobileType, setUploadingMobileBanner, setMobileBannerProgress, 1350);
-                }}
-              />
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* Legacy option — picks one already-uploaded section photo as
-          the banner instead. Kept for anyone who set this up before
-          the two dedicated uploads above existed; the two above take
-          priority whenever they're set. */}
-      {bannerCandidates.length > 0 && (
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            Or, pick from your existing photos <span className="normal-case text-slate-400">(used only if no banner is uploaded above)</span>
-          </label>
-          <div className="grid grid-cols-4 gap-2">
-            {bannerCandidates.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => setSelectedHero(b.id)}
-                className="relative aspect-square overflow-hidden rounded-lg"
-                style={{ border: selectedHero === b.id ? "2px solid #F5C842" : "2px solid rgba(255,255,255,0.08)" }}
-              >
-                {b.type === "VIDEO" ? (
-                  <video src={b.url} muted className="h-full w-full object-cover" />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.url} alt="" className="h-full w-full object-cover" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-          Contact email
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-          WhatsApp number
-        </label>
-        <input
-          type="text"
-          value={whatsapp}
-          onChange={(e) => setWhatsapp(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-          Call-to-action text
-        </label>
-        <input
-          type="text"
-          value={cta}
-          onChange={(e) => setCta(e.target.value)}
-          placeholder="e.g. Let's work together"
-          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            Instagram
-          </label>
-          <input
-            type="text"
-            value={instagram}
-            onChange={(e) => setInstagram(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            Twitter / X
-          </label>
-          <input
-            type="text"
-            value={twitter}
-            onChange={(e) => setTwitter(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            LinkedIn
-          </label>
-          <input
-            type="text"
-            value={linkedin}
-            onChange={(e) => setLinkedin(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            TikTok
-          </label>
-          <input
-            type="text"
-            value={tiktok}
-            onChange={(e) => setTiktok(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            Facebook
-          </label>
-          <input
-            type="text"
-            value={facebook}
-            onChange={(e) => setFacebook(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            YouTube
-          </label>
-          <input
-            type="text"
-            value={youtube}
-            onChange={(e) => setYoutube(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-      </div>
-
-      {/* ── Intro / about section — shown before the portfolio's own
-          sections on the public page. Its own visually distinct block
-          so it reads as a deliberate addition, not just another field
-          in the list above. ── */}
-      <div className="mt-2 rounded-xl p-5" style={{ background: "linear-gradient(135deg, rgba(245,200,66,0.08), rgba(255,255,255,0.7))", border: "1px solid rgba(245,200,66,0.2)" }}>
-        <h3 className="mb-4 text-sm font-semibold text-slate-950">Introduce yourself</h3>
-
-        <div className="mb-4">
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            Photo
-          </label>
-          <div className="flex items-center gap-3">
-            {bioPhotoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={bioPhotoUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
-            )}
-            <label
-              className="cursor-pointer rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 hover:border-slate-300"
-            >
-              {uploadingPhoto ? `Uploading ${photoProgress}%` : bioPhotoUrl ? "Change photo" : "Upload photo"}
-              <input
-                type="file"
-                accept={IMAGE_FILE_ACCEPT}
-                className="hidden"
-                disabled={uploadingPhoto}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.currentTarget.value = "";
-                  if (file) uploadBioPhoto(file);
-                }}
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            About you
-          </label>
-          <textarea
-            value={bioText}
-            onChange={(e) => setBioText(e.target.value)}
-            rows={4}
-            placeholder="A short introduction — who you are, what you do, what you care about in your work."
-            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            Skills / specialties
-          </label>
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {bioSkills.map((skill) => (
-              <span
-                key={skill}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-                style={{ background: "rgba(36,120,255,0.10)", color: "#2478FF" }}
-              >
-                {skill}
-                <button type="button" onClick={() => removeSkill(skill)} className="text-slate-500 hover:text-slate-950">
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          <input
-            type="text"
-            value={skillDraft}
-            onChange={(e) => setSkillDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addSkill();
-              }
-            }}
-            placeholder="Type a skill and press Enter"
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase text-slate-500" style={{ letterSpacing: "0.08em" }}>
-            Stat <span className="normal-case text-slate-400">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={bioStat}
-            onChange={(e) => setBioStat(e.target.value)}
-            placeholder="e.g. 50+ projects delivered"
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-300"
-          />
-        </div>
-      </div>
-
-      <button
-        onClick={save}
-        disabled={saving}
-        className="mt-2 w-fit rounded-lg px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
-        style={{ background: "#0A0A0A", color: "#FFFFFF" }}
-      >
-        {saving ? "Saving..." : saved ? <><UiSymbol name="check" />{" Saved"}</> : "Save changes"}
-      </button>
+  return <div className={styles.editor}>
+    <div className={styles.tabs} role="tablist" aria-label="Portfolio identity sections">
+      {tabs.map(({ id, label, icon: Icon }, index) => <button key={id} id={`identity-tab-${id}`} type="button" role="tab" aria-selected={activeTab === id} aria-controls={`identity-panel-${id}`} tabIndex={activeTab === id ? 0 : -1} disabled={saving} onClick={() => setActiveTab(id)} onKeyDown={event => {
+        const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : offset ? (index + offset + tabs.length) % tabs.length : null;
+        if (next !== null) { event.preventDefault(); setActiveTab(tabs[next].id); document.getElementById(`identity-tab-${tabs[next].id}`)?.focus(); }
+      }}><Icon size={16} /><span>{label}</span></button>)}
     </div>
-  );
+    <div className={styles.layout}>
+      <div className={styles.formArea}>
+        <fieldset disabled={saving} className={styles.fieldset}>
+          <section id="identity-panel-basics" role="tabpanel" aria-labelledby="identity-tab-basics" hidden={activeTab !== 'basics'}>
+            <div className={styles.sectionHeading}><span className={styles.kicker}>YOUR FIRST IMPRESSION</span><h3>Start with the essentials.</h3><p>Help visitors recognise you and understand what you do.</p></div>
+            <IdentityField label="Your name or brand" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Alex Morgan Studio" autoComplete="organization" />
+            <IdentityField label="What do you do?" value={tagline} onChange={e => setTagline(e.target.value)} placeholder="e.g. Photographer & visual storyteller" hint="A short line that appears at the top of your portfolio." />
+            <IdentityField label="Contact button text" value={cta} onChange={e => setCta(e.target.value)} placeholder="Let’s work together" hint="The invitation visitors see when they’re ready to reach out." />
+            <button type="button" className={styles.next} onClick={() => setActiveTab('banner')}>Next: choose your banner <ArrowRight size={15} /></button>
+          </section>
+          <section id="identity-panel-banner" role="tabpanel" aria-labelledby="identity-tab-banner" hidden={activeTab !== 'banner'}>
+            <div className={styles.sectionHeading}><span className={styles.kicker}>SET THE SCENE</span><h3>Give your work a strong opening.</h3><p>Add a wide banner for desktop and a portrait version for phones.</p></div>
+            <div className={styles.bannerGrid}>
+              <BannerPicker label="Desktop banner" hint="Landscape · 1920 × 1080 recommended" url={bannerDesktopUrl} mediaType={bannerDesktopType} uploading={uploadingDesktopBanner} progress={desktopBannerProgress} onFile={file => void uploadBanner(file, setBannerDesktopUrl, setBannerDesktopType, setUploadingDesktopBanner, setDesktopBannerProgress, 1920)} />
+              <BannerPicker label="Mobile banner" hint="Portrait · 1080 × 1350 recommended" url={bannerMobileUrl} mediaType={bannerMobileType} uploading={uploadingMobileBanner} progress={mobileBannerProgress} onFile={file => void uploadBanner(file, setBannerMobileUrl, setBannerMobileType, setUploadingMobileBanner, setMobileBannerProgress, 1350)} />
+            </div>
+            {bannerCandidates.length > 0 && <details className={styles.gallery}><summary>Choose from your uploaded work</summary><p>Used when a dedicated banner hasn’t been added.</p><div className={styles.galleryGrid}>{bannerCandidates.map(candidate => <button key={candidate.id} type="button" aria-label={`Use portfolio ${candidate.type === 'VIDEO' ? 'video' : 'photo'} ${bannerCandidates.indexOf(candidate) + 1} as banner`} aria-pressed={selectedHero === candidate.id} onClick={() => setSelectedHero(candidate.id)}>
+              {candidate.type === 'VIDEO' ? <video src={candidate.url} muted preload="metadata" /> : <img src={candidate.url} alt="" loading="lazy" />}
+              {selectedHero === candidate.id && <span><Check size={14} /></span>}
+            </button>)}</div></details>}
+            <button type="button" className={styles.next} onClick={() => setActiveTab('about')}>Next: introduce yourself <ArrowRight size={15} /></button>
+          </section>
+          <section id="identity-panel-about" role="tabpanel" aria-labelledby="identity-tab-about" hidden={activeTab !== 'about'}>
+            <div className={styles.sectionHeading}><span className={styles.kicker}>THE PERSON BEHIND THE WORK</span><h3>Tell your story.</h3><p>A short introduction helps people connect with you.</p></div>
+            <div className={styles.photoRow}>
+              {bioPhotoUrl ? <img src={bioPhotoUrl} alt="Your profile photo" /> : <span className={styles.photoPlaceholder}><UserRound size={26} /></span>}
+              <div><strong>Profile photo</strong><label className={styles.uploadButton}>{uploadingPhoto ? <Loader2 size={14} className={styles.spinner} /> : <Upload size={14} />}{uploadingPhoto ? `Uploading ${photoProgress}%` : bioPhotoUrl ? 'Change photo' : 'Upload photo'}<input type="file" accept={IMAGE_FILE_ACCEPT} disabled={uploadingPhoto} onChange={e => { const file = e.target.files?.[0]; e.currentTarget.value = ''; if (file) void uploadBioPhoto(file); }} /></label></div>
+            </div>
+            <label className={styles.field}><span>About you</span><textarea value={bioText} onChange={e => setBioText(e.target.value)} rows={5} placeholder="Who you are, what you create, and what makes your approach different." /></label>
+            <div className={styles.field}><label htmlFor="identity-skills">Skills & specialties</label><div className={styles.skills}>{bioSkills.map(skill => <span key={skill}>{skill}<button type="button" aria-label={`Remove ${skill}`} onClick={() => removeSkill(skill)}><X size={12} /></button></span>)}</div><div className={styles.skillInput}><input id="identity-skills" value={skillDraft} onChange={e => setSkillDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }} placeholder="e.g. Cinematography" /><button type="button" aria-label="Add skill" disabled={!skillDraft.trim()} onClick={addSkill}><Plus size={17} /></button></div><small>Press Enter or + to add a skill.</small></div>
+            <IdentityField label="A highlight" value={bioStat} onChange={e => setBioStat(e.target.value)} placeholder="e.g. 50+ projects delivered" hint="Optional. Share a milestone you’re proud of." />
+            <button type="button" className={styles.next} onClick={() => setActiveTab('contact')}>Next: add contact details <ArrowRight size={15} /></button>
+          </section>
+          <section id="identity-panel-contact" role="tabpanel" aria-labelledby="identity-tab-contact" hidden={activeTab !== 'contact'}>
+            <div className={styles.sectionHeading}><span className={styles.kicker}>MAKE IT EASY TO REACH YOU</span><h3>Turn a visit into a conversation.</h3><p>Choose how potential clients can get in touch.</p></div>
+            <IdentityField label="Contact email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="hello@yourstudio.com" autoComplete="email" />
+            <IdentityField label="WhatsApp number" type="tel" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="+234 800 000 0000" hint="Include your country code." autoComplete="tel" />
+            <div className={styles.socialHeading}><h4>Social profiles</h4><span>Optional</span></div>
+            <div className={styles.socialGrid}>{[
+              {label:'Instagram', value:instagram, set:setInstagram, placeholder:'https://instagram.com/yourname'},
+              {label:'X / Twitter', value:twitter, set:setTwitter, placeholder:'https://x.com/yourname'},
+              {label:'LinkedIn', value:linkedin, set:setLinkedin, placeholder:'https://linkedin.com/in/yourname'},
+              {label:'TikTok', value:tiktok, set:setTiktok, placeholder:'https://tiktok.com/@yourname'},
+              {label:'Facebook', value:facebook, set:setFacebook, placeholder:'https://facebook.com/yourname'},
+              {label:'YouTube', value:youtube, set:setYoutube, placeholder:'https://youtube.com/@yourname'},
+            ].map(social => <IdentityField key={social.label} label={social.label} value={social.value} onChange={e => social.set(e.target.value)} placeholder={social.placeholder} inputMode="url" />)}</div>
+          </section>
+        </fieldset>
+      </div>
+      <aside className={styles.preview} aria-label="Draft identity preview">
+        <div className={styles.previewHeading}><span>YOUR FIRST IMPRESSION</span><small>Draft preview</small></div>
+        <div className={styles.previewCard}>
+          <div className={styles.previewBanner}>{bannerDesktopUrl ? bannerDesktopType === 'VIDEO' ? <video src={bannerDesktopUrl} muted preload="metadata" /> : <img src={bannerDesktopUrl} alt="Desktop banner preview" /> : <div className={styles.bannerPlaceholder}><ImagePlus size={28} /><span>Your banner goes here</span></div>}</div>
+          <div className={styles.previewCopy}>
+            <div className={styles.previewAvatar}>{bioPhotoUrl ? <img src={bioPhotoUrl} alt="" /> : <span>{name.trim().slice(0,2).toUpperCase() || 'YOU'}</span>}</div>
+            <h3>{name.trim() || 'Your name or brand'}</h3><p>{tagline || 'Your creative specialty, in a few words.'}</p>
+            {bioText && <p className={styles.previewBio}>{bioText}</p>}
+            {!!bioSkills.length && <div className={styles.previewSkills}>{bioSkills.slice(0,3).map(skill => <span key={skill}>{skill}</span>)}</div>}
+            <span className={styles.previewCta}>{cta.trim() || 'Let’s work together'} <ArrowRight size={13} /></span>
+          </div>
+        </div>
+        <p className={styles.previewNote}>A quick look at your details. Save your changes, then open your live portfolio to see the full design.</p>
+      </aside>
+    </div>
+    <div className={styles.saveBar}>
+      <div role={saveError || uploadError ? 'alert' : 'status'} className={saveError || uploadError ? styles.error : styles.saveStatus}>{saveError || uploadError || (uploading ? 'Upload in progress. Keep this page open.' : saving ? 'Saving your changes…' : dirty ? 'You have unsaved changes' : saved ? <><CheckCircle2 size={16} /> Your changes are saved</> : 'Your portfolio is up to date')}</div>
+      <button type="button" disabled={saving || uploading || !dirty} onClick={() => void save()} className={styles.saveButton}>{saving ? <Loader2 size={16} className={styles.spinner} /> : <Save size={16} />}{saving ? 'Saving…' : 'Save changes'}</button>
+    </div>
+  </div>;
+}
+
+function IdentityField({ label, hint, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string }) {
+  return <label className={styles.field}><span>{label}</span><input {...props} />{hint && <small>{hint}</small>}</label>;
+}
+function BannerPicker({ label, hint, url, mediaType, uploading, progress, onFile }: {label:string;hint:string;url:string;mediaType:string;uploading:boolean;progress:number;onFile:(file:File)=>void}) {
+  return <div className={styles.bannerPicker}>
+    <div className={styles.bannerTitle}>{label === 'Desktop banner' ? <Monitor size={16} /> : <Smartphone size={16} />}<h4>{label}</h4></div>
+    <p>{hint}</p>
+    <div className={styles.bannerFrame} data-portrait={label === 'Mobile banner'}>{url ? mediaType === 'VIDEO' ? <video src={url} muted controls preload="metadata" /> : <img src={url} alt={`${label} preview`} /> : <span><ImagePlus size={25} /><small>Image or video</small></span>}</div>
+    <label className={styles.uploadButton}><Upload size={14} />{uploading ? `Uploading ${progress}%` : url ? 'Change banner' : 'Upload banner'}<input type="file" accept={MEDIA_FILE_ACCEPT} disabled={uploading} onChange={event => {const file=event.target.files?.[0];event.currentTarget.value='';if(file)onFile(file);}} /></label>
+    {uploading && <progress aria-label={`${label} upload progress`} value={progress} max={100} />}
+  </div>;
 }

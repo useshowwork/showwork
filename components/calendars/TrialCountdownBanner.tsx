@@ -4,7 +4,7 @@ import SubscriptionCheckoutButton from "@/components/billing/SubscriptionCheckou
 import { CONTENT_WORKSPACE_PLANS } from "@/lib/contentWorkspaceEntitlements";
 import { useEffect, useMemo, useState } from "react";
 
-type ContentWorkspacePlan = "CREATOR" | "STUDIO" | "UNLIMITED";
+type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
 type BillingCycle = "MONTHLY" | "ANNUAL";
 
 const PLAN_PRICING = Object.fromEntries(

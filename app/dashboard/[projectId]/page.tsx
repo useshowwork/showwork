@@ -1,3 +1,7 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
+import DeliveryOverview from "@/components/projects/DeliveryOverview";
+import DeliveryWorkStudio from "@/components/projects/DeliveryWorkStudio";
+import workspaceStyles from "@/components/projects/DeliveryWorkspace.module.css";
 import DeliveryHelpLink from "@/components/help/DeliveryHelpLink";
 import { syncVerifiedPayment } from "@/lib/paymentSync";
 import { hasDeliveryPaidAccess } from "@/lib/complimentaryAccess";
@@ -635,15 +639,15 @@ export default async function ProjectDetailPage({
   > = {
     overview: {
       eyebrow: "Project overview",
-      title: "Everything important, at a glance.",
+      title: "Project overview",
       description:
-        "Track delivery progress, project status and the next actions that keep this client moving.",
+        "See what’s ready, what needs attention, and what to do next.",
     },
     work: {
       eyebrow: "The work",
-      title: "Files, feedback and approvals.",
+      title: "Project files",
       description:
-        "Manage everything being delivered to the client without mixing it with access, people or activity.",
+        "Upload your work, review client feedback, and manage approvals.",
     },
     access: {
       eyebrow: "Client access",
@@ -666,9 +670,9 @@ export default async function ProjectDetailPage({
   };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#F5F8FD] text-slate-900" data-theme-root>
+    <main className={`${workspaceStyles.frame} min-h-screen overflow-x-clip bg-[#F5F8FD] text-slate-900`} data-theme-root>
       {/* Minimal ambient background */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+      <div aria-hidden className={`${workspaceStyles.ambient} pointer-events-none fixed inset-0 overflow-hidden`}>
         <div className="absolute -left-48 -top-48 h-[520px] w-[520px] rounded-full bg-blue-100/40 blur-[120px]" />
         <div className="absolute right-[-180px] top-[28%] h-[420px] w-[420px] rounded-full bg-sky-100/40 blur-[130px]" />
       </div>
@@ -702,14 +706,14 @@ export default async function ProjectDetailPage({
         }
         .showwork-nav-link[data-active="true"] {
           border-color: rgba(255,255,255,.22) !important;
-          background: rgba(255,255,255,.18) !important;
+          background: #1768e8 !important;
           color: #fff !important;
           box-shadow: 0 14px 34px -22px rgba(0,0,0,.5);
         }
         .showwork-nav-link[data-active="true"] .showwork-nav-icon {
-          background: #fff;
-          color: #1d4ed8;
-          box-shadow: 0 10px 25px -15px rgba(0,0,0,.5);
+          background: transparent;
+          color: #fff;
+          box-shadow: none;
         }
         .showwork-nav-link[data-active="true"] .showwork-nav-badge {
           background: rgba(255,255,255,.18);
@@ -797,8 +801,8 @@ export default async function ProjectDetailPage({
       <ProjectTabController initialView={activeView} />
 
       {/* Top bar */}
-      <header className="fixed inset-x-0 top-0 z-[100] border-b border-white/15 bg-gradient-to-r from-[#123EA8] via-[#2563EB] to-[#4F8CFF] shadow-[0_18px_55px_-28px_rgba(20,68,180,.9)]">
-        <div className="mx-auto flex h-[68px] max-w-[1600px] items-center justify-between pl-16 pr-4 sm:pl-16 sm:pr-6 lg:px-8">
+      <header className={`${workspaceStyles.toolbar} fixed inset-x-0 top-0 z-[100] border-b border-white/15 bg-gradient-to-r from-[#123EA8] via-[#2563EB] to-[#4F8CFF] shadow-[0_18px_55px_-28px_rgba(20,68,180,.9)]`}>
+        <div className={`${workspaceStyles.toolbarInner} mx-auto flex h-[68px] max-w-[1600px] items-center justify-between pl-16 pr-4 sm:pl-16 sm:pr-6 lg:px-8`}>
           <Link
             href="/dashboard/projects"
             className="group inline-flex items-center gap-2.5 text-sm text-white/80 transition hover:text-white"
@@ -816,7 +820,7 @@ export default async function ProjectDetailPage({
               <span className="h-3 w-px bg-white/25" />
             </div>
 
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
+            <span data-live={isLive} className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
               <span className="showwork-live-dot h-1.5 w-1.5 rounded-full bg-emerald-400" />
               {isLive ? "Live" : "Offline"}
             </span>
@@ -874,14 +878,15 @@ export default async function ProjectDetailPage({
         </div>
       </div>
 
-      <div className="relative z-10 min-h-screen lg:pl-[292px]">
+      <div className={`${workspaceStyles.layout} relative z-10 min-h-screen lg:pl-[292px]`}>
         {/* Desktop sidebar — fixed independently from the document scroll */}
-        <ResponsiveSidebar label="Project navigation" drawerClassName="bg-gradient-to-b from-[#123EA8] via-[#2563EB] to-[#17398F] text-white" desktopClassName="fixed bottom-0 left-0 top-[68px] z-[90] hidden w-[292px] border-r border-white/15 bg-gradient-to-b from-[#123EA8] via-[#2563EB] to-[#17398F] text-white shadow-[22px_0_60px_-36px_rgba(18,62,168,.9)] lg:flex lg:flex-col">
+        <ResponsiveSidebar label="Project navigation" drawerClassName="bg-gradient-to-b from-[#123EA8] via-[#2563EB] to-[#17398F] text-white" desktopClassName={`${workspaceStyles.rail} fixed bottom-0 left-0 top-[68px] z-[90] hidden w-[292px] border-r border-white/15 bg-gradient-to-b from-[#123EA8] via-[#2563EB] to-[#17398F] text-white shadow-[22px_0_60px_-36px_rgba(18,62,168,.9)] lg:flex lg:flex-col`}>
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-cyan-300/10 blur-3xl" />
             <div className="absolute -right-20 bottom-16 h-72 w-72 rounded-full bg-indigo-950/25 blur-3xl" />
           </div>
-          <div className="relative border-b border-white/15 border-white/15 p-5">
+          <div className={`${workspaceStyles.railIdentity} relative border-b border-white/15 p-5`}>
+            <Link href="/dashboard" className={workspaceStyles.brand}><ShowworkLogo tone="white"/></Link>
             <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[white]">
               Project workspace
             </p>
@@ -897,7 +902,7 @@ export default async function ProjectDetailPage({
               />
             </div>
 
-            <div className="mt-5 rounded-2xl border border-white/20 bg-white/[0.12] p-4 shadow-[0_18px_45px_-28px_rgba(0,0,0,.45)] backdrop-blur-xl">
+            <div className={`${workspaceStyles.progressCard} mt-5 rounded-2xl border border-white/20 bg-white/[0.12] p-4`}>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium text-white/65">Approval progress</span>
                 <span className="text-xs font-semibold text-white">{progressPercent}%</span>
@@ -996,10 +1001,10 @@ export default async function ProjectDetailPage({
         </ResponsiveSidebar>
 
         {/* Main content */}
-        <section className="theme-content min-h-screen min-w-0 lg:pt-[68px]">
-          <div className="mx-auto max-w-[1120px] px-4 pb-24 pt-8 sm:px-6 md:pt-10 lg:px-10 lg:pb-28 lg:pt-12">
+        <section className={`${workspaceStyles.content} theme-content min-h-screen min-w-0 lg:pt-[68px]`}>
+          <div className={`${workspaceStyles.contentInner} mx-auto max-w-[1120px] px-4 pb-24 pt-8 sm:px-6 md:pt-10 lg:px-10 lg:pb-28 lg:pt-12`}>
             {/* Page title */}
-            <div className="mb-9 border-b border-blue-200/70 pb-8">
+            <div className={`${workspaceStyles.contentHeading} mb-9 border-b border-blue-200/70 pb-8`}>
               {(Object.keys(pageMeta) as WorkspaceView[]).map((viewKey) => {
                 const meta = pageMeta[viewKey];
                 return (
@@ -1022,290 +1027,32 @@ export default async function ProjectDetailPage({
                 OVERVIEW
             ====================================================== */}
             <div data-workspace-panel="overview" hidden={activeView !== "overview"}>
-              <div>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <Stat value={totalFiles} label="Files" />
-                  <Stat value={approvedCount} label="Approved" tone="success" />
-                  <Stat value={needsRevisionCount} label="Revisions" tone="warning" />
-                  <Stat value={viewerEmails.length} label="Client visits" />
-                </div>
-
-                <PaymentReleasePanel
-                  projectId={project.id}
-                  status={project.deliveryStatus}
-                />
-
-                {/* Project health */}
-                <div className="mt-8 grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
-                  <div className="showwork-lift overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_55px_-38px_rgba(15,23,42,.32)]">
-                    <div className="border-b border-slate-200 p-6 sm:p-7">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-400">
-                        Delivery health
-                      </p>
-                      <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                          <p className="text-4xl font-semibold tracking-[-0.05em] text-slate-900">
-                            {progressPercent}%
-                          </p>
-                          <p className="mt-1 text-sm text-slate-500">of files approved</p>
-                        </div>
-                        <p className="max-w-sm text-xs leading-5 text-slate-500">
-                          {totalFiles === 0
-                            ? "Add the first files to begin this delivery."
-                            : needsRevisionCount > 0
-                              ? `${needsRevisionCount} file${needsRevisionCount === 1 ? "" : "s"} need attention before the project can move forward.`
-                              : allApproved
-                                ? "Everything is approved. This delivery is ready for the next stage."
-                                : `${pendingCount} file${pendingCount === 1 ? "" : "s"} are still awaiting client review.`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-6 sm:p-7">
-                      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${progressPercent}%`, background: COLOR.gold }}
-                        />
-                      </div>
-
-                      <div className="mt-5 grid grid-cols-3 gap-3">
-                        <div>
-                          <p className="text-lg font-semibold text-emerald-600">{approvedCount}</p>
-                          <p className="mt-1 text-[9px] uppercase tracking-[0.1em] text-slate-400">Approved</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-semibold text-orange-600">{needsRevisionCount}</p>
-                          <p className="mt-1 text-[9px] uppercase tracking-[0.1em] text-slate-400">Revisions</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-semibold text-slate-700">{pendingCount}</p>
-                          <p className="mt-1 text-[9px] uppercase tracking-[0.1em] text-slate-400">Pending</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="showwork-lift rounded-[28px] border border-slate-200 bg-slate-50 p-6 sm:p-7 shadow-[0_18px_50px_-40px_rgba(15,23,42,.3)]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-400">
-                      Quick actions
-                    </p>
-
-                    <div className="mt-5 space-y-2">
-                      <Link
-  data-workspace-tab="work"
-  data-workspace-nav="work"
-  href={viewHref("work")}
-                        scroll={false}
-                        className="group flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-                      >
-                        <span>Manage project files</span>
-                        <IconArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                      </Link>
-
-                      <Link
-                        data-workspace-tab
-                        data-workspace-nav="access"
-                        href={viewHref("access")}
-                        scroll={false}
-                        className="group flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-                      >
-                        <span>Manage client access</span>
-                        <IconArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                      </Link>
-
-                      <a
-                        href={liveUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center justify-between rounded-2xl bg-[#2563EB] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_12px_30px_-18px_rgba(37,99,235,.7)] transition hover:bg-[#1D4ED8]"
-                      >
-                        <span>Open client portal</span>
-                        <IconExternal className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Next attention */}
-                <div className="mt-5 rounded-[28px] border border-slate-200 bg-slate-50 p-6 sm:p-7">
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
-                          needsRevisionCount > 0
-                            ? "bg-orange-400/10 text-orange-600"
-                            : allApproved
-                              ? "bg-emerald-400/10 text-emerald-600"
-                              : "bg-[#2563EB]/10 text-[#1D4ED8]"
-                        }`}
-                      >
-                        {needsRevisionCount > 0 ? (
-                          <IconRevision className="h-5 w-5" />
-                        ) : allApproved ? (
-                          <IconCheck className="h-5 w-5" />
-                        ) : (
-                          <IconFiles className="h-5 w-5" />
-                        )}
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {needsRevisionCount > 0
-                            ? "Revisions need your attention."
-                            : allApproved
-                              ? "Everything is approved."
-                              : totalFiles === 0
-                                ? "Start by adding the work."
-                                : "The project is waiting on client review."}
-                        </p>
-                        <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
-                          {needsRevisionCount > 0
-                            ? "Open Work to review the notes attached to the affected files."
-                            : allApproved
-                              ? "Every file in this delivery has been approved by the client."
-                              : totalFiles === 0
-                                ? "Create sections and upload the files you want the client to review."
-                                : `${pendingCount} file${pendingCount === 1 ? "" : "s"} still need a decision from the client.`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <Link
-                      data-workspace-tab
-                      data-workspace-nav="work"
-                      href={viewHref("work")}
-                      scroll={false}
-                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-                    >
-                      Open work
-                      <IconArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              <DeliveryOverview projectId={project.id} totalFiles={totalFiles} approvedCount={approvedCount} revisionCount={needsRevisionCount} pendingCount={pendingCount} visits={viewerEmails.length} status={project.deliveryStatus} liveUrl={liveUrl}/>
             </div>
 
             {/* =====================================================
                 WORK
             ====================================================== */}
             <div data-workspace-panel="work" hidden={activeView !== "work"}>
-              <div>
-                <div className="mb-7 rounded-[28px] border border-[#2563EB]/10 bg-[#F8FAFD] p-6 sm:p-7">
-                  <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-[#1D4ED8]">
-                        Keep the project moving.
-                      </p>
-                      <p className="mt-2 max-w-xl text-xs leading-5 text-slate-500">
-                        Add new files or sections whenever the work evolves. Your
-                        client will always see the latest version in their delivery.
-                      </p>
-                    </div>
-
-                    <div className="shrink-0">
-                      <AddMoreFilesButton
-                        projectId={project.id}
-                        remaining={uploadSessionsRemaining}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {needsRevisionCount > 0 && (
-                  <div className="mb-7 rounded-[22px] border border-orange-400/10 bg-orange-400/[0.06] px-5 py-5">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-400/10 text-orange-600">
-                        <IconRevision className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-orange-200">
-                          {needsRevisionCount} file{needsRevisionCount === 1 ? "" : "s"} need
-                          {needsRevisionCount === 1 ? "s" : ""} attention.
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-orange-200/45">
-                          Your client has requested changes. Review the notes attached
-                          to the affected files below.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {allApproved && needsRevisionCount === 0 && (
-                  <div className="mb-7 rounded-[22px] border border-emerald-400/10 bg-emerald-400/[0.055] px-5 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-600">
-                        <IconCheck className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-200">
-                          Everything is approved.
-                        </p>
-                        <p className="mt-1 text-xs text-emerald-200/40">
-                          Your client has approved every file in this project.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <PaymentReleasePanel
-                  projectId={project.id}
-                  status={project.deliveryStatus}
-                />
-
-                <SectionIntro
-                  eyebrow="Project files"
-                  title="Everything you're delivering"
-                  description={
-                    totalFiles > 0
-                      ? `${approvedCount} approved · ${needsRevisionCount} revision${
-                          needsRevisionCount === 1 ? "" : "s"
-                        } · ${pendingCount} awaiting review`
-                      : "Organize the work into sections and folders before it reaches the client."
-                  }
-                  icon={<IconFiles className="h-5 w-5" />}
-                  action={
-                    totalFiles > 0 ? (
-                      <div className="hidden items-center gap-3 sm:flex">
-                        <span className="text-xs text-slate-400">
-                          {sectionsWithFiles} section{sectionsWithFiles === 1 ? "" : "s"}
-                        </span>
-                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${progressPercent}%`, background: COLOR.gold }}
-                          />
-                        </div>
-                      </div>
-                    ) : undefined
-                  }
-                />
-
-                {totalFiles === 0 ? (
-                  <div className="rounded-[28px] border border-slate-200 bg-white px-6 py-20 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-                      <IconFiles className="h-6 w-6 text-slate-500" />
-                    </div>
-                    <h3 className="mt-5 text-base font-semibold text-slate-900">
-                      Nothing here yet.
-                    </h3>
-                    <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                      Add your first section and start uploading the work you want
-                      your client to see.
-                    </p>
-                    <div className="mt-6">
-                      <AddMoreFilesButton
-                        projectId={project.id}
-                        remaining={uploadSessionsRemaining}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-14">
+              <DeliveryWorkStudio
+                sections={[
+                  ...project.sections.map(section => {
+                    const media = [...section.media, ...section.folders.flatMap(folder => folder.media)];
+                    return { id: section.id, name: section.name, count: media.length,
+                      pending: media.filter(file => file.approvalStatus === "PENDING").length,
+                      revisions: media.filter(file => file.approvalStatus === "NEEDS_REVISION").length,
+                      approved: media.filter(file => file.approvalStatus === "APPROVED").length };
+                  }),
+                  ...(ungroupedMedia.length ? [{ id: "ungrouped", name: "Other files", count: ungroupedMedia.length,
+                    pending: ungroupedMedia.filter(file => file.approvalStatus === "PENDING").length,
+                    revisions: ungroupedMedia.filter(file => file.approvalStatus === "NEEDS_REVISION").length,
+                    approved: ungroupedMedia.filter(file => file.approvalStatus === "APPROVED").length }] : []),
+                ]}
+                uploadAction={<AddMoreFilesButton projectId={project.id} remaining={uploadSessionsRemaining} />}
+                releasePanel={<PaymentReleasePanel projectId={project.id} status={project.deliveryStatus} />}
+              >
                     {project.sections.map((section) => (
-                      <div key={section.id}>
+                      <div key={section.id} data-delivery-section={section.id}>
                         <SectionHeader
                           projectId={project.id}
                           sectionId={section.id}
@@ -1356,6 +1103,7 @@ export default async function ProjectDetailPage({
                         {section.folders.map((folder) => (
                           <div
                             key={folder.id}
+                            data-delivery-folder="true"
                             className="mt-8 rounded-[24px] border border-slate-200 bg-slate-50 p-5 sm:p-6"
                           >
                             <div className="mb-5 flex items-center justify-between gap-4">
@@ -1404,7 +1152,7 @@ export default async function ProjectDetailPage({
                     ))}
 
                     {ungroupedMedia.length > 0 && (
-                      <div>
+                      <div data-delivery-section="ungrouped">
                         <div className="mb-5">
                           <p className="text-sm font-semibold text-slate-700">Other files</p>
                           <p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-slate-400">
@@ -1443,9 +1191,7 @@ export default async function ProjectDetailPage({
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-              </div>
+              </DeliveryWorkStudio>
             </div>
 
             {/* =====================================================

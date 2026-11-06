@@ -30,11 +30,11 @@ test('v2 requires complete default copy and v1 preserves historical brief data',
   const old={...complete,version:1};delete old.hook;delete old.caption;delete old.hashtags;
   assert.deepEqual(parseCreativeBrief(old),old);
 });
-test('v2 editor presents seven fields in order and keeps script optional',()=> {
+test('v2 editor prioritizes post copy before expandable strategy and keeps script optional',()=> {
   const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
   const Editor=load('components/calendars/CreativeBriefEditor.tsx').default;
   const html=renderToStaticMarkup(React.createElement(Editor,{calendarId:'a',post:{id:'p',platform:'INSTAGRAM',creativeBrief:brief('ui')},onUpdated:()=>{}}));
-  const labels=['Hook','Objective','Target Audience','Caption','Creative direction','Call to Action','Hashtags'];
+  const labels=['Caption','Call to Action','Hashtags','Hook','Objective','Target Audience','Creative direction'];
   let at=-1;for(const label of labels){const next=html.indexOf('>'+label+'<',at+1);assert.ok(next>at,label);at=next;}
   assert.equal(html.indexOf('>Script<'),-1);
 });

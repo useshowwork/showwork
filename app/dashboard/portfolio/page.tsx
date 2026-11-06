@@ -1,3 +1,4 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import PortfolioHelpLink from "@/components/help/PortfolioHelpLink";
 import UiSymbol from "@/components/ui/UiSymbol";
 import { redirect } from "next/navigation";
@@ -126,23 +127,7 @@ export default async function PortfolioEntryPage() {
                   All apps
                 </Link>
 
-                <div
-                  role="img"
-                  aria-label="Showwork"
-                  style={{
-                    height: 20,
-                    width: 80,
-                    backgroundColor: "#0A0A0A",
-                    WebkitMaskImage: "url(/images/logo/sw.svg)",
-                    maskImage: "url(/images/logo/sw.svg)",
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskPosition: "left center",
-                    maskPosition: "left center",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                  }}
-                />
+                <ShowworkLogo width={96}/>
 
                 <div className="w-[55px]" />
               </div>
@@ -284,23 +269,7 @@ export default async function PortfolioEntryPage() {
               All apps
             </Link>
 
-            <div
-              role="img"
-              aria-label="Showwork"
-              style={{
-                height: 20,
-                width: 80,
-                backgroundColor: "#0A0A0A",
-                WebkitMaskImage: "url(/images/logo/sw.svg)",
-                maskImage: "url(/images/logo/sw.svg)",
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                WebkitMaskPosition: "left center",
-                maskPosition: "left center",
-                WebkitMaskSize: "contain",
-                maskSize: "contain",
-              }}
-            />
+            <ShowworkLogo width={96}/>
 
             <div className="w-[55px]" />
           </div>

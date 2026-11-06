@@ -31,6 +31,12 @@ export default function AutoPublishToggle({ calendarId, canManage, compact = fal
     } catch (error) { setError(error instanceof Error ? error.message : "Could not save publishing settings."); }
     finally { setBusy(false); }
   }
+  if (compact) return <div className="relative flex flex-wrap items-center gap-2 text-xs" aria-label="Automatic publishing">
+    <span id={`auto-publish-${calendarId}`} className="font-medium" title="Automatically publish approved posts on supported connected channels. Team and client approvals still apply.">Auto-publish</span>
+    <button type="button" role="switch" aria-checked={enabled === true} aria-labelledby={`auto-publish-${calendarId}`} aria-busy={busy} disabled={!canManage || enabled === null || busy} onClick={() => void toggle()} title={!canManage ? "You need publishing permission to change this setting." : "Change automatic publishing"} className={`relative h-6 w-10 shrink-0 rounded-full transition-colors disabled:opacity-50 ${enabled ? "bg-blue-600" : "bg-slate-300"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${enabled ? "left-1 translate-x-4" : "left-1"}`}/></button>
+    <span className="min-w-5 text-[10px] opacity-70" aria-live="polite">{busy ? "Saving…" : enabled === null ? "…" : enabled ? "On" : "Off"}</span>
+    {error && <p role="alert" className="basis-full text-xs text-red-600">{error} <button type="button" className="underline" onClick={() => setReload(value => value + 1)}>Retry</button></p>}
+  </div>;
   const Icon = enabled === false ? PauseCircle : CalendarClock;
   return <section className={`mb-5 rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 ${compact ? "" : "shadow-sm"}`} aria-label="Automatic publishing">
     <div className="flex items-start justify-between gap-4">

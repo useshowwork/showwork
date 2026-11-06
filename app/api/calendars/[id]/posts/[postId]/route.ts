@@ -230,8 +230,14 @@ export async function DELETE(
     );
   }
 
+  const body = await req.json().catch(() => ({}));
+  const removeBlocked = body?.confirmation === "DELETE" && body?.removeBlocked === true;
+  if (removeBlocked) {
+    const owner = await db.socialCalendar.findUnique({ where: { id }, select: { managerId: true } });
+    if (owner?.managerId !== creator.id) return NextResponse.json({ error: "Only the workspace owner can remove protected posts." }, { status: 403 });
+  }
   // Approved posts are protected from deletion as well as editing.
-  if (post.approvalStatus === "APPROVED") {
+  if (post.approvalStatus === "APPROVED" && !removeBlocked) {
     return NextResponse.json(
       {
         error:
@@ -243,8 +249,8 @@ export async function DELETE(
   }
 
   try {
-    return NextResponse.json(await removeWorkspaceContent({ actorId: creator.id, mode: "post", calendarId: id, postId }));
+    return NextResponse.json(await removeWorkspaceContent({ actorId: creator.id, mode: "post", calendarId: id, postId, removeBlocked }));
   } catch (error) {
-    return NextResponse.json({ error: error instanceof WorkspaceDeletionConflict ? error.message : "Unable to delete this post. Please retry." }, { status: error instanceof WorkspaceDeletionConflict ? 409 : 500 });
+    return NextResponse.json({ error: error instanceof WorkspaceDeletionConflict ? error.message : "Unable to delete this post. Please retry.", ...(error instanceof WorkspaceDeletionConflict ? { blockingPosts: error.blockingPosts } : {}) }, { status: error instanceof WorkspaceDeletionConflict ? 409 : 500 });
   }
 }

@@ -1,3 +1,4 @@
+import { workspaceRemovalBlock } from "@/lib/publishing/removalGuard";
 import { db } from "@/lib/db";
 import { postContentEditError } from "@/lib/publishing/editGuard";
 import {
@@ -15,6 +16,7 @@ export async function removeWorkspaceContent(input: {
   postId?: string;
   assetId?: string;
   documentId?: string;
+  removeBlocked?: boolean;
 }) {
   return db.$transaction(
     async (tx) => {
@@ -42,7 +44,10 @@ export async function removeWorkspaceContent(input: {
           await tx.$queryRaw`SELECT id FROM "CalendarPost" WHERE id=${input.postId} AND "calendarId"=${calendarId} FOR UPDATE`;
         else
           await tx.$queryRaw`SELECT id FROM "CalendarPost" WHERE "calendarId"=${calendarId} ORDER BY id FOR UPDATE`;
-        await assertWorkspacePostsNotPublishing(tx, calendarId, input.postId);
+        // Post row locks above serialize reset with worker claims. Unsent queued
+        // posts can be deleted atomically; active/unknown attempts still block.
+        if (!input.removeBlocked) await assertWorkspacePostsNotPublishing(tx, calendarId, input.postId, mode === "reset", mode === "reset");
+        else if (calendar.managerId !== input.actorId || !["post", "reset"].includes(mode)) throw new WorkspaceDeletionConflict("Only the workspace owner can remove protected posts.");
       }
       const candidates: { fileKey: string; bytes: bigint }[] = [];
       let deletedCount = 0;
@@ -89,14 +94,21 @@ export async function removeWorkspaceContent(input: {
             where: { id: input.postId, calendarId },
           });
           if (!post) return { ok: true, deletedCount: 0, cleanupQueued: true };
-          if (post.approvalStatus === "APPROVED")
+          if (post.approvalStatus === "APPROVED" && !input.removeBlocked)
             throw new WorkspaceDeletionConflict(
               "This post has been approved by the client and can no longer be deleted.",
             );
         }
+        // Keep live-operation evidence and media until the provider outcome is known.
+        // The deletedAt marker removes these rows from all calendar views and new sends.
+        const retaining = ["reset", "post"].includes(mode) ? (await tx.calendarPost.findMany({ where: { calendarId, ...(input.postId ? { id: input.postId } : {}) } })).filter(post => (input.removeBlocked || post.deletedAt) && workspaceRemovalBlock(post, true)) : [];
+        const retainedIds = retaining.map(post => post.id);
+        const newlyRetainedCount = retaining.filter(post => !post.deletedAt).length;
+        if (retainedIds.length) await tx.calendarPost.updateMany({ where: { calendarId, id: { in: retainedIds }, deletedAt: null }, data: { deletedAt: new Date() } });
+        const removable = { calendarId, ...(input.postId ? { id: input.postId } : {}), ...(retainedIds.length ? { id: input.postId ? { equals: input.postId, notIn: retainedIds } : { notIn: retainedIds } } : {}) };
         const assets = await tx.calendarPostAsset.findMany({
           where: {
-            post: { calendarId, ...(input.postId ? { id: input.postId } : {}) },
+            post: removable,
           },
           select: { fileKey: true, sizeBytes: true },
         });
@@ -131,8 +143,9 @@ export async function removeWorkspaceContent(input: {
           },
           select: { fileKey: true },
         });
+        const retainedPrefixes = retainedIds.map(id => `calendars/${calendarId}/${id}/`);
         candidates.push(
-          ...receipts.map((r) => ({ fileKey: r.fileKey, bytes: BigInt(0) })),
+          ...receipts.filter(r => !retainedPrefixes.some(prefix => r.fileKey.startsWith(prefix))).map((r) => ({ fileKey: r.fileKey, bytes: BigInt(0) })),
         );
         if (mode === "workspace") {
           const docs = await tx.calendarBusinessDocument.findMany({
@@ -160,12 +173,9 @@ export async function removeWorkspaceContent(input: {
           await tx.socialCalendar.delete({ where: { id: calendarId } });
         } else {
           const removed = await tx.calendarPost.deleteMany({
-            where: {
-              calendarId,
-              ...(input.postId ? { id: input.postId } : {}),
-            },
+            where: removable,
           });
-          deletedCount = removed.count;
+          deletedCount = removed.count + newlyRetainedCount;
           if (mode === "reset") {
             await tx.calendarImport.deleteMany({ where: { calendarId } });
             await tx.socialCalendar.update({

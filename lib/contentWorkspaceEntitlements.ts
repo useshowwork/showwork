@@ -10,7 +10,7 @@
  * without rewriting billing or feature-enforcement logic.
  */
 
-export type ContentWorkspacePlan = "CREATOR" | "STUDIO" | "UNLIMITED";
+export type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
 
 export type ContentWorkspaceBillingCycle = "MONTHLY" | "ANNUAL";
 
@@ -46,9 +46,10 @@ export interface ContentWorkspaceEntitlements {
 export type ContentWorkspaceFeature =
   | "advancedAnalytics" | "performanceRecommendations" | "socialInbox"
   | "leadManagement" | "advancedTeamPermissions" | "aiInboxReplies"
-  | "aiAutoReplies" | "prioritySupport";
+  | "aiAutoReplies" | "prioritySupport" | "randyStudio";
 
 export const CONTENT_WORKSPACE_FEATURES: Record<ContentWorkspaceFeature, { name: string; minimumPlan: ContentWorkspacePlan }> = {
+  randyStudio: { name: "Randy in AI Studio", minimumPlan: "GROWTH" },
   advancedAnalytics: { name: "Advanced analytics", minimumPlan: "STUDIO" },
   performanceRecommendations: { name: "AI performance recommendations / performance-informed planning", minimumPlan: "STUDIO" },
   socialInbox: { name: "Social Inbox", minimumPlan: "STUDIO" },
@@ -96,6 +97,7 @@ export interface ContentWorkspacePlanConfig
  */
 export const STORAGE_GB = {
   CREATOR: 5,
+  GROWTH: 20,
   STUDIO: 50,
   UNLIMITED: 200,
 } as const;
@@ -124,6 +126,20 @@ export const CONTENT_WORKSPACE_PLANS: Record<
     },
   },
 
+  GROWTH: {
+    name: "Growth",
+    priceNgnMonthly: 12_900,
+    priceNgnAnnual: 147_060,
+    activeWorkspaces: 10,
+    collaborators: 5,
+    storageBytes: STORAGE_GB.GROWTH * GB,
+    aiGenerations: 250,
+    aiRegenerations: 250,
+    planCodeEnv: {
+      MONTHLY: "PAYSTACK_CONTENT_WORKSPACE_GROWTH_MONTHLY_PLAN_CODE",
+      ANNUAL: "PAYSTACK_CONTENT_WORKSPACE_GROWTH_ANNUAL_PLAN_CODE",
+    },
+  },
   STUDIO: {
     name: "Studio",
 
@@ -164,6 +180,7 @@ export function formatWorkspaceLimit(limit: number): string {
 
 export const CONTENT_WORKSPACE_PLAN_ORDER: ContentWorkspacePlan[] = [
   "CREATOR",
+  "GROWTH",
   "STUDIO",
   "UNLIMITED",
 ];
@@ -173,6 +190,7 @@ export const CONTENT_WORKSPACE_PLAN_DISPLAY_NAME: Record<
   string
 > = {
   CREATOR: "Creator",
+  GROWTH: "Growth",
   STUDIO: "Studio",
   UNLIMITED: "Agency",
 };

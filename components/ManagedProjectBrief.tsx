@@ -129,7 +129,7 @@ function BriefAttachments({ managedProjectId, isOwner }: { managedProjectId: str
       {attachments.length > 0 && (
         <div className="mb-3 flex flex-col gap-1.5">
           {attachments.map((a) => (
-            <div key={a.id} className="flex items-center justify-between gap-2 rounded-md px-3 py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div key={a.id} className="flex items-center justify-between gap-2 rounded-md px-3 py-2" style={{ background: "var(--managed-soft, rgba(255,255,255,0.04))" }}>
               <a href={a.url} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-xs font-medium underline" style={{ color: COLOR.blue }}>
                 {a.filename || "View file"}
               </a>
@@ -204,7 +204,7 @@ export default function ManagedProjectBrief({
 
   if (editing) {
     return (
-      <div className="rounded-2xl p-6" style={{ background: "#1A1A1A" }}>
+      <div className="rounded-2xl p-6" style={{ background: "var(--managed-surface, #1A1A1A)" }}>
         <p className="mb-5 text-sm font-semibold text-white">Editing brief</p>
         <div className="flex flex-col gap-5">
           {BRIEF_LABELS.map(({ key, label }) => (
@@ -229,7 +229,7 @@ export default function ManagedProjectBrief({
               value={draft.briefDeadline ? draft.briefDeadline.slice(0, 10) : ""}
               onChange={(e) => setDraft((prev) => ({ ...prev, briefDeadline: e.target.value || null }))}
               className={textareaClass}
-              style={{ colorScheme: "dark" }}
+              style={{ colorScheme: "var(--managed-color-scheme, dark)" }}
             />
           </div>
           <label className="flex items-center gap-2.5 text-sm text-white/70">
@@ -273,7 +273,7 @@ export default function ManagedProjectBrief({
   }
 
   return (
-    <div className="rounded-2xl p-6" style={{ background: "#1A1A1A" }}>
+    <div className="rounded-2xl p-6" style={{ background: "var(--managed-surface, #1A1A1A)" }}>
       <div className="mb-5 flex items-center justify-between">
         <p className="text-sm font-semibold text-white">Creative brief</p>
         {isOwner && (

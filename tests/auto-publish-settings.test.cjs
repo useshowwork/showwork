@@ -55,7 +55,7 @@ test('turning off automation still allows reconciliation of an already accepted 
 test('client approval schedules connected posts only while automation is enabled and preserves TikTok consent flow',async()=>{
  for(const [enabled,platform,expected] of [[true,'INSTAGRAM','SCHEDULED'],[false,'INSTAGRAM','NOT_SCHEDULED'],[true,'TIKTOK','NOT_SCHEDULED']]) {
   const field=platform==='TIKTOK'?'tikTokPublishStatus':'instagramPublishStatus';
-  let post={id:'post',calendarId:'calendar',platform,isAiDraft:false,approvalStatus:'PENDING',updatedAt:new Date(),[field]:'NOT_SCHEDULED',assets:[{fileKey:'asset',sizeBytes:1}]};
+  let post={id:'post',calendarId:'calendar',platform,isAiDraft:false,internalReviewStatus:'APPROVED',approvalStatus:'PENDING',updatedAt:new Date(),[field]:'NOT_SCHEDULED',assets:[{fileKey:'asset',sizeBytes:1}]};
   const route=load('app/api/social-calendar/[slug]/posts/[postId]/review/route.ts',{
    '@/lib/publishing/applicationBoundary':boundary,
    '@/lib/calendarPermissions':{canAccessCalendarById:async()=>true},

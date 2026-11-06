@@ -168,7 +168,7 @@ export default function ManagedProjectCollaborators({
   const queryMatchesAResult = results.some((r) => r.email.toLowerCase() === query.trim().toLowerCase());
 
   return (
-    <div className="rounded-2xl p-6" style={{ background: "#1A1A1A" }}>
+    <div className="rounded-2xl p-6" style={{ background: "var(--managed-surface, #1A1A1A)" }}>
       <p className="mb-1 text-sm font-semibold text-white">Collaborators</p>
       <p className="mb-4 text-xs text-white/40">
         Search for people already on Showwork, or type an email to invite someone new — select as many as
@@ -189,7 +189,7 @@ export default function ManagedProjectCollaborators({
             {(results.length > 0 || (looksLikeEmail && query.trim().length > 2)) && (
               <div
                 className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-white/10"
-                style={{ background: "#141414" }}
+                style={{ background: "var(--managed-soft, #141414)" }}
               >
                 {results.map((r) => {
                   const disabled = alreadySelected(r.id) || alreadyOn(r.email);
@@ -242,7 +242,7 @@ export default function ManagedProjectCollaborators({
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 disabled:cursor-default disabled:opacity-40"
                     style={{ borderTop: results.length > 0 ? "1px solid rgba(255,255,255,0.06)" : undefined }}
                   >
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs" style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs" style={{ background: "var(--managed-soft, rgba(255,255,255,0.06))" }}>
                       +
                     </div>
                     <p className="text-sm text-white/80">
@@ -289,7 +289,7 @@ export default function ManagedProjectCollaborators({
           )}
 
           {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
-          {success && <p className="mb-3 text-xs" style={{ color: "#4ade80" }}>{success}</p>}
+          {success && <p className="mb-3 text-xs" style={{ color: "var(--managed-success, #4ade80)" }}>{success}</p>}
         </>
       )}
 
@@ -298,7 +298,7 @@ export default function ManagedProjectCollaborators({
       ) : (
         <div className="flex flex-col gap-2">
           {collaborators.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div key={c.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "var(--managed-soft, rgba(255,255,255,0.04))" }}>
               <div className="flex items-center gap-2.5">
                 <div
                   className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold text-white"
@@ -312,7 +312,7 @@ export default function ManagedProjectCollaborators({
                   )}
                 </div>
                 <span className="text-sm text-white/80">{c.creator.name || c.creator.email}</span>
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80" }}>
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(34,197,94,0.15)", color: "var(--managed-success, #4ade80)" }}>
                   Active
                 </span>
               </div>
@@ -324,7 +324,7 @@ export default function ManagedProjectCollaborators({
             </div>
           ))}
           {invites.filter((i) => i.status === "PENDING").map((i) => (
-            <div key={i.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div key={i.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "var(--managed-soft, rgba(255,255,255,0.04))" }}>
               <div className="flex items-center gap-2.5">
                 <span className="text-sm text-white/60">{i.email}</span>
                 <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(245,200,66,0.15)", color: "#F5C842" }}>

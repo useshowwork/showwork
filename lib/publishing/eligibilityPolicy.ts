@@ -11,7 +11,7 @@ export function workspaceEligibility(owner:PublishingPolicyOwner,ordinal:number,
   const trial=['TRIAL','ACTIVE'].includes(owner.contentWorkspaceBillingStatus)&&!!owner.contentWorkspaceTrialEndsAt&&owner.contentWorkspaceTrialEndsAt>now;
   const complimentary=workspaceComplimentaryPlan(owner,now);
   const access=!!complimentary||owner.contentWorkspaceBillingStatus==='ACTIVE'&&!!owner.contentWorkspacePlan||owner.contentWorkspaceBillingStatus==='TRIAL'&&!!owner.contentWorkspacePlan&&trial;
-  const order=['CREATOR','STUDIO','UNLIMITED'];
+  const order=['CREATOR','GROWTH','STUDIO','UNLIMITED'];
   const plan:ContentWorkspacePlan|null=trial?'UNLIMITED':complimentary?
     owner.contentWorkspaceBillingStatus==='ACTIVE'&&owner.contentWorkspacePlan&&order.indexOf(owner.contentWorkspacePlan)>order.indexOf(complimentary)?owner.contentWorkspacePlan:complimentary:owner.contentWorkspacePlan;
   return {allowed:!!access&&!!plan&&Number.isInteger(ordinal)&&ordinal>0&&ordinal<=(plan?CONTENT_WORKSPACE_PLANS[plan]?.activeWorkspaces??0:0),plan};

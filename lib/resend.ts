@@ -1421,7 +1421,7 @@ function calendarSubscribeButton(price: string): string {
   return buttonHtml(`Subscribe — ${price}/month`, `${APP_URL}/dashboard/calendars`);
 }
 
-type ContentWorkspacePlan = "CREATOR" | "STUDIO" | "UNLIMITED";
+type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
 
 function contentWorkspacePlanLabel(plan: ContentWorkspacePlan): string {
   return CONTENT_WORKSPACE_PLANS[plan].name;

@@ -446,15 +446,18 @@ export default function PortfolioSectionHeader({
               accept={acceptFor(mediaType)}
               onChange={handleAddFiles}
               className="hidden"
+              disabled={uploading}
               id={`portfolio-add-${sectionId}`}
             />
 
-            <label
-              htmlFor={`portfolio-add-${sectionId}`}
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
               className="cursor-pointer rounded-xl bg-[#2478FF] px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-600"
             >
               {uploading ? (chunkStatus ?? uploadStatus ?? "Uploading…") : "+ Add files"}
-            </label>
+            </button>
 
             {confirmingDelete ? (
               <div className="flex flex-wrap items-center gap-2 rounded-xl bg-red-50 px-3 py-2">

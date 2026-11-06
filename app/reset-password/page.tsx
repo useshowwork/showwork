@@ -1,4 +1,5 @@
 "use client";
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -73,10 +74,8 @@ function ResetPasswordForm() {
       />
 
       <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-6 py-8 md:px-14">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="text-lg font-bold text-white">
-            Show<span style={{ color: COLOR.gold }}>work</span>
-          </span>
+        <Link href="/" aria-label="Showwork home" className="inline-flex items-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+          <ShowworkLogo tone="white" width={117}/>
         </Link>
       </div>
 

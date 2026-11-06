@@ -1,3 +1,4 @@
+import { workspaceRemovalBlock } from "@/lib/publishing/removalGuard";
 import { createHash, randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -19,7 +20,10 @@ type Job = {
   leaseToken: string | null;
   leaseUntil: Date | null;
 };
-export class WorkspaceDeletionConflict extends Error {}
+export type BlockingCalendarPost = { id: string; title: string; platform: string; postDate: string; reason: string };
+export class WorkspaceDeletionConflict extends Error {
+  constructor(message: string, public readonly blockingPosts: BlockingCalendarPost[] = []) { super(message); }
+}
 
 export async function lockWorkspaceFileKeys(tx: Tx, keys: string[]) {
   const sorted = [...new Set(keys)].sort();
@@ -191,31 +195,17 @@ export async function assertWorkspacePostsNotPublishing(
   tx: Tx,
   calendarId: string,
   postId?: string,
+  allowUnsentScheduled = false,
+  excludeRemoved = false,
 ) {
   const posts = await tx.calendarPost.findMany({
-    where: { calendarId, ...(postId ? { id: postId } : {}) },
+    where: { calendarId, ...(postId ? { id: postId } : {}), ...(excludeRemoved ? { deletedAt: null } : {}) },
   });
-  for (const post of posts) {
-    const states = [
-      post.publishStatus,
-      post.instagramPublishStatus,
-      post.tikTokPublishStatus,
-    ];
-    const settled = states.includes("PUBLISHED");
-    if (
-      states.some((s) => s === "SCHEDULED" || s === "PUBLISHING") ||
-      (!settled &&
-        (post.publishWorkerStartedAt ||
-          post.tikTokInitStartedAt ||
-          post.tikTokPublishId ||
-          post.platformPostId ||
-          post.instagramMediaId))
-    ) {
-      throw new WorkspaceDeletionConflict(
-        "Cancel scheduled publishing or reconcile the active publishing attempt before removing this content.",
-      );
-    }
-  }
+  const blockingPosts = posts.flatMap(post => {
+    const reason = workspaceRemovalBlock(post, allowUnsentScheduled);
+    return reason ? [{ id: post.id, title: (post.hook || post.contentIdea || post.caption || "Untitled post").slice(0, 140), platform: post.platform, postDate: post.postDate.toISOString(), reason }] : [];
+  });
+  if (blockingPosts.length) throw new WorkspaceDeletionConflict("These posts are holding up the reset. Open a post to check publishing, or remove it from the calendar below.", blockingPosts);
 }
 
 /** Capture expired cancelled/abandoned tickets without touching active uploads. */
@@ -238,6 +228,16 @@ export async function discoverReleasedWorkspaceUploads() {
 
 /** Durable, bounded retries. Quota release and object deletion are independently idempotent. */
 export async function processWorkspaceStorageCleanup(limit = 25) {
+  // Once a removed post has a settled outcome, release its retained media
+  // through the same reference-aware cleanup used for ordinary deletion.
+  const removed = await db.calendarPost.findMany({ where: { deletedAt: { not: null }, OR: [{ publishStatus: "PUBLISHED" }, { instagramPublishStatus: "PUBLISHED" }, { tikTokPublishStatus: "PUBLISHED" }, { publishStatus: "NOT_SCHEDULED", instagramPublishStatus: "NOT_SCHEDULED", tikTokPublishStatus: "NOT_SCHEDULED", publishWorkerStartedAt: null, tikTokInitStartedAt: null, tikTokPublishId: null, platformPostId: null, instagramMediaId: null }] }, include: { calendar: { select: { managerId: true } } }, take: Math.max(1, Math.min(25, limit)) });
+  for (const post of removed) {
+    if (workspaceRemovalBlock(post, true)) continue;
+    try {
+      const { removeWorkspaceContent } = await import("@/lib/workspaceDeletion");
+      await removeWorkspaceContent({ calendarId: post.calendarId, actorId: post.calendar.managerId, mode: "post", postId: post.id, removeBlocked: true });
+    } catch { /* A changed or still-active attempt stays retained for the next run. */ }
+  }
   const jobs = await db.$queryRaw<Job[]>`SELECT * FROM "WorkspaceStorageCleanup"
     WHERE (state='PENDING' AND "notBefore"<=clock_timestamp()) OR (state='DELETING' AND "leaseUntil"<clock_timestamp())
     ORDER BY "notBefore",id LIMIT ${Math.max(1, Math.min(100, limit))}`;

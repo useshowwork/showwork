@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const plan = req.nextUrl.searchParams.get("plan") ?? "";
   const cycle = req.nextUrl.searchParams.get("cycle");
   if ((product !== "DELIVERY" && product !== "CONTENT_WORKSPACE") || (cycle !== "MONTHLY" && cycle !== "ANNUAL") ||
-    !(product === "DELIVERY" ? PAID_TIER_ORDER : ["CREATOR", "STUDIO", "UNLIMITED"]).includes(plan as any)) return NextResponse.json({ error: "Invalid subscription selection" }, { status: 400 });
+    !(product === "DELIVERY" ? PAID_TIER_ORDER : ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"]).includes(plan as any)) return NextResponse.json({ error: "Invalid subscription selection" }, { status: 400 });
   try {
     const quote = await offerQuote(creator.id, product, plan, cycle);
     return NextResponse.json({ product, plan, cycle, standardPriceNgn: quote.standardPriceNgn, amountNgn: quote.discountedPriceNgn,

@@ -1,3 +1,5 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
+import studioStyles from "@/components/portfolio/PortfolioStudio.module.css";
 import PortfolioHelpLink from "@/components/help/PortfolioHelpLink";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -6,11 +8,8 @@ import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { publicUrlFor } from "@/lib/r2";
 import { portfolioUrl } from "@/lib/portfolioUrl";
-import PortfolioSectionHeader from "@/components/portfolio/PortfolioSectionHeader";
-import PortfolioAddSection from "@/components/portfolio/PortfolioAddSection";
-import PortfolioFileGridItem from "@/components/portfolio/PortfolioFileGridItem";
+import PortfolioWorkStudio from "@/components/portfolio/PortfolioWorkStudio";
 import PortfolioDetailsForm from "@/components/portfolio/PortfolioDetailsForm";
-import CopyLinkButton from "@/components/CopyLinkButton";
 import PortfolioTestimonialsManager from "@/components/portfolio/PortfolioTestimonialsManager";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -116,14 +115,15 @@ function SidebarItem({
     <Link
       href={href}
       scroll={false}
-      className={`group flex items-center gap-3 rounded-2xl border px-3 py-3 transition-all ${
+      aria-current={active ? "page" : undefined}
+      className={`${studioStyles.navItem} group flex items-center gap-3 rounded-2xl border px-3 py-3 transition-all ${
         active
           ? "border-[#2478FF]/15 bg-[#2478FF]/[0.08] text-[#111]"
           : "border-transparent text-[#69717C] hover:border-[#E7EBF1] hover:bg-[#F7F9FC] hover:text-[#1D232B]"
       }`}
     >
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
+        className={`${studioStyles.navIcon} flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
           active
             ? "bg-[#2478FF]/10 text-[#2478FF]"
             : "bg-[#F4F6F9] text-[#9AA1AB] group-hover:text-[#59616D]"
@@ -147,7 +147,7 @@ function SidebarItem({
             </span>
           ) : null}
         </span>
-        <span className="mt-0.5 block truncate text-[10px] text-[#A2A8B0]">
+        <span className={`${studioStyles.navDescription} mt-0.5 block truncate text-[10px] text-[#A2A8B0]`}>
           {description}
         </span>
       </span>
@@ -289,7 +289,7 @@ export default async function PortfolioDetailPage({
   }
 
   const liveUrl = portfolioUrl(portfolio.slug);
-  const testimonialLink = `${process.env.NEXT_PUBLIC_APP_URL}/testimonial/${portfolio.slug}`;
+  const testimonialLink = `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "")}/testimonial/${portfolio.slug}`;
 
   const ungroupedMedia = portfolio.media.filter((m) => !m.sectionId);
 
@@ -331,36 +331,33 @@ export default async function PortfolioDetailPage({
         "See what is live, understand the shape of your portfolio and jump directly into the part you want to improve.",
     },
     identity: {
-      eyebrow: "Identity",
-      title: "Shape the first impression.",
-      description:
-        "Control your brand story, hero, contact details, biography and the information visitors see first.",
+      eyebrow: "Portfolio studio",
+      title: "Portfolio identity",
+      description: "Your story, your visuals, and how clients reach you.",
     },
     work: {
-      eyebrow: "Work",
-      title: "Curate what people remember.",
-      description:
-        "Organise projects into focused sections and build a visual story around the quality of your work.",
+      eyebrow: "Portfolio studio",
+      title: "Your work",
+      description: "A home for the projects you’re proud of. Organise them into sections and make each one count.",
     },
     testimonials: {
-      eyebrow: "Social proof",
-      title: "Let your clients speak.",
-      description:
-        "Collect testimonials through a dedicated link and decide which stories become part of your public portfolio.",
+      eyebrow: "Portfolio studio",
+      title: "Client testimonials",
+      description: "Collect feedback, review it, and let your clients speak for your work.",
     },
   };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#F5F7FA] text-[#0A0A0A]">
+    <main data-portfolio-studio="true" className={`${studioStyles.frame} min-h-screen overflow-x-hidden bg-[#F5F7FA] text-[#0A0A0A]`}>
       {/* Top bar */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07090D]/90 text-white backdrop-blur-2xl">
-        <div className="mx-auto flex h-[68px] max-w-[1600px] items-center justify-between pl-16 pr-4 sm:pl-16 sm:pr-6 lg:px-8">
+      <header className={`${studioStyles.toolbar} sticky top-0 z-50 border-b border-white/10 bg-[#07090D]/90 text-white backdrop-blur-2xl`}>
+        <div className={`${studioStyles.toolbarInner} mx-auto flex h-[68px] max-w-[1600px] items-center justify-between pl-16 pr-4 sm:pl-16 sm:pr-6 lg:px-8`}>
           <Link
             href="/dashboard"
             className="group inline-flex items-center gap-2.5 rounded-full bg-white/[0.055] px-3.5 py-2.5 text-xs font-semibold text-white/55 transition hover:bg-white/[0.09] hover:text-white"
           >
             <ArrowIcon className="h-3.5 w-3.5 -rotate-180 transition-transform group-hover:-translate-x-0.5" />
-            <span className="hidden sm:inline">All apps</span>
+            <span className="hidden sm:inline">All tools</span>
             <span className="sm:hidden">Apps</span>
           </Link>
 
@@ -435,59 +432,17 @@ export default async function PortfolioDetailPage({
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-[1600px]">
+      <div className={`${studioStyles.layout} mx-auto flex max-w-[1600px]`}>
         {/* Desktop sidebar */}
-        <ResponsiveSidebar label="Portfolio navigation" drawerClassName="bg-white text-[#101318]" desktopClassName="sticky top-[68px] hidden h-[calc(100dvh-68px)] w-[290px] shrink-0 border-r border-[#E4E8EE] bg-white lg:flex lg:flex-col">
-          <div className="border-b border-[#E9EDF2] p-5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#2478FF]">
-              Portfolio studio
-            </p>
-
-            <div className="mt-3 min-w-0">
-              <h1 className="truncate text-xl font-semibold tracking-[-0.035em] text-[#111317]">
-                {portfolio.companyName}
-              </h1>
-              <p className="mt-1 truncate text-xs text-[#9AA1AA]">
-                {portfolio.slug}
-              </p>
-            </div>
-
-            <div className="mt-5 rounded-[22px] border border-[#E8EDF3] bg-[#F7F9FC] p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9299A3]">
-                    Public portfolio
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-[#30363D]">
-                    {portfolio.billingStatus === "ACTIVE" ? "Live and visible" : "Currently offline"}
-                  </p>
-                </div>
-
-                <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                    portfolio.billingStatus === "ACTIVE"
-                      ? "bg-emerald-50 text-emerald-600"
-                      : "bg-red-50 text-red-500"
-                  }`}
-                >
-                  {portfolio.billingStatus === "ACTIVE" ? (
-                    <CheckIcon className="h-4 w-4" />
-                  ) : (
-                    <span className="h-2 w-2 rounded-full bg-red-500" />
-                  )}
-                </span>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#E5E9EF]">
-                  <div
-                    className="h-full w-full rounded-full"
-                    style={{ background: BLUE }}
-                  />
-                </div>
-                <span className="text-[9px] font-bold text-[#2478FF]">LIVE</span>
-              </div>
-            </div>
+        <ResponsiveSidebar label="Portfolio navigation" drawerClassName="bg-white text-[#101318]" desktopClassName={`${studioStyles.rail} sticky top-[68px] hidden h-[calc(100dvh-68px)] w-[290px] shrink-0 border-r border-[#E4E8EE] bg-white lg:flex lg:flex-col`}>
+          <div className={studioStyles.identity}>
+            <Link href="/dashboard" className={studioStyles.brand}><ShowworkLogo tone="white"/></Link>
+            <p className={studioStyles.toolLabel}>Portfolio studio</p>
+            <h1 title={portfolio.companyName}>{portfolio.companyName}</h1>
+            <p className={studioStyles.slug}>{portfolio.slug}</p>
+            <span className={studioStyles.status} data-live={portfolio.billingStatus === "ACTIVE"}>
+              <span aria-hidden="true" />{portfolio.billingStatus === "ACTIVE" ? "Live and visible" : "Currently offline"}
+            </span>
           </div>
 
           <nav className="flex-1 overflow-y-auto p-3">
@@ -550,16 +505,16 @@ export default async function PortfolioDetailPage({
               className="mt-2 flex items-center gap-2 rounded-xl px-4 py-2.5 text-[11px] font-medium text-[#8D949D] transition hover:bg-[#F7F9FC] hover:text-[#30363D]"
             >
               <ArrowIcon className="h-3.5 w-3.5 -rotate-180" />
-              Back to all apps
+              Back to all tools
             </Link>
           </div>
         </ResponsiveSidebar>
 
         {/* Main workspace */}
-        <section className="min-w-0 flex-1">
-          <div className="mx-auto max-w-[1160px] px-4 pb-24 pt-8 sm:px-6 md:pt-10 lg:px-10 lg:pb-28 lg:pt-12">
+        <section className={`${studioStyles.content} min-w-0 flex-1`}>
+          <div className={`${studioStyles.contentInner} mx-auto max-w-[1160px] px-4 pb-24 pt-8 sm:px-6 md:pt-10 lg:px-10 lg:pb-28 lg:pt-12`}>
             {/* Workspace title */}
-            <div className="mb-9 border-b border-[#E2E7ED] pb-8">
+            <div className={`${studioStyles.contentHeading} mb-9 border-b border-[#E2E7ED] pb-8`}>
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#2478FF]">
                 {pageMeta[activeView].eyebrow}
               </p>
@@ -802,25 +757,7 @@ export default async function PortfolioDetailPage({
             {/* IDENTITY */}
             {activeView === "identity" && (
               <div>
-                <SectionIntro
-                  eyebrow="01 / Identity"
-                  title="Shape your first impression."
-                  description="Control the story, visuals, contact details and information visitors see when they discover your portfolio."
-                  icon={<IdentityIcon className="h-5 w-5" />}
-                  action={
-                    <a
-                      href={liveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hidden items-center gap-2 rounded-full bg-[#0A0C10] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#16191F] sm:inline-flex"
-                    >
-                      Preview changes
-                      <ExternalIcon className="h-3.5 w-3.5" />
-                    </a>
-                  }
-                />
-
-                <div className="overflow-hidden rounded-[30px] border border-[#E8ECF1] bg-white p-5 shadow-[0_24px_80px_rgba(20,30,50,.055)] sm:p-8">
+                <div>
                   <PortfolioDetailsForm
                     companyName={portfolio.companyName}
                     heroTagline={portfolio.heroTagline}
@@ -849,155 +786,17 @@ export default async function PortfolioDetailPage({
             )}
 
             {/* WORK */}
-            {activeView === "work" && (
-              <div>
-                <SectionIntro
-                  eyebrow="02 / Work"
-                  title="Curate the work."
-                  description="Organise projects into clear sections so visitors can quickly understand what you do and see the quality of your work."
-                  icon={<WorkIcon className="h-5 w-5" />}
-                  action={
-                    <div className="rounded-full bg-white px-4 py-2.5 text-xs font-medium text-[#777D86] shadow-sm">
-                      {totalSections} sections&nbsp;&nbsp;·&nbsp;&nbsp;{totalFiles} files
-                    </div>
-                  }
-                />
-
-                <div className="rounded-[30px] border border-[#E8ECF1] bg-white p-5 shadow-[0_24px_80px_rgba(20,30,50,.055)] sm:p-8">
-                  {portfolio.sections.length > 0 ? (
-                    <div className="space-y-14">
-                      {portfolio.sections.map((section, index) => (
-                        <div key={section.id}>
-                          <div className="mb-5 flex items-center justify-between gap-4">
-                            <div>
-                              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#2478FF]">
-                                {String(index + 1).padStart(2, "0")}
-                              </span>
-                              <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#17191C]">
-                                {section.name}
-                              </h3>
-                            </div>
-                            <span className="rounded-full bg-[#F4F6F9] px-3 py-1.5 text-[10px] font-semibold text-[#8A9099]">
-                              {section.media.length} files
-                            </span>
-                          </div>
-
-                          <PortfolioSectionHeader
-                            sectionId={section.id}
-                            name={section.name}
-                            mediaType={section.mediaType}
-                            fileCount={section.media.length}
-                          />
-
-                          <div
-                            className={`mt-5 grid gap-3 ${
-                              section.mediaType === "PDF" ||
-                              section.mediaType === "DOCUMENT"
-                                ? "grid-cols-1 sm:grid-cols-2"
-                                : "grid-cols-2 sm:grid-cols-4"
-                            }`}
-                          >
-                            {section.media.map((m) => (
-                              <PortfolioFileGridItem
-                                key={m.id}
-                                mediaId={m.id}
-                                url={publicUrlFor(m.fileKey)}
-                                posterUrl={m.posterFileKey ? publicUrlFor(m.posterFileKey) : null}
-                                filename={m.fileKey.split("/").pop() ?? "file"}
-                                type={m.type}
-                                sectionId={section.id}
-                                isCover={
-                                  section.coverMediaId
-                                    ? section.coverMediaId === m.id
-                                    : m.id === section.media[0]?.id
-                                }
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-[24px] bg-[#F7F9FC] px-6 py-20 text-center">
-                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EDF3FF] text-[#2478FF]">
-                        <SparkIcon className="h-6 w-6" />
-                      </div>
-                      <h3 className="mt-5 text-lg font-semibold tracking-tight text-[#202226]">
-                        Your portfolio is waiting for its first chapter.
-                      </h3>
-                      <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-[#8A8F97]">
-                        Create your first section and start turning your work into
-                        a visual story.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="mt-9 pt-2">
-                    <PortfolioAddSection hasSections={portfolio.sections.length > 0} />
-                  </div>
-                </div>
-              </div>
-            )}
+            {activeView === "work" && <PortfolioWorkStudio sections={portfolio.sections.map(section => ({
+              id: section.id, name: section.name, mediaType: section.mediaType, coverMediaId: section.coverMediaId,
+              media: section.media.map(media => ({
+                id: media.id, type: media.type, url: publicUrlFor(media.fileKey),
+                posterUrl: media.posterFileKey ? publicUrlFor(media.posterFileKey) : null,
+                filename: media.fileKey.split("/").pop() ?? "file",
+              })),
+            }))} />}
 
             {/* TESTIMONIALS */}
-            {activeView === "testimonials" && (
-              <div>
-                <SectionIntro
-                  eyebrow="03 / Social proof"
-                  title="Let your clients speak."
-                  description="Collect testimonials directly from clients and choose what appears publicly on your portfolio."
-                  icon={<QuoteIcon className="h-5 w-5" />}
-                />
-
-                <div className="overflow-hidden rounded-[30px] border border-[#E8ECF1] bg-white shadow-[0_24px_80px_rgba(20,30,50,.055)]">
-                  <div className="relative overflow-hidden bg-[#0D1420] px-6 py-8 text-white sm:px-8">
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full blur-[90px]"
-                      style={{
-                        background:
-                          "radial-gradient(circle, rgba(36,120,255,.28), transparent 68%)",
-                      }}
-                    />
-
-                    <div className="relative">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.08] text-[#6EA5FF]">
-                          <SparkIcon className="h-4 w-4" />
-                        </span>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#6EA5FF]">
-                          Testimonial collection
-                        </p>
-                      </div>
-
-                      <h3 className="mt-5 max-w-2xl text-2xl font-semibold tracking-[-0.035em]">
-                        Give your clients a direct way to tell your story.
-                      </h3>
-
-                      <p className="mt-2 max-w-[650px] text-sm leading-6 text-white/40">
-                        Share the link below. Anything a client submits appears here
-                        for your approval before it ever goes live.
-                      </p>
-
-                      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                        <div className="min-w-0 flex-1 rounded-2xl bg-white/[0.06] px-4 py-3.5">
-                          <p className="break-all text-xs text-white/45">
-                            {testimonialLink}
-                          </p>
-                        </div>
-                        <CopyLinkButton url={testimonialLink} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-5 sm:p-8">
-                    <PortfolioTestimonialsManager
-                      testimonials={portfolio.testimonials}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            {activeView === "testimonials" && <PortfolioTestimonialsManager testimonials={portfolio.testimonials} collectionUrl={testimonialLink} />}
 
             <footer className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-[#E2E7ED] pt-7 text-center sm:flex-row sm:text-left">
               <p className="text-xs text-[#A0A6AE]">

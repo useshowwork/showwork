@@ -19,8 +19,8 @@ export default function KnowledgeIndexStatus({calendarId,revision}:{calendarId:s
   },[calendarId,revision]);
   if(!status?.enabled)return null;
   return <p role="status" className="my-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-900">
-    {status.status==='ready'?`Semantic knowledge ready · ${status.ready} sources indexed.`:
-      status.status==='unavailable'?'Semantic indexing is unavailable. Content generation can still use keyword retrieval.':
-      `Semantic knowledge: ${status.ready} of ${status.total} sources ready${status.failed?` · ${status.failed} need indexing retry`:''}. Content generation also searches current source text while indexing completes.`}
+    {status.status==='ready'?`Knowledge ready · ${status.ready} sources processed.`:
+      status.status==='unavailable'?'Background processing is temporarily unavailable. Your existing source text can still be used.':
+      `Preparing your knowledge: ${status.ready} of ${status.total} sources ready${status.failed?` · ${status.failed} need another processing attempt`:''}. Your source text remains available while processing finishes.`}
   </p>;
 }

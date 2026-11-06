@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
   if (!plan) {
     if (
       body.plan === "CREATOR" ||
-      body.plan === "STUDIO" || body.plan === "UNLIMITED"
+      body.plan === "GROWTH" || body.plan === "STUDIO" || body.plan === "UNLIMITED"
     ) {
       plan = body.plan;
     } else {
@@ -327,6 +327,7 @@ export async function POST(req: NextRequest) {
     }
     const calendar = await tx.socialCalendar.create({ data: {
       slug, clientName, passwordHash, accessCode, managerId: creator.id,
+      setupVersion: 1, autoPublishEnabled: false,
     } });
     return { calendar, startsTrial, trialEndsAt, owner, selectedPlan };
   });

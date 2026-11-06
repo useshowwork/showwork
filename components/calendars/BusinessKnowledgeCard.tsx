@@ -26,6 +26,8 @@ export interface BusinessDocumentData {
 type BusinessKnowledgeCardProps = {
   compact?: boolean;
   canEdit?: boolean;
+  nextSection?: "channels" | "generate";
+  hasBrandVoice?: boolean;
   calendarId: string;
   aiActive: boolean;
   businessSummary: string | null;
@@ -161,6 +163,8 @@ export default function BusinessKnowledgeCard({
   documents,
   compact = false,
   canEdit = true,
+  nextSection,
+  hasBrandVoice = false,
 }: BusinessKnowledgeCardProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -310,18 +314,22 @@ if (presignContentType.includes("application/json")) {
     return completeData;
   }, "business-documents");
 
+  const focusBrandVoice = () => window.dispatchEvent(new CustomEvent("showwork-brand-voice-focus", { detail: { calendarId } }));
+
   const handleFiles = async (files: FileList) => {
     const selectedFiles = Array.from(files);
     if (!selectedFiles.length || uploading || !canEdit) return;
     setUploading(true);
     setError(null);
     const failures: string[] = [];
+    let addedSources = 0;
     try {
       await Promise.all(selectedFiles.map(async (file, index) => {
         setUploadFile({ index: index + 1, total: selectedFiles.length, name: file.name });
         try {
           const result = await uploadOne(file);
           if (result?.document) {
+            addedSources++;
             const uploadedDocument = result.document as BusinessDocumentData;
             setDocumentsState(current => [...current.filter(document => document.id !== uploadedDocument.id), uploadedDocument]);
           }
@@ -337,6 +345,7 @@ if (presignContentType.includes("application/json")) {
       }));
       router.refresh();
       if (failures.length) setError(failures.join("\n"));
+      else if (addedSources > 0 && !hasBrandVoice) focusBrandVoice();
     } finally {
       setUploading(false);
       setUploadFile(null);
@@ -365,6 +374,8 @@ if (presignContentType.includes("application/json")) {
         setSummaryUpdatedAtState(data.summaryUpdatedAt ?? new Date().toISOString());
         window.sessionStorage.setItem(`calendar:${calendarId}:has-business-summary`, "true");
         setWebsiteUrl("");
+        router.refresh();
+        if (!hasBrandVoice) focusBrandVoice();
       } else {
         setError("The website was saved, but the AI couldn't update its business summary. Try again shortly.");
       }
@@ -513,28 +524,25 @@ if (presignContentType.includes("application/json")) {
   }
 
   return <section id="knowledge-sources" className={knowledgeStyles.library} aria-label="Business knowledge sources">
-    <header className={knowledgeStyles.libraryHeader}><div className={knowledgeStyles.headingIcon}><Database size={20}/></div><div><p className={knowledgeStyles.kicker}>The facts behind the ideas</p><h2>Your source library.</h2></div><span className={knowledgeStyles.sourceCount}>{documentsState.length} {documentsState.length === 1 ? "source" : "sources"}</span></header>
-    {indexStatus}
     {error && <div role="alert" className={knowledgeStyles.error}>{error}{/upgrade|allowance|quota|subscription|trial.*(ended|expired)/i.test(error) && <WorkspaceFeatureNotice compact message="Your current plan or allowance does not cover this action. View plans to restore access or increase your limits."/>}</div>}
     <div className={knowledgeStyles.sourceLayout}>
-      <div className={knowledgeStyles.sourceColumn}>
-        <div className={knowledgeStyles.listHeading}><h3>Documents & websites</h3><span>Workspace sources</span></div>
+      <aside className={knowledgeStyles.addPanel} aria-label="Add business knowledge">
+        <h2 className={knowledgeStyles.addSourceTitle}>Add a source</h2>
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || addingWebsite || !canEdit} className={knowledgeStyles.upload}><span className={knowledgeStyles.uploadIcon}><UploadCloud size={24}/></span><strong>{uploading ? `Uploading ${uploadPercent}% & reading…` : "Upload documents"}</strong><span>PDF · Word · Excel · CSV · Text</span></button>
+        <div className={knowledgeStyles.or}><span/>or<span/></div>
+        <form onSubmit={event => void addWebsite(event)} className={knowledgeStyles.websiteForm}><label htmlFor={`knowledge-website-${calendarId}`}>Website address</label><div><Globe2 size={15}/><input id={`knowledge-website-${calendarId}`} type="text" inputMode="url" placeholder="yourbusiness.com" value={websiteUrl} onChange={event => setWebsiteUrl(event.target.value)} disabled={addingWebsite || uploading || !canEdit}/></div><button type="submit" disabled={addingWebsite || uploading || !canEdit || !websiteUrl.trim()}>{addingWebsite ? "Reading website…" : "Add website"}<Plus size={14}/></button><p>Use your business website or a page about your services.</p></form>
+        {uploadFile && <p role="status" className={knowledgeStyles.uploadProgress}>File {uploadFile.index} of {uploadFile.total} · {uploadFile.name}</p>}
+      </aside>
+      <details className={knowledgeStyles.sourcesDisclosure}>
+        <summary><span><FileText size={16}/>Your sources <strong>{documentsState.length}</strong></span><span>View & manage <ChevronIcon open={false}/></span></summary>
+        <div className={knowledgeStyles.sourcesDisclosureBody}>
+        {documentsState.length > 0 && indexStatus}
         {documentsState.length ? <ul className={knowledgeStyles.sourceList}>{documentsState.map(doc => <li key={doc.id} className={knowledgeStyles.sourceRow}>
           <span className={knowledgeStyles.fileIcon} data-website={!!doc.websiteUrl}>{doc.websiteUrl ? <Globe2 size={19}/> : <FileText size={19}/>}</span>
           <div className={knowledgeStyles.fileCopy}><p title={doc.originalName}>{doc.originalName}</p><span>{doc.websiteUrl ? "Website" : "Document"} · Added {formatDate(doc.createdAt)}</span>{doc.websiteUrl && <a href={doc.websiteUrl} target="_blank" rel="noopener noreferrer">Visit website <ArrowUpRight size={11}/></a>}</div>
           {canEdit && (confirmingDeleteId === doc.id ? <div className={knowledgeStyles.confirm}><button disabled={deletingId === doc.id} onClick={() => void removeDocument(doc.id)}>{deletingId === doc.id ? "Removing…" : "Remove"}</button><button disabled={deletingId === doc.id} onClick={() => setConfirmingDeleteId(null)}>Cancel</button></div> : <button type="button" aria-label={`Remove ${doc.originalName}`} onClick={() => setConfirmingDeleteId(doc.id)} className={knowledgeStyles.remove}><Trash2 size={15}/></button>)}
-        </li>)}</ul> : <div className={knowledgeStyles.empty}><BookOpenText size={31}/><h3>Start with what you know.</h3><p>Add your business profile, offers, price lists or FAQs. Give your AI a reliable place to start.</p></div>}
-        <div className={knowledgeStyles.sourceTip}><CheckCircle2 size={16}/><p>Keep these sources current. They inform content generation and customer replies.</p></div>
-      </div>
-      <aside className={knowledgeStyles.addPanel} aria-label="Add business knowledge">
-        <div className={knowledgeStyles.addHeading}><span><Plus size={15}/></span><h3>Add to your knowledge</h3></div>
-        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || addingWebsite || !canEdit} className={knowledgeStyles.upload}><span className={knowledgeStyles.uploadIcon}><UploadCloud size={24}/></span><strong>{uploading ? `Uploading ${uploadPercent}% & reading…` : "Upload documents"}</strong><span>PDF · Word · Excel · CSV · Text</span><small>Select several files together</small></button>
-        {uploadFile && <p role="status" className={knowledgeStyles.uploadProgress}>File {uploadFile.index} of {uploadFile.total} · {uploadFile.name}</p>}
-        <div className={knowledgeStyles.or}><span/>or add a website<span/></div>
-        <form onSubmit={event => void addWebsite(event)} className={knowledgeStyles.websiteForm}><label htmlFor={`knowledge-website-${calendarId}`}>Website address</label><div><Globe2 size={15}/><input id={`knowledge-website-${calendarId}`} type="text" inputMode="url" placeholder="yourbusiness.com" value={websiteUrl} onChange={event => setWebsiteUrl(event.target.value)} disabled={addingWebsite || uploading || !canEdit}/></div><button type="submit" disabled={addingWebsite || uploading || !canEdit || !websiteUrl.trim()}>{addingWebsite ? "Reading website…" : "Add website"}<Plus size={14}/></button><p>Reads the homepage and up to four relevant pages. Some JavaScript-only pages may have limited text.</p></form>
-      </aside>
-    </div>
-    <input ref={fileInputRef} type="file" multiple accept={BUSINESS_DOCUMENT_ACCEPT} disabled={uploading || addingWebsite || !canEdit} className="hidden" aria-label="Upload business knowledge documents" onChange={event => { if (event.target.files?.length) { void handleFiles(event.target.files); event.currentTarget.value = ""; } }}/>
+        </li>)}</ul> : <div className={knowledgeStyles.empty}><BookOpenText size={31}/><h3>No sources yet</h3><p>Add a business profile, price list, FAQ or website above.</p></div>}
+
     <details className={knowledgeStyles.understanding}>
       <summary><span className={knowledgeStyles.understandingIcon}><BookOpenText size={18}/></span><span><strong>What Showwork understands</strong><small>{updated ? `Overview updated ${updated}` : "Read the source-derived business overview"}</small></span><ChevronIcon open={false}/></summary>
       <div className={knowledgeStyles.understandingBody}>{businessSummaryState ? <p className={knowledgeStyles.summaryText}>{businessSummaryState}</p> : <p>Add a source to start building your business overview.</p>}
@@ -542,5 +550,12 @@ if (presignContentType.includes("application/json")) {
         <p className={knowledgeStyles.finePrint}>This overview summarizes your sources. Relevant source text takes priority in replies; research is reviewed separately in Randy.{researched ? ` Last researched ${researched}.` : ""}</p>
       </div>
     </details>
+        </div>
+      </details>
+
+    </div>
+    <input ref={fileInputRef} type="file" multiple accept={BUSINESS_DOCUMENT_ACCEPT} disabled={uploading || addingWebsite || !canEdit} className="hidden" aria-label="Upload business knowledge documents" onChange={event => { if (event.target.files?.length) { void handleFiles(event.target.files); event.currentTarget.value = ""; } }}/>
+
+    {documentsState.length > 0 && (!hasBrandVoice || nextSection) && <div className={knowledgeStyles.nextStep}><div><strong>{hasBrandVoice ? "Your business knowledge is ready" : "Business sources added"}</strong><p>{!hasBrandVoice ? "Next, choose how your brand should sound." : nextSection === "channels" ? "Next, connect a social channel." : "Next, create your first content batch."}</p></div><button type="button" disabled={uploading || addingWebsite} onClick={() => { if (!hasBrandVoice) focusBrandVoice(); else if (nextSection) window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: nextSection } })); }}>{!hasBrandVoice ? "Set brand voice" : nextSection === "channels" ? "Connect channels" : "Generate content"}<ArrowUpRight size={15}/></button></div>}
   </section>;
 }

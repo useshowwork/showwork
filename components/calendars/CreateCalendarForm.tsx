@@ -10,7 +10,7 @@ import {
   formatWorkspaceLimit,
 } from "@/lib/contentWorkspaceEntitlements";
 
-type ContentWorkspacePlan = "CREATOR" | "STUDIO" | "UNLIMITED";
+type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
 type Step = "closed" | "choose-plan" | "form";
 
 export default function CreateCalendarForm({
@@ -129,7 +129,7 @@ export default function CreateCalendarForm({
         </button>
       </div>
       {step === "choose-plan" ? (
-        <div data-onboarding="plan" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div data-onboarding="plan" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {CONTENT_WORKSPACE_PLAN_ORDER.map((value) => {
             const plan = PLAN_CONFIG[value];
             const benefits = [

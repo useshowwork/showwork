@@ -3,9 +3,9 @@ import { getCurrentCreator } from "@/lib/auth";
 import HomeClient from "./HomeClient";
 
 export const metadata: Metadata = {
-  title: "Showwork | Intelligent Marketing Operations Platform",
+  title: "Showwork | Plan, Approve & Publish Client Content",
   description:
-    "Bring marketing operations together: business knowledge, content creation, collaboration, supported publishing, customer conversations, and performance insights.",
+    "Plan content with AI, get client approvals, and publish on supported channels. One Marketing Workspace for each client, with business knowledge and brand voice built in.",
   keywords: [
     "marketing operations platform",
     "marketing team collaboration",
@@ -16,9 +16,9 @@ export const metadata: Metadata = {
     "Showwork",
   ],
   openGraph: {
-    title: "Showwork | Intelligent Marketing Operations Platform",
+    title: "Showwork | Plan, Approve & Publish Client Content",
     description:
-      "Bring marketing operations together: business knowledge, content creation, collaboration, supported publishing, customer conversations, and performance insights.",
+      "Plan content with AI, get client approvals, and publish on supported channels. One Marketing Workspace for each client, with business knowledge and brand voice built in.",
     url: "/",
     siteName: "Showwork",
     locale: "en_NG",
@@ -34,9 +34,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Showwork | Intelligent Marketing Operations Platform",
+    title: "Showwork | Plan, Approve & Publish Client Content",
     description:
-      "Bring marketing operations together: business knowledge, content creation, collaboration, supported publishing, customer conversations, and performance insights.",
+      "Plan content with AI, get client approvals, and publish on supported channels. One Marketing Workspace for each client, with business knowledge and brand voice built in.",
     images: ["/images/work.jpg"],
   },
   robots: {

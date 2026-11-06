@@ -9,7 +9,7 @@ function grantProjection(grants: BillingOfferSubscription[]) {
     )[0];
   }
   const delivery = highest("DELIVERY", ["STARTER", "GROWTH", "UNLIMITED"]);
-  const workspace = highest("CONTENT_WORKSPACE", ["CREATOR", "STUDIO", "UNLIMITED"]);
+  const workspace = highest("CONTENT_WORKSPACE", ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"]);
   return {
     billingComplimentaryGrants: grants.map(g => ({ product: g.product, plan: g.plan, startsAt: g.activatedAt!.toISOString(), endsAt: g.discountEndsAt!.toISOString() })),
     deliveryCompedTier: delivery?.plan as PaidTier ?? null,

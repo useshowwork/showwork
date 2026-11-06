@@ -49,7 +49,7 @@ async function handleUpload(
     select: {
       id: true,
       calendarId: true,
-      approvalStatus: true, platform: true, instagramPublishStatus: true,
+      deletedAt: true, approvalStatus: true, platform: true, instagramPublishStatus: true,
       tikTokPublishStatus: true, publishStatus: true, tikTokPublishId: true, platformPostId: true,
       calendar: {
         select: {

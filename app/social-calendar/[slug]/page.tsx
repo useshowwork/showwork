@@ -153,6 +153,7 @@ function Icon({
 
 function getView(value?: string): WorkspaceView {
   if (
+    value === "overview" ||
     value === "calendar" ||
     value === "instagram" ||
     value === "tiktok" ||
@@ -161,7 +162,7 @@ function getView(value?: string): WorkspaceView {
     return value;
   }
 
-  return "overview";
+  return "calendar";
 }
 
 function SidebarLink({
@@ -243,7 +244,7 @@ export default async function SocialCalendarPage({
   },
 },
       posts: {
-        where: { isAiDraft: false, internalReviewStatus: "APPROVED" },
+        where: { deletedAt: null, isAiDraft: false, internalReviewStatus: "APPROVED" },
         orderBy: { postDate: "asc" },
         include: {
           assets: { orderBy: { displayOrder: "asc" } },

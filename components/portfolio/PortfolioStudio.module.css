@@ -1,0 +1,49 @@
+.identity { padding:24px 20px; border-bottom:1px solid #e4e8ee; }
+.brand { display:inline-flex; min-height:32px; align-items:center; color:#193858; font-size:20px; font-weight:650; letter-spacing:-.05em; }
+.toolLabel { margin-top:22px; font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#617b9d; }
+.identity h1 { margin-top:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:16px; font-weight:600; }
+.slug { margin-top:5px; overflow-wrap:anywhere; font-size:11px; color:#71849d; }
+.status { display:inline-flex; align-items:center; gap:7px; margin-top:16px; padding:6px 9px; border:1px solid #dce5ef; border-radius:999px; font-size:10px; color:#526984; }
+.status > span { width:6px; height:6px; border-radius:50%; background:#d99c73; }
+.status[data-live=true] > span { background:#72d6ad; }
+@media(min-width:1024px) {
+  .frame[data-portfolio-studio] { display:grid; grid-template-columns:240px minmax(0,1fr); grid-template-rows:56px minmax(0,1fr); gap:24px; align-items:start; padding:12px; background:#eef1f6; overflow:visible; }
+  .frame .layout { display:contents; }
+  .frame .toolbar { grid-column:2; grid-row:1; top:12px; min-width:0; border:1px solid #e4e9f1; border-radius:16px; background:#fff; color:#26466d; box-shadow:0 8px 24px -6px #1632570a; }
+  .toolbar .toolbarInner { height:54px; max-width:none; padding:0 18px; gap:12px; }
+  .toolbar a { color:#3b5b82; background:transparent; }
+  .toolbar a:hover { background:#eff5ff; color:#1768e8; }
+  .toolbarInner > div > div > span:first-child { color:#4c6586; }
+  .toolbarInner > div > a:last-child { border:1px solid #dce5f0; padding-block:8px; }
+  .toolbarInner > div > span { color:#9a4c33; background:#fff1e9; }
+  .toolbarInner > div > span:has(> span[class~="bg-emerald-400"]) { color:#247658; background:#eef8f3; }
+  .frame .rail { grid-column:1; grid-row:1 / span 2; position:sticky; top:12px; width:100%; height:calc(100dvh - 24px); overflow:hidden; border:1px solid #25497a; border-radius:16px; background:#123568; color:#edf4ff; box-shadow:0 8px 24px -6px #16325714; }
+  .rail .identity { padding:18px 18px 20px; border-color:#ffffff20; }
+  .rail .brand { color:#fff; }
+  .rail .toolLabel { color:#afc6e7; }
+  .rail .identity h1 { color:#edf4ff; }
+  .rail .slug { color:#b5c9e7; }
+  .rail .status { color:#d4e4fa; border-color:#ffffff25; background:#ffffff08; }
+  .rail > nav > p { color:#afc6e7; }
+  .rail > nav { scrollbar-width:thin; scrollbar-color:#5577a7 transparent; }
+  .rail .navItem { min-height:44px; padding:7px 12px; border-radius:999px; color:#edf4ff; background:transparent; border-color:transparent; }
+  .rail .navItem:hover { color:#fff; background:#244b7c; border-color:transparent; }
+  .rail .navItem[aria-current=page] { background:#1768e8; border-color:#4a8df1; color:#fff; }
+  .rail .navIcon { width:26px; height:28px; background:transparent; color:#bad3f5; border:0; }
+  .rail .navItem[aria-current=page] .navIcon { color:#fff; }
+  .rail .navDescription { display:none; }
+  .rail .navItem > span:last-child > span > span:last-child:not(:first-child) { background:#ffffff15; color:#e1edff; }
+  .rail > div:last-child { border-color:#ffffff20; }
+  .rail > div:last-child > a { color:#d4e4fa; background:transparent; }
+  .rail > div:last-child > a:first-child { background:#1768e8; color:#fff; }
+  .rail > div:last-child > a:hover { background:#244b7c; color:#fff; }
+  .rail :focus-visible { outline:2px solid #b4d4ff; outline-offset:3px; }
+  .frame .content { grid-column:2; grid-row:2; min-width:0; border:1px solid #e4e9f1; border-radius:16px; background:#fff; box-shadow:0 8px 24px -6px #1632570a; }
+  .content .contentInner { max-width:none; min-height:calc(100dvh - 104px); padding:24px; }
+  .contentHeading { margin-bottom:24px; padding-bottom:22px; }
+  .contentHeading h2 { margin-top:10px; font-size:32px; line-height:1.15; }
+  .contentHeading p:last-child { margin-top:10px; }
+  .toolbar :focus-visible { outline:2px solid #1768e8; outline-offset:3px; }
+}
+
+@media(max-width:1023px){.identity .brand img{filter:brightness(0)}}

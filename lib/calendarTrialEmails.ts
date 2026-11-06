@@ -6,7 +6,7 @@ import {
   sendCalendarTrialEndedEmail,
 } from "@/lib/resend";
 
-type ContentWorkspacePlan = "CREATOR" | "STUDIO" | "UNLIMITED";
+type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
 
 // Runs once a day (see app/api/cron/calendar-trial-emails and the
 // matching Netlify scheduled function). Each of the four stages is

@@ -111,7 +111,7 @@ export default function DeleteProjectButton({
         onClick={openModal}
         aria-label={`Delete ${clientName}`}
         className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full text-[var(--pd-subtle,rgba(255,255,255,.5))] transition-colors hover:bg-red-500/20 hover:text-red-400"
-        style={{ background: "rgba(0,0,0,0.4)" }}
+        style={{ background: projectTheme ? "var(--pd-soft)" : "rgba(0,0,0,0.4)" }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path

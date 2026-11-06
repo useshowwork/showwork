@@ -129,7 +129,7 @@ export async function POST() {
 
     const metadataPlan =
       metadata?.contentWorkspacePlan === "CREATOR" ||
-      metadata?.contentWorkspacePlan === "STUDIO" || metadata?.contentWorkspacePlan === "UNLIMITED"
+      metadata?.contentWorkspacePlan === "GROWTH" || metadata?.contentWorkspacePlan === "STUDIO" || metadata?.contentWorkspacePlan === "UNLIMITED"
         ? (metadata.contentWorkspacePlan as ContentWorkspacePlan)
         : null;
 

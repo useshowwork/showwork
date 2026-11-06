@@ -1,3 +1,4 @@
+import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { TOOL_COPY } from "@/components/dashboard/toolCopy";
 import WorkspaceCard from "@/components/dashboard/WorkspaceCard";
 import workspaceStyles from "@/components/dashboard/WorkspaceCard.module.css";
@@ -174,26 +175,7 @@ function WorkspaceIcon({
 /*                                   LOGO                                     */
 /* -------------------------------------------------------------------------- */
 
-function Logo() {
-  return (
-    <div
-      role="img"
-      aria-label="Showwork"
-      className="h-[20px] w-[80px]"
-      style={{
-        backgroundColor: "#090A0C",
-        WebkitMaskImage: "url(/images/logo/sw.svg)",
-        maskImage: "url(/images/logo/sw.svg)",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "left center",
-        maskPosition: "left center",
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-      }}
-    />
-  );
-}
+function Logo() { return <ShowworkLogo width={96}/>; }
 
 /* -------------------------------------------------------------------------- */
 /*                              DASHBOARD PAGE                                */
