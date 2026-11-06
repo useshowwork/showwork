@@ -272,7 +272,7 @@ export default function CalendarWorkspaceShell({
   };
 
   const aiSections = visibleSections.filter(section => ["knowledge", "research", "generate"].includes(section.id));
-  const primaryMobile = (["content", "analytics", "inbox"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
+  const primaryMobile = (["content", "inbox", "analytics"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
   const moreSections = visibleSections.filter(section => !["content", "inbox", "analytics", "knowledge", "research", "generate"].includes(section.id)).sort((a, b) => Number(a.id === "overview") - Number(b.id === "overview"));
   const aiActive = aiSections.some(section => section.id === active.id);
   const moreActive = moreSections.some(section => section.id === active.id);
@@ -323,8 +323,9 @@ export default function CalendarWorkspaceShell({
         </div>}
       </MobileDrawer>
       <nav aria-label="Mobile workspace navigation" data-workspace-bottom-nav hidden={keyboardOpen} className={`${menuStyles.bottomNav} lg:hidden`}>
-        {primaryMobile.map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === "content" ? "Calendar" : item.id === "analytics" ? "Analytics" : item.label}</button>)}
+        {primaryMobile.filter(item => item.id === "content").map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === "content" ? "Calendar" : item.id === "analytics" ? "Analytics" : item.label}</button>)}
         {!!aiSections.length && <button onClick={() => openSheet("ai")} aria-current={aiActive ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "ai"} aria-haspopup="dialog" className={menuStyles.dockItem}><Sparkles size={20}/>AI Studio</button>}
+        {primaryMobile.filter(item => item.id !== "content").map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === "content" ? "Calendar" : item.id === "analytics" ? "Analytics" : item.label}</button>)}
         <button onClick={() => openSheet("more")} aria-current={moreActive ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog" className={menuStyles.dockItem}><MoreHorizontal size={20}/>More</button>
       </nav>
 
