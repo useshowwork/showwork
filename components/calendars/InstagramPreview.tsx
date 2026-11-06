@@ -1,4 +1,5 @@
 "use client";
+import styles from "./InstagramPreview.module.css";
 import { calendarWorkflow } from "@/lib/calendarWorkflow";
 
 import UiSymbol from "@/components/ui/UiSymbol";
@@ -309,10 +310,9 @@ function PostMedia({
         <video preload={active.posterUrl ? "none" : "metadata"}
           key={active.id}
           poster={active.posterUrl ?? undefined} src={active.contentUrl}
-          className="h-full w-full object-cover"
-          autoPlay
+          className="h-full w-full object-contain"
+          controls
           muted
-          loop
           playsInline
         />
       ) : (
@@ -533,7 +533,7 @@ function GridCell({
         )
       ) : (
         <div className="flex h-full w-full items-center justify-center">
-          <IconCamera className="h-5 w-5 text-white/15" />
+          <div className="flex flex-col items-center gap-2 px-3 text-center"><IconCamera className="h-5 w-5 text-white/30"/><span className="line-clamp-3 text-[10px] leading-relaxed text-white/55">{post.caption || "Creative coming soon"}</span></div>
         </div>
       )}
 
@@ -631,13 +631,14 @@ export default function InstagramPreview({
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div className={styles.stage}>
+      <div className={styles.heading}><span>INSTAGRAM PREVIEW</span><h3>Your profile, before you publish.</h3><p>Tap a post to preview its creative and caption.</p></div>
       {/* PHONE */}
       <div
-        className="relative mx-auto w-full max-w-[390px] overflow-hidden rounded-[2.75rem] border-[6px] border-[#171717] bg-black shadow-2xl"
+        className={styles.phone}
         style={{
           boxShadow:
-            "0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",
+            "0 24px 60px -20px rgba(24,46,80,0.35), 0 0 0 1px rgba(255,255,255,0.15)",
         }}
       >
         {/* Dynamic island */}
@@ -985,7 +986,7 @@ export default function InstagramPreview({
         </nav>
       </div>
 
-      <p className="mt-4 text-xs text-white/30">
+      <p className={styles.caption}>
         {instagramPosts.length} Instagram post
         {instagramPosts.length === 1 ? "" : "s"} planned for this calendar
       </p>

@@ -8,6 +8,7 @@ export default function WorkspaceFeatureNotice({ feature, trial = false, paidPla
   const trialMessage = paidPlan
     ? `${CONTENT_WORKSPACE_PLANS[paidPlan].name} subscription active · You also keep full Agency feature access${endDate ? ` until ${endDate}` : " for the remainder of your original trial"}. Your paid plan continues afterward. AI automatic replies remain opt-in.`
     : `Agency trial access · All premium features are available${endDate ? ` until ${endDate}` : " during your 7-day trial"}. AI automatic replies stay off unless you turn them on. Your selected plan applies after the trial.`;
+  if (trial) return <details className="mb-3 text-xs text-[#637c9c]"><summary className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-medium text-blue-800"><Sparkles size={13} aria-hidden="true"/>Agency trial{endDate ? ` · Until ${endDate}` : " · Active"}<span aria-hidden="true">⌄</span></summary><p className="mt-2 max-w-2xl leading-6">{trialMessage}</p></details>;
   if (compact && !trial) return (
     <p role="status" className="my-2 text-xs leading-5 text-[#667085]">
       {message ?? (feature ? workspaceFeatureUpgradeMessage(feature).replace(" Your existing data is preserved.", "") : "Subscribe or upgrade to resume editing. Your saved work stays available.")}{" "}

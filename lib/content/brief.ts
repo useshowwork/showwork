@@ -56,7 +56,7 @@ export function editablePostBrief(post: {
     const text = (value: unknown) => typeof value === "string" ? value : "";
     return {
         version: 2, ...(old?.reviewWarnings ? {reviewWarnings:old.reviewWarnings} : {}), format: old?.format || (FORMATS.includes(post.postType as typeof FORMATS[number]) ? String(post.postType) : platformBriefFormats(post.platform || "INSTAGRAM")[0] || "Static graphic"),
-        title: old?.title || text(post.postType) || "Content",
+        title: old?.title || (text(post.hook) || text(post.caption) || text(post.contentIdea)).split("\n")[0].slice(0,120) || "Untitled post",
         objective: old?.objective || "", targetAudience: old?.targetAudience || "",
         hook: text(post.hook) || old?.hook || "",
         caption: text(post.caption) || old?.caption || "",
@@ -75,4 +75,18 @@ export function reconcileBrief(current: CreativeBrief, previous: CreativeBrief, 
         key, current[key as keyof CreativeBrief] === previous[key as keyof CreativeBrief]
             ? incoming[key as keyof CreativeBrief] : current[key as keyof CreativeBrief],
     ])) as unknown as CreativeBrief;
+}
+
+/** Validate explicit user edits before AI completes a legacy draft; required fields may still be empty. */
+export function parseEditableBrief(value: unknown): CreativeBrief {
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw Error("Invalid editable brief.");
+    const input=value as Record<string,unknown>;
+    if(input.version!==2 || !FORMATS.includes(input.format as typeof FORMATS[number])) throw Error("Invalid brief format.");
+    const clean:Record<string,unknown>={version:2,format:input.format};
+    for(const name of BRIEF_FIELDS){const max=name==="caption"?5000:name==="creativeDirection"?1800:800;if(typeof input[name]!=="string" || (input[name] as string).length>max)throw Error(`Invalid brief field: ${name}`);clean[name]=input[name];}
+    if (input.reviewWarnings !== undefined) {
+        if (!Array.isArray(input.reviewWarnings) || input.reviewWarnings.length > 8 || input.reviewWarnings.some(value => typeof value !== "string" || value.length > 500)) throw Error("Invalid review warnings.");
+        clean.reviewWarnings = input.reviewWarnings;
+    }
+    return clean as unknown as CreativeBrief;
 }

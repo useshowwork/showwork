@@ -1,5 +1,5 @@
 .rail { border-right: 1px solid #e0e8f5; background: linear-gradient(165deg,#f8fbff 0,#fff 48%,#f6f9ff 100%); }
-.railHeader { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 7px; padding: 20px 12px 17px; }
+.railHeader { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 7px; padding: 24px 22px 20px; }
 .workspaceIdentity { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .workspaceMark { display: grid; place-items: center; width: 33px; height: 37px; flex-shrink: 0; border: 1px solid #dae6fb; border-radius: 12px; background: linear-gradient(140deg,#fff,#e7effe); color: #397bd9; box-shadow: 0 4px 10px -6px #1768e840; }
 .workspaceIdentity strong { display: block; font-size: 11px; font-weight: 600; letter-spacing: -.02em; color: #385a88; }
@@ -151,7 +151,7 @@
   .desktopFrame[data-sidebar-collapsed=true] { grid-template-columns:76px minmax(0,1fr); }
   .desktopFrame .desktopLayout { display:contents; }
   .desktopFrame .rail { grid-column:1; grid-row:1 / span 2; top:12px; height:calc(100dvh - 24px); border:1px solid #25497a; border-radius:16px; box-shadow:0 8px 24px -6px #16325714; overflow:hidden; }
-  .railHeader { min-height:64px; padding:14px 12px; }
+  .railHeader { min-height:80px; padding:20px 22px; }
   .workspaceIdentity strong { font-size:16px; letter-spacing:-.04em; }
   .workspaceIdentity small { max-width:132px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
   .rail .navItem { min-height:40px; border-radius:999px; padding:4px 10px; gap:8px; }

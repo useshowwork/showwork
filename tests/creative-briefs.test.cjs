@@ -18,7 +18,7 @@ test('quality rejection and invalid replacements retain complete drafts with a v
 test('same-content briefs are shared unchanged, different streams keep distinct ideas',async()=>{for(const contentStrategy of ['SAME_CONTENT','DIFFERENT_CONTENT','CUSTOM_GROUPS']){const f=fixtureModel();const rows=await generateBriefCalendar(f.model,{...request,endDate:'2026-11-01',platforms:['INSTAGRAM','FACEBOOK'],contentStrategy,contentGroups:[['INSTAGRAM','FACEBOOK']]});assert.equal(rows.length,6);if(contentStrategy==='DIFFERENT_CONTENT')assert.notEqual(rows[0].creativeBrief.coreIdea,rows[3].creativeBrief.coreIdea);else assert.equal(briefSnapshot(rows[0].creativeBrief),briefSnapshot(rows[1].creativeBrief));}});
 test('new output is the default public generator path and does not repair blank scripts',async()=>{delete process.env.CONTENT_BRIEF_GENERATION_ENABLED;process.env.OPENAI_API_KEY='fixture';const f=fixtureModel();global.fetch=async(_url,init)=>{const body=JSON.parse(init.body);const text=await f.model({instructions:body.instructions,input:body.input,jsonSchema:body.text.format});return Response.json({output:[{type:'message',content:[{type:'output_text',text}]}]});};const api=load('lib/openai.ts',{'@/lib/db':{db:{}}});const rows=await api.generateContentCalendar({...request,endDate:'2026-11-01'});assert.equal(rows.length,3);assert.equal(rows[0].script,'');assert.equal(f.calls.some(c=>c.jsonSchema.name==='video_fields'),false);});
 test('brief publishing requires finished copy while legacy media posts retain existing rules',()=>{const {validatePublishContent}=load('lib/publishing/state.ts');assert.throws(()=>validatePublishContent('INSTAGRAM',[],'','Reel',false),/finished copy/);assert.doesNotThrow(()=>validatePublishContent('INSTAGRAM',[{mediaType:'PHOTO'}],'','Image'));});
-test('editor groups optional tools and retains historical artifacts without overwriting',()=>{const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');const Editor=load('components/calendars/CreativeBriefEditor.tsx').default;const html=renderToStaticMarkup(React.createElement(Editor,{calendarId:'a',post:{id:'p',updatedAt:'2026-10-26T00:00:00Z',platform:'INSTAGRAM',creativeBrief:brief('x'),caption:'Historical caption',script:'Historical script'},onUpdated:()=>{}}));assert.match(html,/Creative brief/);assert.match(html,/Creative development/);assert.match(html,/Optional/);assert.doesNotMatch(html,/A timed shoot-and-edit script/);});
+test('editor groups optional tools and retains historical artifacts without overwriting',()=>{const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');const Editor=load('components/calendars/CreativeBriefEditor.tsx').default;const html=renderToStaticMarkup(React.createElement(Editor,{calendarId:'a',post:{id:'p',updatedAt:'2026-10-26T00:00:00Z',platform:'INSTAGRAM',creativeBrief:brief('x'),caption:'Historical caption',script:'Historical script'},onUpdated:()=>{}}));assert.match(html,/Post copy/);assert.match(html,/Strategy/);assert.match(html,/Creative direction/);assert.match(html,/Improve with AI/);assert.doesNotMatch(html,/A timed shoot-and-edit script/);});
 test('additive migration preserves old caption/script data and permits structured JSON',async()=>{const {PGlite}=require(process.env.SHOWWORK_REVIEW_PGLITE_PATH||'/private/tmp/showwork-workflow-qa/node_modules/@electric-sql/pglite');const pg=new PGlite();try{await pg.exec(`CREATE TABLE "CalendarPost" (id TEXT PRIMARY KEY,caption TEXT,script TEXT);CREATE TABLE "CalendarPostAiGeneration" (id TEXT PRIMARY KEY);INSERT INTO "CalendarPost" VALUES ('old','Original caption','Original script');`);await pg.exec(fs.readFileSync('prisma/migrations/20261026090000_creative_briefs/migration.sql','utf8'));const old=(await pg.query('SELECT * FROM "CalendarPost"')).rows[0];assert.equal(old.caption,'Original caption');assert.equal(old.script,'Original script');assert.equal(old.creativeBrief,null);await pg.query('UPDATE "CalendarPost" SET "creativeBrief"=$1::jsonb WHERE id=$2',[JSON.stringify(brief('new')),'old']);assert.equal((await pg.query('SELECT "creativeBrief" FROM "CalendarPost"')).rows[0].creativeBrief.title,'Working idea new');}finally{await pg.close();}});
 
 test('v2 requires complete default copy and v1 preserves historical brief data',()=> {
@@ -30,18 +30,19 @@ test('v2 requires complete default copy and v1 preserves historical brief data',
   const old={...complete,version:1};delete old.hook;delete old.caption;delete old.hashtags;
   assert.deepEqual(parseCreativeBrief(old),old);
 });
-test('v2 editor prioritizes post copy before expandable strategy and keeps script optional',()=> {
+test('v2 editor shows copy first and exposes strategy and creative direction as accessible tabs',()=> {
   const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
   const Editor=load('components/calendars/CreativeBriefEditor.tsx').default;
   const html=renderToStaticMarkup(React.createElement(Editor,{calendarId:'a',post:{id:'p',platform:'INSTAGRAM',creativeBrief:brief('ui')},onUpdated:()=>{}}));
-  const labels=['Caption','Call to Action','Hashtags','Hook','Objective','Target Audience','Creative direction'];
-  let at=-1;for(const label of labels){const next=html.indexOf('>'+label+'<',at+1);assert.ok(next>at,label);at=next;}
-  assert.equal(html.indexOf('>Script<'),-1);
+  assert.equal((html.match(/role="tab"/g)||[]).length,3);
+  for(const label of ['Caption','Call to Action','Hashtags'])assert.match(html,new RegExp('aria-label="'+label+'"'));
+  assert.doesNotMatch(html,/aria-label="Objective"/);
+  assert.equal((html.match(/aria-selected="true"/g)||[]).length,1);
 });
 
 test('all older post types show objective and audience without a script field',()=>{
  const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
- const Editor=load('components/calendars/CreativeBriefEditor.tsx').default;
+ const Editor=load('components/calendars/CreativeBriefEditor.tsx',{react:{...React,useState:initial=>[initial==='copy'?'strategy':typeof initial==='function'?initial():initial,()=>{}]}}).default;
  const {editablePostBrief}=load('lib/content/brief.ts');
  for(const platform of ['INSTAGRAM','TIKTOK','YOUTUBE','FACEBOOK','LINKEDIN','X']){
   const post={id:'old',platform,script:'Historical script',caption:'Existing caption',hook:'Existing hook',contentIdea:'Original direction',cta:'Reply',hashtags:'#Example'};

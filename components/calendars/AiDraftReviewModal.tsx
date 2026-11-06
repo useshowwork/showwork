@@ -1,66 +1,47 @@
 "use client";
-import CreativeBriefEditor from "./CreativeBriefEditor";
-import type { CreativeBrief, CreativeDevelopment } from "@/lib/content/brief";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Loader2,
+  MoreHorizontal,
+  X,
+} from "lucide-react";
+import CreativeBriefEditor, {
+  type BriefEditorPost,
+  type BriefEditorState,
+} from "./CreativeBriefEditor";
+import PlatformBrandIcon from "./PlatformBrandIcon";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
-
-import WorkspaceFeatureNotice from "@/components/calendars/WorkspaceFeatureNotice";
-
-import UiSymbol from "@/components/ui/UiSymbol";
-import { useEffect, useMemo, useState } from "react";
-
-interface DraftPost {
-  updatedAt?: string;
-  creativeBrief?: CreativeBrief | null;
-  creativeDevelopment?: CreativeDevelopment | null;
-  id: string;
+import { editablePostBrief } from "@/lib/content/brief";
+import {
+  draftTitle,
+  mergeDraftSnapshots,
+  reviewDraftBatch,
+} from "@/lib/content/draftReview";
+import styles from "./DraftReview.module.css";
+type Draft = BriefEditorPost & {
   postDate: string;
-  platform: string;
   postType: string | null;
-  category: string | null;
-  hook: string | null;
-  script: string | null;
-  caption: string | null;
   contentIdea: string | null;
-  cta: string | null;
-  hashtags: string | null;
-}
-
-interface Generation extends DraftPost {
-  generationNumber: number;
-  createdAt: string;
-}
-
-type EditableKey =
-  | "hook"
-  | "script"
-  | "caption"
-  | "contentIdea"
-  | "cta"
-  | "hashtags";
-
-const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE", "FACEBOOK", "X", "LINKEDIN"];
-
-const PLATFORM_META: Record<string, { label: string; mark: string }> = {
-  INSTAGRAM: { label: "Instagram", mark: "IG" },
-  TIKTOK: { label: "TikTok", mark: "TK" },
-  YOUTUBE: { label: "YouTube", mark: "YT" },
-  FACEBOOK: { label: "Facebook", mark: "FB" },
-  X: { label: "X", mark: "X" },
-  LINKEDIN: { label: "LinkedIn", mark: "IN" },
+  hook: string | null;
+  caption: string | null;
+  category?: string | null;
 };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-US", {
-    weekday: "short",
+type Generation = Draft & { generationNumber: number; createdAt: string };
+const date = (value: string) =>
+  new Date(value).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
+async function json(response: Response) {
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok)
+    throw Error(body.error || "Could not complete this action. Try again.");
+  return body;
 }
-
-function snapshot(draft: DraftPost): DraftPost {
-  return { ...draft };
-}
-
 export default function AiDraftReviewModal({
   calendarId,
   jobId = null,
@@ -70,802 +51,655 @@ export default function AiDraftReviewModal({
   jobId?: string | null;
   onClose: () => void;
 }) {
-  const [drafts, setDrafts] = useState<DraftPost[] | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [generations, setGenerations] = useState<Generation[]>([]);
-  const [generationIndex, setGenerationIndex] = useState(-1);
-  const [instruction, setInstruction] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [jobStatus, setJobStatus] = useState<"PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | null>(jobId ? "RUNNING" : null);
-  const [jobProgress, setJobProgress] = useState<{ inProgress?: boolean; completedCount?: number; totalCount?: number } | null>(null);
-
-  const selected = useMemo(
-    () => drafts?.find((draft) => draft.id === selectedId) ?? null,
-    [drafts, selectedId]
-  );
-
-  const selectedGeneration = generationIndex >= 0 ? generations[generationIndex] : null;
-
-  async function readJson(res: Response) {
-    const text = await res.text();
-    if (!text) return {};
-    try {
-      return JSON.parse(text);
-    } catch {
-      return {};
-    }
-  }
-
-  async function loadDrafts(silent = false) {
-    try {
-      if (!silent) setError(null);
-      const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts`, {
-        cache: "no-store",
-      });
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error ?? "Failed to load drafts");
-
-      const incoming: DraftPost[] = data.drafts ?? [];
-      setDrafts((current) => {
-        if (!current || current.length === 0) return incoming;
-        const currentIds = new Set(current.map((d) => d.id));
-        const newItems = incoming.filter((d) => !currentIds.has(d.id));
-        if (newItems.length === 0) return current;
-        return [...current, ...newItems];
-      });
-      if (incoming.length) {
-        setSelectedId((current: string | null) => current ?? incoming[0].id);
-      }
-    } catch (err) {
-      if (!silent) setError(err instanceof Error ? err.message : "Failed to load drafts");
-    }
-  }
-
-  async function loadGenerations(postId: string) {
-    try {
-      setError(null);
-      const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts/${postId}`, {
-        cache: "no-store",
-      });
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error ?? "Failed to load generation history");
-
-      const history = (data.generations ?? []) as Generation[];
-      setGenerations(history);
-      setGenerationIndex(history.length ? history.length - 1 : -1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load generation history");
-    }
-  }
-
-  useEffect(() => {
-    loadDrafts();
+  const dialog = useRef<HTMLDialogElement>(null),
+    content = useRef<HTMLDivElement>(null),
+    removed = useRef(new Set<string>()),
+    loadVersion = useRef(0),
+    historyVersion = useRef(0),
+    alive = useRef(true);
+  const [drafts, setDrafts] = useState<Draft[] | null>(null),
+    [selectedId, setSelectedId] = useState<string | null>(null),
+    [reviewed, setReviewed] = useState<string[]>([]),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState(""),
+    [busy, setBusy] = useState(false),
+    [jobRunning, setJobRunning] = useState(Boolean(jobId)),
+    [progress, setProgress] = useState({ completedCount: 0, totalCount: 0 }),
+    [history, setHistory] = useState<Generation[]>([]),
+    [historyLoading, setHistoryLoading] = useState(false);
+  const [editorState, setEditorState] = useState<BriefEditorState>({
+    dirty: false,
+    busy: false,
+    needsContext: false,
+  });
+  const stateRef = useRef(editorState);
+  stateRef.current = editorState;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
+  const saveAction = useRef<(() => void) | null>(null);
+  const onSaveReady = useCallback((save: (() => void) | null) => {
+    saveAction.current = save;
   }, []);
-
-  // Poll for background generation progress and stream new drafts
+  const onEditorState = useCallback(
+    (state: BriefEditorState) => setEditorState(state),
+    [],
+  );
+  const selected = drafts?.find((row) => row.id === selectedId) ?? null;
+  const locked = busy || editorState.busy;
+  const confirmNavigation = () =>
+    !stateRef.current.dirty ||
+    window.confirm("Discard your unsaved changes? Saved drafts will be kept.");
+  const requestClose = useCallback(() => {
+    if (busyRef.current || stateRef.current.busy) return;
+    if (
+      !stateRef.current.dirty ||
+      window.confirm(
+        "Close without saving your latest edits? Your saved drafts will be kept.",
+      )
+    )
+      onClose();
+  }, [onClose]);
+  const loadDrafts = useCallback(async () => {
+    const version = ++loadVersion.current;
+    const data = await json(
+      await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts`, {
+        cache: "no-store",
+      }),
+    );
+    if (!alive.current || version !== loadVersion.current) return;
+    const incoming = (data.drafts || []) as Draft[];
+    if (
+      stateRef.current.dirty &&
+      selectedIdRef.current &&
+      !incoming.some((row) => row.id === selectedIdRef.current)
+    ) {
+      setNotice(
+        "This draft changed outside this review. Your unsaved edits are kept here; save or copy them before refreshing.",
+      );
+      return;
+    }
+    setDrafts((current) =>
+      mergeDraftSnapshots(current || [], incoming, removed.current),
+    );
+    setSelectedId((current) =>
+      current &&
+      incoming.some((row) => row.id === current && !removed.current.has(row.id))
+        ? current
+        : (incoming.find((row) => !removed.current.has(row.id))?.id ?? null),
+    );
+  }, [calendarId]);
   useEffect(() => {
-    if (!jobId || jobStatus === "COMPLETED" || jobStatus === "FAILED") return;
+    alive.current = true;
+    dialog.current?.showModal();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    void loadDrafts().catch((e) => setError(e.message));
+    return () => {
+      alive.current = false;
+      loadVersion.current++;
+      historyVersion.current++;
+      document.body.style.overflow = previous;
+    };
+  }, [loadDrafts]);
+  useEffect(() => {
+    if (!jobId) return;
+    setJobRunning(true);
     let cancelled = false;
-
-    const poll = async () => {
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
       try {
-        const res = await fetch(`/api/calendars/${encodeURIComponent(calendarId)}/ai-generate/${encodeURIComponent(jobId)}`, {
-          cache: "no-store",
-        });
-        const data = await res.json().catch(() => ({}));
+        const response = await fetch(
+          `/api/calendars/${encodeURIComponent(calendarId)}/ai-generate/${encodeURIComponent(jobId!)}`,
+          { cache: "no-store" },
+        );
+        const data = await response.json();
         if (cancelled) return;
-
-        if (res.status === 200 || data.status === "COMPLETED") {
-          setJobStatus("COMPLETED");
-          await loadDrafts(true);
+        if (response.status === 200 || data.status === "COMPLETED") {
+          await loadDrafts();
+          if (!cancelled) {
+            setJobRunning(false);
+            setNotice("Generation complete. Your drafts are ready to review.");
+          }
           return;
         }
-
-        if (res.status === 202) {
-          setJobStatus("RUNNING");
-          if (data.progress) {
-            setJobProgress(data.progress);
-          }
-          await loadDrafts(true);
-        } else if (res.status >= 400) {
-          setJobStatus("FAILED");
-          if (data.error) setError(data.error);
+        if (response.status >= 400) {
+          setJobRunning(false);
+          setError(
+            data.error ||
+              "Generation stopped. Your saved drafts are still available.",
+          );
+          await loadDrafts();
+          return;
         }
+        if (data.progress) setProgress(data.progress);
       } catch {
-        // Soft network failure; keep polling
+        if (!cancelled)
+          setNotice("Connection interrupted. Retrying generation status…");
       }
-    };
-
-    const interval = setInterval(poll, 2500);
+      if (!cancelled) timer = setTimeout(poll, 2500);
+    }
     void poll();
-
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(timer);
     };
-  }, [calendarId, jobId, jobStatus]);
-
+  }, [calendarId, jobId, loadDrafts]);
   useEffect(() => {
-    if (selectedId) loadGenerations(selectedId);
+    setHistory([]);
+    historyVersion.current++;
+    setHistoryLoading(false);
+    setEditorState({ dirty: false, busy: false, needsContext: false });
+    content.current?.scrollTo({ top: 0 });
   }, [selectedId]);
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-  void discardAllDrafts();
-}
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  function updateField(field: EditableKey, value: string) {
-    if (!selected) return;
-    setDrafts((current) =>
-      current?.map((draft) => (draft.id === selected.id ? { ...draft, [field]: value } : draft)) ?? null
+  function choose(id: string) {
+    if (locked || id === selectedId || !confirmNavigation()) return;
+    setSelectedId(id);
+    setError("");
+    setNotice("");
+  }
+  function updated(post: Draft) {
+    setDrafts(
+      (current) =>
+        current?.map((row) =>
+          row.id === post.id ? { ...row, ...post } : row,
+        ) || null,
     );
   }
-
-  async function saveEdits() {
-    if (!selected) return;
-    setSaving(true);
-    try {
-      const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts/${selected.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({
-  hook: selected.hook,
-  script: selected.script,
-  caption: selected.caption,
-  contentIdea: selected.contentIdea,
-  cta: selected.cta,
-  hashtags: selected.hashtags,
-  postDate: selected.postDate,
-}),
-      });
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error ?? "Failed to save edits");
-      setError(null);
-      await loadGenerations(selected.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save edits");
-    } finally {
-      setSaving(false);
-    }
+  function finished(id: string) {
+    removed.current.add(id);
+    setReviewed((current) =>
+      current.includes(id) ? current : [...current, id],
+    );
+    setDrafts((current) => current?.filter((row) => row.id !== id) || []);
+    window.dispatchEvent(new Event("showwork-calendar-posts-sync"));
   }
-
-  async function regenerate() {
-    if (!selected || busy) return;
+  async function confirm(id: string) {
+    await json(
+      await calendarMutationFetch(
+        `/api/calendars/${calendarId}/ai-drafts/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      ),
+    );
+  }
+  async function markReviewed() {
+    if (!selected || locked || editorState.dirty || editorState.needsContext)
+      return;
     setBusy(true);
-    setError(null);
-
+    setError("");
     try {
-      const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts/${selected.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction }),
-      });
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error ?? "Failed to regenerate");
-
-      const generation = data.generation as Generation;
-
-      setDrafts((current) =>
-        current?.map((draft) =>
-          draft.id === selected.id
-            ? {
-                ...draft,
-                postDate: generation.postDate,
-                platform: generation.platform,
-                postType: generation.postType,
-                category: generation.category,
-                hook: generation.hook,
-                script: generation.script,
-                caption: generation.caption,
-                contentIdea: generation.contentIdea,
-                cta: generation.cta,
-                hashtags: generation.hashtags,
-              }
-            : draft
-        ) ?? null
+      await confirm(selected.id);
+      finished(selected.id);
+      const index = drafts!.findIndex((row) => row.id === selected.id);
+      setSelectedId(
+        drafts?.[index + 1]?.id ??
+          drafts?.find((row) => row.id !== selected.id)?.id ??
+          null,
       );
-
-      setInstruction("");
-      await loadGenerations(selected.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to regenerate");
+      setNotice(
+        "Post reviewed and added to your calendar. It has not been published.",
+      );
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
-
-  async function restoreGeneration(generation: Generation) {
-    if (!selected || saving) return;
-    setSaving(true);
-    try {
-      const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts/${selected.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generationId: generation.id }),
-      });
-
-      // The route above is intentionally the regeneration endpoint in this
-      // example; restore uses the dedicated /restore endpoint below.
-      if (!res.ok) throw new Error("Failed to restore generation");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to restore generation");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function restore(generation: Generation) {
-    if (!selected || saving) return;
-    setSaving(true);
-    try {
-      const res = await calendarMutationFetch(
-        `/api/calendars/${calendarId}/ai-drafts/${selected.id}/restore`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ generationId: generation.id }),
-        }
+  async function reviewAll() {
+    if (locked || jobRunning || !drafts?.length || editorState.dirty) return;
+    if (
+      drafts.some((row) => {
+        const brief = editablePostBrief(row);
+        return (
+          !brief.hook.trim() ||
+          !brief.objective.trim() ||
+          !brief.targetAudience.trim()
+        );
+      })
+    ) {
+      setError(
+        "Complete the missing strategy fields before reviewing all drafts.",
       );
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error ?? "Failed to restore generation");
-
-      setDrafts((current) =>
-        current?.map((draft) =>
-          draft.id === selected.id ? { ...draft, ...data.post, postDate: data.post.postDate } : draft
-        ) ?? null
-      );
-      await loadGenerations(selected.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to restore generation");
-    } finally {
-      setSaving(false);
+      return;
     }
-  }
-
-  async function confirmDraft(id: string) {
-    setSaving(true);
+    if (
+      !window.confirm(
+        `Accept all ${drafts.length} saved drafts and add them to your calendar? This does not publish them.`,
+      )
+    )
+      return;
+    setBusy(true);
+    setError("");
+    const ids = drafts.map((row) => row.id);
     try {
-      const draft = drafts?.find((item) => item.id === id);
-      if (!draft) return;
-
-      const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({
-  hook: draft.hook,
-  script: draft.script,
-  caption: draft.caption,
-  contentIdea: draft.contentIdea,
-  cta: draft.cta,
-  hashtags: draft.hashtags,
-  postDate: draft.postDate,
-}),
-      });
-
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error ?? "Failed to confirm draft");
-
-      setDrafts((current) => current?.filter((item) => item.id !== id) ?? null);
-      setSelectedId((current) => {
-        if (current !== id) return current;
-        const remaining = drafts?.filter((item) => item.id !== id) ?? [];
-        return remaining[0]?.id ?? null;
-      });
-      window.dispatchEvent(new Event("showwork-calendar-posts-sync"));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to confirm draft");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function discardDraft(id: string) {
-    setSaving(true);
-    try {
-      const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts/${id}`, {
-        method: "DELETE",
-      });
-      const data = await readJson(res);
-      if (!res.ok) throw new Error(data.error ?? "Failed to discard draft");
-
-      setDrafts((current) => current?.filter((item) => item.id !== id) ?? null);
-      setSelectedId((current) => {
-        if (current !== id) return current;
-        const remaining = drafts?.filter((item) => item.id !== id) ?? [];
-        return remaining[0]?.id ?? null;
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to discard draft");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function discardAllDrafts() {
-  if (!drafts?.length || saving) {
-    onClose();
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `Remove all ${drafts.length} AI drafts?\n\nThese drafts will be deleted and will not be added to your calendar.`
-  );
-
-  if (!confirmed) return;
-
-  setSaving(true);
-  setError(null);
-
-  try {
-    const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts`, {
-      method: "DELETE",
-    });
-
-    const data = await readJson(res);
-
-    if (!res.ok) {
-      throw new Error(data.error ?? "Failed to remove all drafts");
-    }
-
-    setDrafts([]);
-    setSelectedId(null);
-    setGenerations([]);
-    setGenerationIndex(-1);
-
-    onClose();
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Failed to remove all drafts"
-    );
-  } finally {
-    setSaving(false);
-  }
-}
-
-  async function confirmAll() {
-    if (!drafts?.length || saving) return;
-
-    setSaving(true);
-    try {
-      for (const draft of drafts) {
-        const res = await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts/${draft.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({
-  hook: draft.hook,
-  script: draft.script,
-  caption: draft.caption,
-  contentIdea: draft.contentIdea,
-  cta: draft.cta,
-  hashtags: draft.hashtags,
-  postDate: draft.postDate,
-}),
-        });
-        const data = await readJson(res);
-        if (!res.ok) throw new Error(data.error ?? `Failed to confirm ${draft.id}`);
+      const failures = await reviewDraftBatch(ids, confirm, finished);
+      if (failures.length) {
+        setError(
+          `${ids.length - failures.length} reviewed; ${failures.length} still need attention. ${failures[0].message}`,
+        );
+        setSelectedId(failures[0].id);
+      } else {
+        setSelectedId(null);
+        setNotice("All drafts accepted and added to your calendar. Nothing has been published.");
       }
-
-      setDrafts([]);
-      window.dispatchEvent(new Event("showwork-calendar-posts-sync"));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to confirm all drafts");
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   }
-
-  if (drafts === null) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#07101C]/90 p-4">
-        <div className="rounded-2xl border border-white/10 bg-[#0D1724] px-8 py-7 text-center text-white">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#4C9BFF]" />
-          <p className="text-sm font-semibold">Opening your AI studio…</p>
-        </div>
-      </div>
-    );
+  async function discardAll() {
+    if (locked || jobRunning || !drafts?.length || !confirmNavigation()) return;
+    if (
+      !window.confirm(
+        `Permanently remove all ${drafts.length} saved drafts? This cannot be undone.`,
+      )
+    )
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      await json(
+        await calendarMutationFetch(`/api/calendars/${calendarId}/ai-drafts`, {
+          method: "DELETE",
+        }),
+      );
+      drafts.forEach((row) => removed.current.add(row.id));
+      setDrafts([]);
+      setSelectedId(null);
+      setNotice("Drafts removed.");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
-
-  const remaining = drafts.length;
-  const progress = remaining ? Math.round(((remaining - 1) / Math.max(1, remaining)) * 100) : 100;
-  const meta = selected ? PLATFORM_META[selected.platform] ?? { label: selected.platform, mark: "•" } : null;
-
+  async function loadHistory() {
+    if (!selected) return;
+    const id = selected.id,
+      version = ++historyVersion.current;
+    setHistoryLoading(true);
+    try {
+      const data = await json(
+        await calendarMutationFetch(
+          `/api/calendars/${calendarId}/ai-drafts/${id}`,
+          { cache: "no-store" },
+        ),
+      );
+      if (
+        alive.current &&
+        version === historyVersion.current &&
+        selectedIdRef.current === id
+      )
+        setHistory(data.generations || []);
+    } catch (e) {
+      if (version === historyVersion.current) setError((e as Error).message);
+    } finally {
+      if (version === historyVersion.current) setHistoryLoading(false);
+    }
+  }
+  async function restore(generation: Generation) {
+    if (
+      !selected ||
+      locked ||
+      !confirmNavigation() ||
+      !window.confirm(
+        "Restore this saved version? Current saved content will be replaced.",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const data = await json(
+        await calendarMutationFetch(
+          `/api/calendars/${calendarId}/ai-drafts/${selected.id}/restore`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ generationId: generation.id }),
+          },
+        ),
+      );
+      updated(data.post);
+      setNotice("Version restored.");
+      await loadHistory();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const remaining = drafts?.length || 0,
+    total = remaining + reviewed.length,
+    index = drafts?.findIndex((row) => row.id === selectedId) ?? -1;
   return (
-    <div
-      className="fixed inset-0 z-[100] bg-[#07101C]/80 backdrop-blur-md"
-      onMouseDown={(e) => {
-  if (e.target === e.currentTarget) {
-    void discardAllDrafts();
-  }
-}}
+    <dialog
+      ref={dialog}
+      aria-labelledby="draft-review-title"
+      className={styles.dialog}
+      onCancel={(event) => {
+        event.preventDefault();
+        requestClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
     >
-      <div className="mx-auto flex h-[100dvh] w-full max-w-[1440px] flex-col overflow-hidden bg-[#F5F7FB] shadow-2xl lg:my-6 lg:h-[calc(100dvh-48px)] lg:rounded-[28px]">
-        <header className="flex shrink-0 items-center justify-between border-b border-[#E4E9F1] bg-white px-5 py-4 lg:px-8">
+      <div className={styles.layout}>
+        <header className={styles.header}>
           <div>
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2478FF]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#2478FF]" />
-              Showwork AI Studio
-            </div>
-            <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#101828]">
-              Review your content
-            </h1>
-            <p className="mt-1 text-xs text-[#667085]">
-              Refine every post until it feels ready to publish.
-            </p>
+            <h1 id="draft-review-title">Review your drafts</h1>
+            <p>Make it yours. Review it. Add it to your calendar.</p>
           </div>
-
-          <button
-            onClick={() => void discardAllDrafts()}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E4E9F1] bg-white text-xl text-[#667085] hover:bg-[#F5F7FB]"
-            aria-label="Close AI Studio"
-          >
-            ×
-          </button>
-        </header>
-
-               {/* Mobile draft navigation + bulk action */}
-        <div className="sticky top-0 z-30 shrink-0 border-b border-[#E4E9F1] bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
-          <div className="flex items-center gap-2">
+          <div className={styles.headerActions}>
             <button
               type="button"
-              onClick={() => {
-                if (!drafts.length || !selectedId) return;
-                const index = drafts.findIndex((draft) => draft.id === selectedId);
-                if (index > 0) setSelectedId(drafts[index - 1].id);
-              }}
-              disabled={
-                !drafts.length ||
-                !selectedId ||
-                drafts.findIndex((draft) => draft.id === selectedId) <= 0
-              }
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDE3EB] bg-white text-[#344054] shadow-sm transition hover:bg-[#F7F9FC] disabled:cursor-not-allowed disabled:opacity-30"
-              aria-label="Previous draft"
-            ><UiSymbol name="left" /></button>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-                  AI draft queue
-                </p>
-
-                <span className="shrink-0 text-[10px] font-semibold text-[#667085]">
-                  {selectedId
-                    ? `${Math.max(
-                        1,
-                        drafts.findIndex((draft) => draft.id === selectedId) + 1
-                      )} of ${drafts.length}`
-                    : `0 of ${drafts.length}`}
-                </span>
-              </div>
-
-              <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {drafts.map((draft, index) => {
-                  const draftMeta =
-                    PLATFORM_META[draft.platform] ?? {
-                      label: draft.platform,
-                      mark: "•",
-                    };
-
-                  const active = draft.id === selectedId;
-
-                  return (
-                    <button
-                      key={draft.id}
-                      type="button"
-                      onClick={() => setSelectedId(draft.id)}
-                      className={[
-                        "flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[9px] font-bold transition-all",
-                        active
-                          ? "border-[#2478FF] bg-[#2478FF] text-white shadow-[0_5px_14px_rgba(36,120,255,0.18)]"
-                          : "border-[#E4E9F1] bg-[#F8FAFC] text-[#667085]",
-                      ].join(" ")}
-                      aria-label={`Open draft ${index + 1}`}
-                      aria-current={active ? "true" : undefined}
-                    >
-                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-black/10 text-[8px]">
-                        {draftMeta.mark}
-                      </span>
-                      <span>#{index + 1}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (!drafts.length || !selectedId) return;
-
-                const index = drafts.findIndex(
-                  (draft) => draft.id === selectedId
-                );
-
-                if (index < drafts.length - 1) {
-                  setSelectedId(drafts[index + 1].id);
-                }
-              }}
-              disabled={
-                !drafts.length ||
-                !selectedId ||
-                drafts.findIndex((draft) => draft.id === selectedId) >=
-                  drafts.length - 1
-              }
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDE3EB] bg-white text-[#344054] shadow-sm transition hover:bg-[#F7F9FC] disabled:cursor-not-allowed disabled:opacity-30"
-              aria-label="Next draft"
-            ><UiSymbol name="right" /></button>
-          </div>
-
-          {/* Mobile bulk confirmation */}
-          {drafts.length > 0 && (
-            <div className="mt-3 border-t border-[#EEF2F6] pt-3">
-              <button
-                type="button"
-                onClick={confirmAll}
-                disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#101828] px-4 py-3 text-xs font-bold text-white shadow-[0_8px_20px_rgba(16,24,40,0.12)] transition hover:bg-[#1D2939] disabled:cursor-not-allowed disabled:opacity-50"
+              className={styles.primary}
+              disabled={locked || jobRunning || !remaining || editorState.dirty}
+              title={editorState.dirty ? "Save your changes before accepting all drafts" : "Add all saved drafts to your calendar"}
+              onClick={() => void reviewAll()}
+            >
+              <Check size={16} />
+              Accept all drafts
+            </button>
+            <details className={styles.menu}>
+              <summary
+                aria-label="Draft review options"
+                className={styles.iconButton}
               >
-                <span>
-                  {saving
-                    ? "Confirming drafts…"
-                    : `Confirm all ${drafts.length} drafts`}
-                </span>
-                {!saving && (
-                  <span className="text-white/50"><><UiSymbol name="right" /></></span>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex min-h-0 flex-1">
-          <aside className="hidden w-[310px] shrink-0 border-r border-[#E4E9F1] bg-white lg:flex lg:flex-col">
-            <div className="border-b border-[#EEF2F6] px-5 py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#101828]">Draft queue</span>
-                <div className="flex items-center gap-1.5">
-                  {jobStatus === "RUNNING" && (
-                    <span className="flex items-center gap-1 rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[9px] font-bold text-[#2478FF]">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2478FF]" />
-                      Generating
-                    </span>
-                  )}
-                  <span className="rounded-full bg-[#EEF5FF] px-2 py-1 text-[10px] font-bold text-[#2478FF]">
-                    {remaining}
-                  </span>
-                </div>
+                <MoreHorizontal size={19} />
+              </summary>
+              <div>
+                <button
+                  disabled={locked || jobRunning || !remaining}
+                  className={styles.danger}
+                  onClick={() => void discardAll()}
+                >
+                  Discard all drafts
+                </button>
               </div>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#EEF2F6]">
-                <div
-                  className="h-full rounded-full bg-[#2478FF] transition-all"
-                  style={{ width: `${progress}%` }}
+            </details>
+            <button
+              type="button"
+              className={styles.iconButton}
+              disabled={locked}
+              onClick={requestClose}
+              aria-label="Close review and keep saved drafts"
+            >
+              <X size={19} />
+            </button>
+          </div>
+        </header>
+        <div className={styles.mobilePicker}>
+          <span>{remaining ? `${index + 1} of ${remaining}` : "Drafts"}</span>
+          <select
+            aria-label="Choose a draft"
+            disabled={locked || !remaining}
+            value={selectedId || ""}
+            onChange={(event) => choose(event.target.value)}
+          >
+            {!remaining && (
+              <option value="">
+                {jobRunning ? "Preparing drafts…" : "Review complete"}
+              </option>
+            )}
+            {drafts?.map((row) => (
+              <option key={row.id} value={row.id}>
+                {draftTitle(row)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={styles.body}>
+          <aside className={styles.queue} aria-label="Draft queue">
+            <div className={styles.queueHeading}>
+              Your drafts
+              <p aria-live="polite">
+                {reviewed.length} reviewed · {remaining} to go
+              </p>
+              <div
+                className={styles.progress}
+                role="progressbar"
+                aria-label="Drafts reviewed in this session"
+                aria-valuenow={reviewed.length}
+                aria-valuemin={0}
+                aria-valuemax={Math.max(1, total)}
+              >
+                <span
+                  style={{
+                    width: `${total ? (reviewed.length / total) * 100 : 0}%`,
+                  }}
                 />
               </div>
-              {jobStatus === "RUNNING" && (
-                <p className="mt-2 text-[10px] text-[#667085]">
-                  {jobProgress?.completedCount && jobProgress.totalCount
-                    ? `Generated ${jobProgress.completedCount} of ${jobProgress.totalCount} drafts…`
-                    : "Drafts are streaming in live…"}
+            </div>
+            <div className={styles.queueList}>
+              {drafts?.map((row) => (
+                <button
+                  type="button"
+                  disabled={locked}
+                  key={row.id}
+                  aria-current={row.id === selectedId ? "page" : undefined}
+                  className={styles.queueItem}
+                  onClick={() => choose(row.id)}
+                >
+                  <span className={styles.queueMark}>
+                    <PlatformBrandIcon platform={row.platform} size={16} />
+                  </span>
+                  <span>
+                    <strong>{draftTitle(row)}</strong>
+                    <small>
+                      {date(row.postDate)} · {row.postType || "Post"}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className={styles.queueFooter}>
+              <button
+                type="button"
+                disabled={locked || editorState.dirty}
+                onClick={() =>
+                  void loadDrafts().catch((e) => setError(e.message))
+                }
+              >
+                Refresh drafts
+              </button>
+            </div>
+          </aside>
+          <div className={styles.content} ref={content}>
+            <div className={styles.editorWrap}>
+              {error && (
+                <div role="alert" className={styles.error}>
+                  {error}
+                  <button
+                    type="button"
+                    disabled={locked || editorState.dirty}
+                    onClick={() =>
+                      void loadDrafts()
+                        .then(() => setError(""))
+                        .catch((e) => setError(e.message))
+                    }
+                    className="ml-3 underline"
+                  >
+                    Refresh drafts
+                  </button>
+                </div>
+              )}
+              {notice && (
+                <p role="status" className={styles.notice}>
+                  {notice}
                 </p>
               )}
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              {drafts.map((draft, index) => {
-                const active = draft.id === selectedId;
-                const draftMeta = PLATFORM_META[draft.platform] ?? { label: draft.platform, mark: "•" };
-
-                return (
-                  <button
-                    key={draft.id}
-                    onClick={() => setSelectedId(draft.id)}
-                    className={`mb-2 w-full rounded-2xl border p-4 text-left transition ${
-                      active
-                        ? "border-[#2478FF]/30 bg-[#F1F6FF]"
-                        : "border-transparent bg-white hover:border-[#E4E9F1] hover:bg-[#FAFBFD]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#101828] text-[9px] font-bold text-white">
-                        {draftMeta.mark}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#667085]">
-                          {draftMeta.label}
-                        </p>
-                        <p className="text-xs font-semibold text-[#101828]">
-                          {formatDate(draft.postDate)}
-                        </p>
-                      </div>
-                      <span className="ml-auto text-[10px] text-[#98A2B3]">#{index + 1}</span>
-                    </div>
-                    <p className="mt-3 line-clamp-2 text-[11px] leading-relaxed text-[#667085]">
-                      {draft.creativeBrief?.title || draft.caption || "No caption yet"}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-           {remaining > 0 && (
-  <div className="border-t border-[#EEF2F6] p-4">
-    <button
-      onClick={confirmAll}
-      disabled={saving}
-      className="w-full rounded-xl bg-[#101828] px-4 py-3 text-xs font-bold text-white hover:bg-[#1D2939] disabled:opacity-50"
-    >
-      {saving ? "Saving…" : `Confirm all ${remaining} drafts`}
-    </button>
-
-    <button
-      type="button"
-      onClick={() => void discardAllDrafts()}
-      disabled={saving}
-      className="mt-2 w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      Remove all drafts
-    </button>
-  </div>
-)}
-          </aside>
-
-          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-            {error && (
-              <div className="mx-5 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 lg:mx-8">
-                {error}
-                {/upgrade|allowance|quota|subscription|trial.*(ended|expired)/i.test(error) && <WorkspaceFeatureNotice compact message="Your current plan or allowance does not cover this action. View plans to restore access or increase your limits." />}
-              </div>
-            )}
-
-            {selected ? (
-              <div className="mx-auto w-full max-w-[1120px] p-3 sm:p-5 lg:p-8">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[#EEF5FF] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#2478FF]">
-                    {meta?.label}
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-semibold text-[#667085] ring-1 ring-[#E4E9F1]">
-                    {selected.postType || "Post"}
-                  </span>
-                  {selected.category && (
-                    <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-semibold text-[#667085] ring-1 ring-[#E4E9F1]">
-                      {selected.category}
+              {jobRunning && (
+                <p role="status" className={styles.notice}>
+                  <Loader2 size={14} className="mr-2 inline animate-spin" />
+                  {progress.totalCount
+                    ? `Preparing ${progress.completedCount} of ${progress.totalCount} drafts. `
+                    : "Preparing your drafts. "}
+                  They will appear after quality checks. You can close this
+                  window and return.
+                </p>
+              )}
+              {selected ? (
+                <>
+                  <div className={styles.metadata}>
+                    <PlatformBrandIcon platform={selected.platform} size={17} />
+                    <strong>
+                      {selected.platform.charAt(0) +
+                        selected.platform.slice(1).toLowerCase()}
+                    </strong>
+                    <span>
+                      ·{" "}
+                      {selected.creativeBrief?.format ||
+                        selected.postType ||
+                        "Post"}
                     </span>
-                  )}
-                  <span className="ml-auto text-xs font-semibold text-[#667085]">
-                    {formatDate(selected.postDate)}
-                  </span>
-                </div>
-
-                <CreativeBriefEditor key={selected.id} calendarId={calendarId} post={{...selected}} onUpdated={post=>{setDrafts(current=>current?.map(d=>d.id===post.id?{...d,...post}:d)||null);void loadGenerations(post.id);}} />
-
-                {generations.length > 0 && (
-                  <section className="mt-5 rounded-[24px] border border-[#E1E7EF] bg-white p-5 lg:p-6">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#98A2B3]">
-                          Version history
-                        </p>
-                        <h3 className="mt-1 text-sm font-semibold text-[#101828]">
-                          Every AI generation is saved
-                        </h3>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() =>
-                            setGenerationIndex((value) => Math.max(0, value - 1))
-                          }
-                          disabled={generationIndex <= 0}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E1E7EF] text-[#667085] disabled:opacity-30"
-                        ><UiSymbol name="left" /></button>
-                        <span className="px-2 text-[10px] font-bold text-[#667085]">
-                          {generationIndex + 1} / {generations.length}
-                        </span>
-                        <button
-                          onClick={() =>
-                            setGenerationIndex((value) =>
-                              Math.min(generations.length - 1, value + 1)
-                            )
-                          }
-                          disabled={generationIndex >= generations.length - 1}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E1E7EF] text-[#667085] disabled:opacity-30"
-                        ><UiSymbol name="right" /></button>
-                      </div>
-                    </div>
-
-                    {selectedGeneration && (
-                      <div className="mt-4 rounded-2xl bg-[#F7F9FC] p-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[#101828]">
-                            Generation {selectedGeneration.generationNumber}
+                    <time dateTime={selected.postDate}>
+                      {date(selected.postDate)}
+                    </time>
+                  </div>
+                  <CreativeBriefEditor
+                    key={selected.id}
+                    calendarId={calendarId}
+                    post={selected}
+                    onStateChange={onEditorState}
+                    onSaveReady={onSaveReady}
+                    onUpdated={updated}
+                  />
+                  <details
+                    key={`${selected.id}-history`}
+                    className={styles.history}
+                    onToggle={(event) => {
+                      if (event.currentTarget.open) void loadHistory();
+                    }}
+                  >
+                    <summary>Version history</summary>
+                    {historyLoading ? (
+                      <p className="py-4">Loading versions…</p>
+                    ) : (
+                      history.map((generation, i) => (
+                        <article key={generation.id}>
+                          <span>
+                            Version {generation.generationNumber} ·{" "}
+                            {date(generation.createdAt)}
                           </span>
                           <button
-                            onClick={() => restore(selectedGeneration)}
-                            disabled={saving}
-                            className="rounded-lg border border-[#D5E1F2] bg-white px-3 py-2 text-[10px] font-bold text-[#2478FF] hover:bg-[#F1F6FF] disabled:opacity-50"
+                            disabled={locked || i === history.length - 1}
+                            className={styles.button}
+                            onClick={() => void restore(generation)}
                           >
-                            Restore this version
+                            Restore
                           </button>
-                        </div>
-                        <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-[#667085]">
-                          {selectedGeneration.caption || "No caption"}
-                        </p>
-                      </div>
+                        </article>
+                      ))
                     )}
-                  </section>
-                )}
-
-                <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <button
-                    onClick={() => discardDraft(selected.id)}
-                    disabled={saving}
-                    className="w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 sm:w-auto"
-                  >
-                    Discard this post
-                  </button>
-
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
-                    <button
-                      onClick={() => confirmDraft(selected.id)}
-                      disabled={saving}
-                      className="w-full rounded-xl bg-[#101828] px-5 py-3 text-xs font-bold text-white hover:bg-[#1D2939] disabled:opacity-50 sm:w-auto"
-                    >
-                      Confirm & add to calendar
-                    </button>
-                  </div>
+                  </details>
+                </>
+              ) : (
+                <div className={styles.empty}>
+                  {drafts === null && !error ? (
+                    <>
+                      <Loader2 className="mx-auto animate-spin" />
+                      <h2>Opening your drafts…</h2>
+                    </>
+                  ) : drafts === null ? (
+                    <>
+                      <h2>Couldn’t open your drafts.</h2>
+                      <p>
+                        Your saved content is kept. Use Refresh drafts above to
+                        try again.
+                      </p>
+                    </>
+                  ) : busy ? (
+                    <>
+                      <Loader2 className="mx-auto animate-spin" />
+                      <h2>Reviewing your saved drafts…</h2>
+                      <p>
+                        {reviewed.length} reviewed so far. Successful posts are
+                        kept if another needs attention.
+                      </p>
+                    </>
+                  ) : jobRunning ? (
+                    <>
+                      <Loader2 className="mx-auto animate-spin" />
+                      <h2>Your content is on its way.</h2>
+                      <p>
+                        We’re preparing complete drafts with their strategy and
+                        creative direction.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2
+                        className="mx-auto text-blue-500"
+                        size={35}
+                      />
+                      <h2>
+                        {reviewed.length
+                          ? "You’re all caught up."
+                          : "No drafts to review."}
+                      </h2>
+                      <p>
+                        {reviewed.length
+                          ? `${reviewed.length} posts added to your calendar. They have not been published.`
+                          : "Your saved content stays in your workspace."}
+                      </p>
+                      <button className={styles.primary} onClick={requestClose}>
+                        Return to calendar
+                      </button>
+                    </>
+                  )}
                 </div>
-              </div>
-            ) : jobStatus === "RUNNING" && (!drafts || drafts.length === 0) ? (
-              <div className="flex min-h-full items-center justify-center p-8 text-center">
-                <div className="mx-auto max-w-sm">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF5FF] text-[#2478FF] shadow-sm">
-                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#2478FF]/30 border-t-[#2478FF]" />
-                  </div>
-                  <h2 className="mt-4 text-base font-semibold text-[#101828]">Generating your content…</h2>
-                  <p className="mt-1.5 text-xs leading-relaxed text-[#667085]">
-                    The AI is planning and drafting posts based on your brand knowledge. Drafts will appear in the queue on the left as soon as they are ready.
-                  </p>
-                  {jobProgress?.totalCount ? (
-                    <p className="mt-3 text-[11px] font-bold text-[#2478FF]">
-                      Planning {jobProgress.totalCount} publishing slots…
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            ) : (
-              <div className="flex min-h-full items-center justify-center p-8 text-center">
-                <div>
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EAF2FF] text-2xl text-[#2478FF]"><UiSymbol name="check" /></div>
-                  <h2 className="mt-4 text-lg font-semibold text-[#101828]">All clear</h2>
-                  <p className="mt-1 text-xs text-[#667085]">
-                    Every AI draft has been reviewed.
-                  </p>
-                  <button
-                    onClick={onClose}
-                    className="mt-5 rounded-xl bg-[#101828] px-5 py-3 text-xs font-bold text-white"
-                  >
-                    Return to workspace
-                  </button>
-                </div>
-              </div>
-            )}
-          </main>
+              )}
+            </div>
+          </div>
         </div>
+        <footer className={styles.footer}>
+          <span role="status" className={styles.saveState}>
+            {locked ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : editorState.dirty ? null : (
+              <Check size={14} />
+            )}{" "}
+            {busy
+              ? `Reviewing drafts… ${reviewed.length} reviewed`
+              : editorState.busy
+                ? "Saving your update…"
+                : editorState.dirty
+                  ? "Unsaved changes · save before continuing"
+                  : selected && editorState.needsContext
+                    ? "Complete strategy before reviewing"
+                    : "Saved drafts are kept when you close"}
+          </span>
+          <div className={styles.actions}>
+            <button
+              className={styles.button}
+              disabled={locked || index <= 0}
+              onClick={() => choose(drafts![index - 1].id)}
+            >
+              <ArrowLeft size={15} />
+              Previous
+            </button>
+            <button
+              className={styles.primary}
+              disabled={
+                !selected ||
+                locked ||
+                (!editorState.dirty && editorState.needsContext)
+              }
+              onClick={() =>
+                editorState.dirty ? saveAction.current?.() : void markReviewed()
+              }
+            >
+              {editorState.dirty ? "Save changes" : "Mark reviewed & next"}
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        </footer>
       </div>
-    </div>
+    </dialog>
   );
 }

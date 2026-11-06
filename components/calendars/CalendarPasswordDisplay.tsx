@@ -20,51 +20,31 @@ export default function CalendarPasswordDisplay({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const copy = () => {
-    navigator.clipboard.writeText(accessCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copy = async () => {
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(accessCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { setError("Couldn’t copy the password. Select it and copy manually."); }
   };
 
-  const regenerate = async () => {
-    setLoading(true);
-    setError(null);
-    const res = await calendarMutationFetch(`/api/calendars/${calendarId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "regenerate_password" }),
-    });
-    if (res.ok) {
-      router.refresh();
-      setShowChange(false);
-    } else {
-      const data = await res.json();
-      setError(data.error ?? "Failed to generate a new password");
-    }
-    setLoading(false);
-  };
-
-  const setCustom = async () => {
-    if (!customPassword) {
-      setError("Enter a password first");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    const res = await calendarMutationFetch(`/api/calendars/${calendarId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "set_password", password: customPassword }),
-    });
-    if (res.ok) {
-      router.refresh();
-      setShowChange(false);
-      setCustomPassword("");
-    } else {
-      const data = await res.json();
-      setError(data.error ?? "Failed to set password");
-    }
-    setLoading(false);
+  async function updatePassword(body: object) {
+    if (loading) return;
+    setLoading(true); setError(null);
+    try {
+      const res = await calendarMutationFetch(`/api/calendars/${calendarId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+      if (!res.ok) { const data = await res.json(); throw new Error(data.error || "Couldn’t update the password. Try again."); }
+      router.refresh(); setShowChange(false); setCustomPassword(""); setCopied(false);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn’t update the password. Try again."); }
+    finally { setLoading(false); }
+  }
+  const regenerate = () => updatePassword({ action: "regenerate_password" });
+  const setCustom = () => {
+    if (!customPassword) { setError("Enter a password first"); return; }
+    return updatePassword({ action: "set_password", password: customPassword });
   };
 
   return (
@@ -88,7 +68,8 @@ export default function CalendarPasswordDisplay({
               type="text"
               value={customPassword}
               onChange={(e) => setCustomPassword(e.target.value)}
-              placeholder="Type your own password — no rules, anything goes"
+              placeholder="Enter a new client page password"
+              aria-label="New client page password"
               style={{ fontSize: "16px" }}
               className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25"
             />
@@ -104,9 +85,9 @@ export default function CalendarPasswordDisplay({
           <button onClick={regenerate} disabled={loading} className="self-start text-xs text-white/40 underline disabled:opacity-50">
             {loading ? "Working..." : "Or generate a random one instead"}
           </button>
-          {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
       )}
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }

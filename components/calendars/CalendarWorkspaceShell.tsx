@@ -203,6 +203,7 @@ export default function CalendarWorkspaceShell({
     label: "Workspace",
     items: compact([
       byId("content"),
+      byId("access"),
     ]),
   },
 
@@ -211,8 +212,8 @@ export default function CalendarWorkspaceShell({
     featured: true,
     items: compact([
       byId("knowledge"),
-      byId("research"),
       byId("generate"),
+      byId("research"),
     ]),
   },
 
@@ -242,12 +243,6 @@ export default function CalendarWorkspaceShell({
   },
 
   {
-    label: "Client",
-    items: compact([
-      byId("access"),
-    ]),
-  },
-  {
     label: "Summary",
     items: compact([byId("overview")]),
   },
@@ -271,7 +266,7 @@ export default function CalendarWorkspaceShell({
     window.scrollTo({ top: 0, behavior: "instant" });
   };
 
-  const aiSections = visibleSections.filter(section => ["knowledge", "research", "generate"].includes(section.id));
+  const aiSections = (["knowledge", "generate", "research"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
   const primaryMobile = (["content", "inbox", "analytics"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
   const moreSections = visibleSections.filter(section => !["content", "inbox", "analytics", "knowledge", "research", "generate"].includes(section.id)).sort((a, b) => Number(a.id === "overview") - Number(b.id === "overview"));
   const aiActive = aiSections.some(section => section.id === active.id);
@@ -290,9 +285,8 @@ export default function CalendarWorkspaceShell({
       </div>)}
     </nav>
     <div className={menuStyles.footer}>
-      <Link href="/dashboard/calendars" className={menuStyles.helpLink}><ArrowLeft size={16}/><span>All workspaces</span></Link>
       <a href="/help/workspace" target="_blank" rel="noopener noreferrer" className={menuStyles.helpLink}><CircleHelp size={16}/><span>Help & guides</span><span className="sr-only"> (opens in a new tab)</span><ArrowUpRight className="h-3.5 w-3.5"/></a>
-      {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={menuStyles.clientLink}><span className={menuStyles.clientIcon}><PanelsTopLeft size={17}/></span><span><strong>Client view</strong><small>See their side of the story</small></span><ArrowUpRight/></a>}
+      {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={menuStyles.clientLink}><span className={menuStyles.clientIcon}><PanelsTopLeft size={17}/></span><span><strong>Preview client page</strong><small>See what your client sees</small></span><ArrowUpRight/></a>}
       {publishAction}
     </div>
   </>;
@@ -302,13 +296,13 @@ export default function CalendarWorkspaceShell({
       {calendarId && <WorkspaceUploadTray workspaceId={calendarId} />}
       <header className={headerStyles.header}>
         <div className={headerStyles.inner}>
-          <Link href="/dashboard/calendars" aria-label="Back to workspaces" title="All workspaces" className={headerStyles.back}><ArrowLeft size={16}/><span>Workspaces</span></Link>
+          <Link href="/dashboard/calendars" aria-label="Back to workspaces" title="All workspaces" className={headerStyles.back}><ArrowLeft size={16}/><span>All workspaces</span></Link>
           <span className={headerStyles.divider} aria-hidden="true"/>
           <div className={headerStyles.identity}><span className={headerStyles.monogram} aria-hidden="true">{clientName.slice(0, 2).toUpperCase()}</span><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>Marketing workspace</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
           <span className={headerStyles.location}><SectionIcon name={active.id} className="h-3.5 w-3.5"/>{active.label}</span>
           <div className={headerStyles.actions}>
-            {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={headerStyles.client}>Client view <ArrowUpRight className="h-3.5 w-3.5"/></a>}
-            {canGenerate && <button type="button" onClick={() => select("generate")} className={headerStyles.create}><Sparkles size={15}/> Create with AI</button>}
+            {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={headerStyles.client}>Preview client page <ArrowUpRight className="h-3.5 w-3.5"/></a>}
+            {canGenerate && active.id !== "content" && active.id !== "generate" && <button type="button" onClick={() => select("generate")} className={headerStyles.create}><Sparkles size={15}/> Create with AI</button>}
           </div>
           {settings}
         </div>
@@ -319,7 +313,7 @@ export default function CalendarWorkspaceShell({
           <nav aria-label={mobileSheet === "ai" ? "AI Studio tools" : "More workspace sections"} className={menuStyles.sheetGrid}>
             {(mobileSheet === "ai" ? aiSections : moreSections).map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} data-section={item.id} className={menuStyles.sheetItem}><span className={menuStyles.iconWell}><SectionIcon name={item.id} className="h-5 w-5"/></span><span className={menuStyles.sheetLabel}>{item.label}</span><ChevronRight size={14} className={menuStyles.sheetChevron} aria-hidden="true"/>{item.id === active.id && <span className={menuStyles.sheetActive}>You’re here</span>}</button>)}
           </nav>
-          {mobileSheet === "more" && <div className={menuStyles.sheetLinks}><a href="/help/workspace" target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-600"><CircleHelp size={16}/>Help & guides<span className="sr-only"> (opens in a new tab)</span></a><Link href="/dashboard/calendars" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-600"><ArrowLeft size={16}/> All workspaces</Link>{clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-between rounded-xl px-3 text-sm text-slate-600">Open client view <ArrowUpRight/></a>}{publishAction}</div>}
+          {mobileSheet === "more" && <div className={menuStyles.sheetLinks}><a href="/help/workspace" target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-600"><CircleHelp size={16}/>Help & guides<span className="sr-only"> (opens in a new tab)</span></a><Link href="/dashboard/calendars" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-600"><ArrowLeft size={16}/> All workspaces</Link>{clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-between rounded-xl px-3 text-sm text-slate-600">Preview client page <ArrowUpRight/></a>}{publishAction}</div>}
         </div>}
       </MobileDrawer>
       <nav aria-label="Mobile workspace navigation" data-workspace-bottom-nav hidden={keyboardOpen} className={`${menuStyles.bottomNav} lg:hidden`}>
@@ -349,7 +343,7 @@ export default function CalendarWorkspaceShell({
               </nav>
               <a href="/help/workspace" target="_blank" rel="noopener noreferrer" title="Workspace help (opens in a new tab)" aria-label="Workspace help (opens in a new tab)" className={menuStyles.collapsedHelp}><CircleHelp size={19}/></a>
               {clientUrl && <div className={menuStyles.collapsedFooter}>
-                <a href={clientUrl} target="_blank" rel="noopener noreferrer" title="Open client view" aria-label="Open client view"
+                <a href={clientUrl} target="_blank" rel="noopener noreferrer" title="Preview client page" aria-label="Preview client page"
                   className={menuStyles.collapsedAction}><ArrowUpRight className="h-5 w-5" /></a>
               </div>}
               {publishAction && <div className={menuStyles.collapsedFooter}><button type="button" onClick={toggleSidebar} title="Publishing actions" aria-label="Expand menu for publishing actions" className={menuStyles.collapsedAction}><SectionIcon name="publish" className="h-5 w-5"/></button></div>}

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, LoaderCircle } from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, Flag, X } from "lucide-react";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import { WORKSPACE_SETUP_STEPS, workspaceSetupStep, type WorkspaceSetupState } from "@/lib/workspaceSetup";
 import styles from "./WorkspaceSetup.module.css";
@@ -15,6 +15,7 @@ const guidance = [
 ] as const;
 export default function WorkspaceSetup({ calendarId, initialState, onNavigate, activeSection }: { calendarId: string; initialState: WorkspaceSetupState; onNavigate: (section: "overview" | "knowledge" | "channels" | "generate" | "content") => void; activeSection: string }) {
   const [state, setState] = useState(initialState);
+  const panel = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [reviewOpened, setReviewOpened] = useState(false);
@@ -57,11 +58,20 @@ export default function WorkspaceSetup({ calendarId, initialState, onNavigate, a
     finally { setBusy(false); }
   }
   if (!state.enabled || state.complete) return null;
-  return <section className={styles.setup} aria-labelledby="workspace-setup-heading" aria-busy={busy}>
+  return <>
+    <section className={styles.prompt} aria-label="Workspace setup guide">
+      <Flag size={20} aria-hidden="true"/>
+      <div className={styles.promptText}><strong>Finish setting up your workspace</strong><span>Step {step + 1} of 6 · {WORKSPACE_SETUP_STEPS[Math.min(step, 5)].label}</span></div>
+      <button type="button" aria-haspopup="dialog" onClick={() => panel.current?.showModal()}>{step === 5 && reviewOpened ? "Finish setup" : "Continue setup"} <ArrowRight size={16}/></button>
+    </section>
+    <dialog ref={panel} className={styles.panel} aria-labelledby="workspace-setup-heading" onClick={event => { if (event.target === event.currentTarget && !busy) panel.current?.close(); }} onCancel={event => { if (busy) event.preventDefault(); }}>
+    <button type="button" className={styles.close} disabled={busy} aria-label="Close setup guide" onClick={() => panel.current?.close()}><X size={20}/></button>
+    <section className={styles.setup} aria-labelledby="workspace-setup-heading" aria-busy={busy}>
     <div className={styles.top}><span>LET’S SET UP YOUR WORKSPACE</span><span>Step {step + 1} of {WORKSPACE_SETUP_STEPS.length}</span></div>
-    <ol className={styles.steps} aria-label="Workspace setup progress">{WORKSPACE_SETUP_STEPS.map((item, index) => <li key={item.id} aria-current={index === step ? "step" : undefined} data-done={index < step}><span>{index < step ? <Check size={12}/> : index + 1}</span>{item.label}</li>)}</ol>
+    <progress className={styles.progress} value={step} max={6} aria-label={`${step} of 6 setup steps completed`}/>
+
     <div className={styles.body}><div><h2 id="workspace-setup-heading" ref={heading} tabIndex={-1}>{current.title}</h2><p>{current.detail}</p></div>
-      {step > 0 && <button type="button" className={styles.primary} onClick={() => { if (step === 5) setReviewOpened(true); onNavigate(current.section); if (step === 2) window.setTimeout(() => window.dispatchEvent(new CustomEvent("showwork-brand-voice-focus", { detail: { calendarId } })), 100); }}>{current.action}<ArrowRight size={15}/></button>}
+      {step > 0 && <button type="button" className={styles.primary} onClick={() => { if (step === 5) setReviewOpened(true); panel.current?.close(); onNavigate(current.section); if (step === 2) window.setTimeout(() => window.dispatchEvent(new CustomEvent("showwork-brand-voice-focus", { detail: { calendarId } })), 100); }}>{current.action}<ArrowRight size={15}/></button>}
     </div>
     {step === 0 && <div className={styles.choices}>
       <button type="button" disabled={busy} onClick={() => void save({ action: "publishing", autoPublishEnabled: true })}><strong>Automate publishing <ArrowRight size={15}/></strong><span>Publish approved posts at their scheduled time on supported channels.</span></button>
@@ -70,5 +80,5 @@ export default function WorkspaceSetup({ calendarId, initialState, onNavigate, a
     {step === 5 && reviewOpened && activeSection === "content" && <div className={styles.finish}><span>Once you’ve checked your posts, you’re ready to finish setup.</span><button type="button" disabled={busy} onClick={() => void save({ action: "complete" })}>I’ve reviewed my content <Check size={15}/></button></div>}
     {busy && <p role="status" className={styles.saving}><LoaderCircle size={14} className="animate-spin"/>Saving your progress…</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
-  </section>;
+  </section></dialog></>;
 }

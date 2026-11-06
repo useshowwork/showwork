@@ -6,7 +6,7 @@ import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
 import { consumeAiRegeneration } from "@/lib/contentWorkspaceUsage";
 import { developCreativeBrief } from "@/lib/openai";
-import { editablePostBrief, BRIEF_FIELDS, EXECUTION_KINDS, parseCreativeBrief, platformBriefFormats, briefSnapshot, briefContentProjection, type CreativeBrief, type CreativeDevelopment, type ExecutionKind } from "@/lib/content/brief";
+import { editablePostBrief, parseEditableBrief, BRIEF_FIELDS, EXECUTION_KINDS, parseCreativeBrief, platformBriefFormats, briefSnapshot, briefContentProjection, type CreativeBrief, type CreativeDevelopment, type ExecutionKind } from "@/lib/content/brief";
 import { postContentEditError } from "@/lib/publishing/editGuard";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint } from "@/lib/publishing/applicationBoundary";
 export const maxDuration = 180;
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: {
         return NextResponse.json({ error: "This post changed. Reload it before saving or generating." }, { status: 409 });
     let brief: CreativeBrief;
     try {
-        brief = fillMissing ? editablePostBrief(post as unknown as Parameters<typeof editablePostBrief>[0]) : parseCreativeBrief(kind === "brief" && !generate ? body.brief : post.creativeBrief);
+        brief = fillMissing ? (body.brief ? parseEditableBrief(body.brief) : editablePostBrief(post as unknown as Parameters<typeof editablePostBrief>[0])) : parseCreativeBrief(kind === "brief" && !generate ? body.brief : post.creativeBrief);
         if (fillMissing && ![post.caption, post.contentIdea, post.hook, post.script].some(value => value?.trim())) throw Error("Add content before deriving its objective and audience.");
     }
     catch (error) {

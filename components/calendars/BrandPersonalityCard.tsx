@@ -5,11 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { Fingerprint, Check, ArrowRight } from "lucide-react";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import { PERSONALITY_QUESTIONS, parseBrandPersonality, type BrandPersonality, type PersonalityKey, type PersonalityAnswer } from "@/lib/knowledge/brandPersonality";
-export default function BrandPersonalityCard({ calendarId, canEdit, hasKnowledge = false, nextSection }: {
+export default function BrandPersonalityCard({ calendarId, canEdit, hasKnowledge = false, nextSection, reviewOnSave = false }: {
     calendarId: string;
     canEdit: boolean;
     hasKnowledge?: boolean;
     nextSection?: "channels" | "generate";
+    reviewOnSave?: boolean;
 }) {
     const router = useRouter();
     const heading = useRef<HTMLHeadingElement>(null);
@@ -76,7 +77,8 @@ export default function BrandPersonalityCard({ calendarId, canEdit, hasKnowledge
             setAnswers(data.profile.answers);
             setNotice("Brand voice saved. Your content and customer replies will use these choices.");
             router.refresh();
-            if (nextSection) window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: nextSection } }));
+            if (reviewOnSave) window.dispatchEvent(new CustomEvent("showwork-brand-voice-saved", {detail:{calendarId}}));
+            else if (nextSection) window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: nextSection } }));
         }
         catch (e) {
             setError((e as Error).message);

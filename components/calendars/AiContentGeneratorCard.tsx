@@ -74,6 +74,12 @@ export default function AiContentGeneratorCard({
   }, [calendarId]);
   const [reportingRecommendationLoaded, setReportingRecommendationLoaded] = useState(false);
  const [platforms, setPlatforms] = useState<string[]>(["INSTAGRAM"]);
+ const [wizardStep, setWizardStep] = useState("platforms");
+ const stepHeading = useRef<HTMLHeadingElement>(null);
+ const wizardSteps = platforms.length > 1 ? ["platforms", "schedule", "options", "direction"] : ["platforms", "schedule", "direction"];
+ const stepIndex = wizardSteps.indexOf(wizardStep);
+ function moveStep(next: string) { setWizardStep(next); requestAnimationFrame(() => stepHeading.current?.focus()); }
+ const stepTitles: Record<string,string> = {platforms:"Where do you want to post?",schedule:"When should your calendar run?",options:"How should your channels work together?",direction:"What should this calendar focus on?"};
  const advancedRef = useRef<HTMLDetailsElement>(null);
  useEffect(() => {
    if (platforms.length > 1 && advancedRef.current) advancedRef.current.open = true;
@@ -238,7 +244,7 @@ const togglePlatform = (platform: string) => {
   return (
     <>
       <section className={studioStyles.studio}>
-        <header className={studioStyles.simpleHeader}><div><h1>Generate content</h1><p>Choose your schedule and channels. Your business knowledge and brand voice guide the drafts.</p></div><span><ShieldCheck size={14}/>Drafts for review</span></header>
+        <header className={studioStyles.simpleHeader}><div><h1>Generate your content calendar</h1><p>Build your calendar, one simple step at a time.</p></div></header>
         <div className={`${studioStyles.layout} ${!hasBusinessSummaryState ? studioStyles.singleColumn : ""}`}>
         <div className={studioStyles.form}>
           {reportingRecommendationLoaded && (
@@ -252,9 +258,6 @@ const togglePlatform = (platform: string) => {
           ) : (
             <>
 
-              <div className={studioStyles.sectionTitle}><span>01</span><div><h2>Campaign goal</h2><p>Choose a goal, or use your business context.</p></div><Target size={20}/></div>
-              <label className="mt-4 block text-xs font-semibold text-slate-700">Campaign objective <span className="font-normal text-slate-400">Optional</span><select value={campaignObjective} onChange={e=>setCampaignObjective(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm"><option value="">Let the strategy follow my business knowledge</option>{["Brand Awareness","Engagement","Audience Education","Lead Generation","Product Adoption","Sales / Conversion","Custom Objective"].map(objective=><option key={objective}>{objective}</option>)}</select></label>
-              {campaignObjective==="Custom Objective"&&<p className="mt-1 text-xs text-slate-500">Describe your objective in Creative direction below.</p>}
               {researchLoaded && <p role="status" className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">Research opportunity added to your instructions. Review the brief settings before generating.</p>}
               {clarification && <KnowledgeClarification calendarId={calendarId} prompt={clarification} busy={generating} onContinue={resolution => void generate(resolution)} />}
 
@@ -268,111 +271,13 @@ const togglePlatform = (platform: string) => {
                 </div>
               )}
 
-              <div className={studioStyles.sectionTitle}><span>02</span><div><h2>Schedule</h2><p>Choose your dates and posts per week.</p></div><CalendarRange size={20}/></div>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <label className="block min-w-0">
-                  <span className="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-[#667085]">
-                    Start date
-                  </span>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-[#D9E2EC] bg-white px-3 text-xs font-medium text-[#344054] outline-none transition-all hover:border-[#B9C7D8] focus:border-[#2478FF] focus:ring-4 focus:ring-[#2478FF]/10"
-                  />
-                </label>
-
-                <label className="block min-w-0">
-                  <span className="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-[#667085]">
-                    End date
-                  </span>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-[#D9E2EC] bg-white px-3 text-xs font-medium text-[#344054] outline-none transition-all hover:border-[#B9C7D8] focus:border-[#2478FF] focus:ring-4 focus:ring-[#2478FF]/10"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-4 rounded-[22px] border border-[#E4E7EC] bg-[#F8FAFC] p-4 sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-[#101828]">
-                      Publishing rhythm
-                    </p>
-                    <p className="mt-1 text-[10px] leading-5 text-[#667085]">
-                      Choose how many draft posts the AI should aim for each week.
-                    </p>
-                  </div>
-
-                  <div className="flex shrink-0 items-center rounded-xl border border-[#D9E2EC] bg-white p-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPostsPerWeek((value) => Math.max(1, value - 1))
-                      }
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#667085] transition-colors hover:bg-[#F2F4F7] hover:text-[#101828]"
-                      aria-label="Decrease posts per week"
-                    >
-                      −
-                    </button>
-
-                    <div className="min-w-[58px] px-2 text-center">
-                      <p className="text-sm font-bold tracking-tight text-[#101828]">
-                        {postsPerWeek}
-                      </p>
-                      <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-[#98A2B3]">
-                        per week
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPostsPerWeek((value) => Math.min(14, value + 1))
-                      }
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#667085] transition-colors hover:bg-[#F2F4F7] hover:text-[#101828]"
-                      aria-label="Increase posts per week"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                <input
-                  type="number"
-                  min={1}
-                  max={14}
-                  value={postsPerWeek}
-                  onChange={(event) =>
-                    setPostsPerWeek(
-                      Math.min(14, Math.max(1, Number(event.target.value) || 1))
-                    )
-                  }
-                  className="sr-only"
-                  aria-label="Posts per week"
-                />
-              </div>
-
-              <div className="mt-5">
-                <div className={studioStyles.sectionTitle}><span>03</span><div><h2>Channels</h2><p>Select where you want to create content.</p></div><Layers3 size={20}/></div>
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold text-[#101828]">
-                      Publishing platforms
-                    </p>
-                    <p className="mt-1 text-[10px] leading-5 text-[#667085]">
-                      Choose where this batch should be tailored.
-                    </p>
-                  </div>
-
-                  <span className="shrink-0 text-[10px] font-semibold text-[#98A2B3]">
-                    {platforms.length} selected
-                  </span>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className={studioStyles.wizardProgress}><span>Step {stepIndex + 1} of {wizardSteps.length}</span><progress value={stepIndex + 1} max={wizardSteps.length} aria-label="Calendar setup progress"/></div>
+              <h2 className={studioStyles.wizardTitle} ref={stepHeading} tabIndex={-1}>{stepTitles[wizardStep]}</h2>
+              <div className={studioStyles.calendarBrief}>
+                <div className={studioStyles.planningFields}>
+              <div hidden={wizardStep !== "platforms"} className={studioStyles.channelChoices}>
+                <div className={studioStyles.channelLabel}><strong>Channels</strong><span>{platforms.length} selected</span></div>
+                <div className={studioStyles.channelRow}>
                   {PLATFORMS.map((platform) => {
                     const selected = platforms.includes(platform.value);
 
@@ -382,6 +287,8 @@ const togglePlatform = (platform: string) => {
                         type="button"
                         onClick={() => togglePlatform(platform.value)}
                         aria-pressed={selected}
+                        aria-label={platform.label}
+                        title={platform.label}
                         className={`group flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all ${
                           selected
                             ? "border-[#B9D2FA] bg-[#F3F8FF] shadow-[0_5px_16px_rgba(36,120,255,0.07)]"
@@ -423,190 +330,28 @@ const togglePlatform = (platform: string) => {
                 </div>
               </div>
 
-              <details ref={advancedRef} className={studioStyles.advanced}>
-                <summary><span>Advanced settings</span><small>Content grouping & publishing schedules</small></summary>
-                <div className={studioStyles.advancedBody}>
-                            {platforms.length > 1 && (
-  <div className="mt-5 rounded-[22px] border border-[#E4E7EC] bg-[#F8FAFC] p-4 sm:p-5">
-    <div>
-      <p className="text-xs font-semibold text-[#101828]">
-        Content strategy
-      </p>
-      <p className="mt-1 text-[10px] leading-5 text-[#667085]">
-        Choose how AI should create content across your selected platforms.
-      </p>
-    </div>
-
-    <div className="mt-3 grid gap-2">
-      {[
-        {
-          value: "SAME_CONTENT" as const,
-          title: "Same content for all platforms",
-          description:
-            "Create one content concept and adapt it for every selected platform.",
-        },
-        {
-          value: "DIFFERENT_CONTENT" as const,
-          title: "Different content for each platform",
-          description:
-            "Create a separate content concept for every selected platform.",
-        },
-        {
-          value: "CUSTOM_GROUPS" as const,
-          title: "Customize content groups",
-          description:
-            "Choose which platforms should share the same content.",
-        },
-      ].map((option) => {
-        const selected = contentStrategy === option.value;
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => {
-              setContentStrategy(option.value);
-
-              if (
-                option.value === "CUSTOM_GROUPS" &&
-                contentGroups.length === 0
-              ) {
-                setContentGroups([platforms]);
-              }
-            }}
-            aria-pressed={selected}
-            className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all ${
-              selected
-                ? "border-[#B9D2FA] bg-[#F3F8FF] shadow-[0_5px_16px_rgba(36,120,255,0.07)]"
-                : "border-[#E4E7EC] bg-white hover:border-[#CBD5E1] hover:bg-[#FAFBFC]"
-            }`}
-          >
-            <span
-              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                selected
-                  ? "border-[#2478FF] bg-[#2478FF]"
-                  : "border-[#D0D5DD] bg-white"
-              }`}
-            >
-              {selected && (
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              )}
-            </span>
-
-            <span className="min-w-0">
-              <span
-                className={`block text-[11px] font-semibold ${
-                  selected ? "text-[#175CD3]" : "text-[#344054]"
-                }`}
-              >
-                {option.title}
-              </span>
-
-              <span className="mt-1 block text-[10px] leading-5 text-[#667085]">
-                {option.description}
-              </span>
-            </span>
-          </button>
-        );
-      })}
-    </div>
-
-    {scheduleStrategy === "CUSTOM" && (
-  <div className="mt-4 rounded-2xl border border-[#DCE3EC] bg-white p-4">
-    <div>
-      <p className="text-[11px] font-semibold text-[#101828]">
-        Platform schedules
-      </p>
-      <p className="mt-1 text-[10px] leading-5 text-[#667085]">
-        Set when each platform should publish. Platforms can use different
-        dates and times.
-      </p>
-    </div>
-
-    <div className="mt-3 space-y-2">
-      {platforms.map((platform) => {
-        const meta = PLATFORMS.find(
-          (item) => item.value === platform
-        );
-
-        if (!meta) return null;
-
-        const schedule = platformSchedules[platform] ?? {
-          date: startDate,
-          time: "10:00",
-        };
-
-        return (
-          <div
-            key={platform}
-            className="rounded-xl border border-[#E4E7EC] bg-[#F8FAFC] p-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EEF5FF] text-[8px] font-bold text-[#2478FF]">
-                <PlatformBrandIcon platform={meta.value} size={17}/>
-              </span>
-
-              <span className="text-[10px] font-semibold text-[#344054]">
-                {meta.label}
-              </span>
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <label className="block">
-                <span className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-                  Date
-                </span>
-
-                <input
-                  type="date"
-                  value={schedule.date}
-                  min={startDate}
-                  max={endDate}
-                  onChange={(event) => {
-                    const date = event.target.value;
-
-                    setPlatformSchedules((previous) => ({
-                      ...previous,
-                      [platform]: {
-                        ...schedule,
-                        date,
-                      },
-                    }));
-                  }}
-                  className="h-9 w-full rounded-lg border border-[#D9E2EC] bg-white px-2.5 text-[10px] font-medium text-[#344054] outline-none focus:border-[#2478FF] focus:ring-2 focus:ring-[#2478FF]/10"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-                  Time
-                </span>
-
-                <input
-                  type="time"
-                  value={schedule.time}
-                  onChange={(event) => {
-                    const time = event.target.value;
-
-                    setPlatformSchedules((previous) => ({
-                      ...previous,
-                      [platform]: {
-                        ...schedule,
-                        time,
-                      },
-                    }));
-                  }}
-                  className="h-9 w-full rounded-lg border border-[#D9E2EC] bg-white px-2.5 text-[10px] font-medium text-[#344054] outline-none focus:border-[#2478FF] focus:ring-2 focus:ring-[#2478FF]/10"
-                />
-              </label>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
-
+              <div hidden={wizardStep !== "schedule"} className={studioStyles.scheduleRow}>
+                <label>Start date<input type="date" value={startDate} onChange={event => setStartDate(event.target.value)}/></label>
+                <label>End date<input type="date" value={endDate} onChange={event => setEndDate(event.target.value)}/></label>
+                <label>Posts per week<input type="number" min={1} max={14} value={postsPerWeek} onChange={event => setPostsPerWeek(Math.min(14,Math.max(1,Number(event.target.value)||1)))}/></label>
+              </div>
+              <div hidden={wizardStep !== "direction"}><label className={studioStyles.goalField}>Content goal <span className="font-normal text-slate-400">Optional</span><select value={campaignObjective} onChange={e=>setCampaignObjective(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm"><option value="">Use my business knowledge</option>{["Brand Awareness","Engagement","Audience Education","Lead Generation","Product Adoption","Sales / Conversion","Custom Objective"].map(objective=><option key={objective}>{objective}</option>)}</select></label>
+              {campaignObjective==="Custom Objective"&&<p className="mt-1 text-xs text-slate-500">Describe your goal in Creative direction.</p>}</div>
+              <details ref={advancedRef} hidden={wizardStep !== "options"} open className={studioStyles.channelOptions}>
+                <summary>Channel options <span>{platforms.length > 1 ? "Grouping & timing" : "Select multiple channels to customize"}</span></summary>
+                {platforms.length > 1 && <div className={studioStyles.optionFields}>
+                  <label>Content approach<select value={contentStrategy} onChange={event => {
+                    const value = event.target.value as typeof contentStrategy;
+                    setContentStrategy(value);
+                    if(value === "CUSTOM_GROUPS" && !contentGroups.length) setContentGroups([platforms]);
+                  }}><option value="SAME_CONTENT">Shared ideas, adapted per channel</option><option value="DIFFERENT_CONTENT">Different ideas for each channel</option><option value="CUSTOM_GROUPS">Custom channel groups</option></select></label>
+                  <label>Schedule across channels<select value={scheduleStrategy} onChange={event => {
+                    const value = event.target.value as typeof scheduleStrategy;
+                    setScheduleStrategy(value);
+                    if(value === "SAME_TIME" || value === "SAME_DAY") setPlatformSchedules(Object.fromEntries(platforms.map((platform,index) => [platform,{date:startDate,time:value === "SAME_TIME" ? "10:00" : `${String(10+index).padStart(2,"0")}:00`}])));
+                    else setPlatformSchedules(previous => {const next = {...previous};platforms.forEach(platform => {if(!next[platform])next[platform]={date:startDate,time:"10:00"};});return next;});
+                  }}><option value="SAME_TIME">Same day & time</option><option value="SAME_DAY">Same day, different times</option><option value="CUSTOM">Custom dates & times</option></select></label>
+                  <p>These settings plan drafts. Publishing still requires approval.</p>
     {contentStrategy === "CUSTOM_GROUPS" && (
       <div className="mt-4 rounded-2xl border border-[#DCE3EC] bg-white p-4">
         <div className="flex items-start justify-between gap-4">
@@ -755,147 +500,114 @@ const togglePlatform = (platform: string) => {
           Platforms in a group share the same creative idea, adapted to each channel.
         </p>
       </div>
-    )}
-  </div>
-)}
-
-{platforms.length > 1 && (
-  <div className="mt-5 rounded-[22px] border border-[#E4E7EC] bg-[#F8FAFC] p-4 sm:p-5">
+    )}    {scheduleStrategy === "CUSTOM" && (
+  <div className="mt-4 rounded-2xl border border-[#DCE3EC] bg-white p-4">
     <div>
-      <p className="text-xs font-semibold text-[#101828]">
-        Publishing schedule
+      <p className="text-[11px] font-semibold text-[#101828]">
+        Platform schedules
       </p>
       <p className="mt-1 text-[10px] leading-5 text-[#667085]">
-        Choose how AI should schedule posts across your selected platforms.
+        Set when each platform should publish. Platforms can use different
+        dates and times.
       </p>
     </div>
 
-    <div className="mt-3 grid gap-2">
-      {[
-        {
-          value: "SAME_TIME" as const,
-          title: "Same date & time",
-          description:
-            "Publish all platform posts at the same date and time.",
-        },
-        {
-          value: "SAME_DAY" as const,
-          title: "Same day, different times",
-          description:
-            "Publish on the same day but let AI choose the best time for each platform.",
-        },
-        {
-          value: "CUSTOM" as const,
-          title: "Customize the schedule",
-          description:
-            "Choose different dates and times for different platforms.",
-        },
-      ].map((option) => {
-        const selected = scheduleStrategy === option.value;
+    <div className="mt-3 space-y-2">
+      {platforms.map((platform) => {
+        const meta = PLATFORMS.find(
+          (item) => item.value === platform
+        );
+
+        if (!meta) return null;
+
+        const schedule = platformSchedules[platform] ?? {
+          date: startDate,
+          time: "10:00",
+        };
 
         return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => {
-  setScheduleStrategy(option.value);
-
-  if (option.value === "SAME_TIME") {
-    setPlatformSchedules(
-      Object.fromEntries(
-        platforms.map((platform) => [
-          platform,
-          {
-            date: startDate,
-            time: "10:00",
-          },
-        ])
-      )
-    );
-  }
-
-  if (option.value === "SAME_DAY") {
-    setPlatformSchedules(
-      Object.fromEntries(
-        platforms.map((platform, index) => [
-          platform,
-          {
-            date: startDate,
-            time: `${String(10 + index).padStart(2, "0")}:00`,
-          },
-        ])
-      )
-    );
-  }
-
-  if (option.value === "CUSTOM") {
-    setPlatformSchedules((previous) => {
-      const next = { ...previous };
-
-      platforms.forEach((platform) => {
-        if (!next[platform]) {
-          next[platform] = {
-            date: startDate,
-            time: "10:00",
-          };
-        }
-      });
-
-      return next;
-    });
-  }
-}}
-            aria-pressed={selected}
-            className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all ${
-              selected
-                ? "border-[#B9D2FA] bg-[#F3F8FF] shadow-[0_5px_16px_rgba(36,120,255,0.07)]"
-                : "border-[#E4E7EC] bg-white hover:border-[#CBD5E1] hover:bg-[#FAFBFC]"
-            }`}
+          <div
+            key={platform}
+            className="rounded-xl border border-[#E4E7EC] bg-[#F8FAFC] p-3"
           >
-            <span
-              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                selected
-                  ? "border-[#2478FF] bg-[#2478FF]"
-                  : "border-[#D0D5DD] bg-white"
-              }`}
-            >
-              {selected && (
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              )}
-            </span>
-
-            <span className="min-w-0">
-              <span
-                className={`block text-[11px] font-semibold ${
-                  selected ? "text-[#175CD3]" : "text-[#344054]"
-                }`}
-              >
-                {option.title}
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EEF5FF] text-[8px] font-bold text-[#2478FF]">
+                <PlatformBrandIcon platform={meta.value} size={17}/>
               </span>
 
-              <span className="mt-1 block text-[10px] leading-5 text-[#667085]">
-                {option.description}
+              <span className="text-[10px] font-semibold text-[#344054]">
+                {meta.label}
               </span>
-            </span>
-          </button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
+                  Date
+                </span>
+
+                <input
+                  type="date"
+                  value={schedule.date}
+                  min={startDate}
+                  max={endDate}
+                  onChange={(event) => {
+                    const date = event.target.value;
+
+                    setPlatformSchedules((previous) => ({
+                      ...previous,
+                      [platform]: {
+                        ...schedule,
+                        date,
+                      },
+                    }));
+                  }}
+                  className="h-9 w-full rounded-lg border border-[#D9E2EC] bg-white px-2.5 text-[10px] font-medium text-[#344054] outline-none focus:border-[#2478FF] focus:ring-2 focus:ring-[#2478FF]/10"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
+                  Time
+                </span>
+
+                <input
+                  type="time"
+                  value={schedule.time}
+                  onChange={(event) => {
+                    const time = event.target.value;
+
+                    setPlatformSchedules((previous) => ({
+                      ...previous,
+                      [platform]: {
+                        ...schedule,
+                        time,
+                      },
+                    }));
+                  }}
+                  className="h-9 w-full rounded-lg border border-[#D9E2EC] bg-white px-2.5 text-[10px] font-medium text-[#344054] outline-none focus:border-[#2478FF] focus:ring-2 focus:ring-[#2478FF]/10"
+                />
+              </label>
+            </div>
+          </div>
         );
       })}
     </div>
   </div>
 )}
 
-                </div>
+
+                </div>}
               </details>
-              {!performanceRecommendationsAccess && <WorkspaceFeatureNotice compact feature="performanceRecommendations" />}
-              <div className={studioStyles.sectionTitle}><span>04</span><div><h2>Creative direction</h2><p>Add a focus for this batch, if you have one.</p></div><PenLine size={20}/></div>
-              <label className="mt-5 block">
+                </div>
+              <label hidden={wizardStep !== "direction"} className={studioStyles.directionPanel}>
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <span className="block text-xs font-semibold text-[#101828]">
                       Creative direction
                     </span>
                     <span className="mt-1 block text-[10px] leading-5 text-[#667085]">
-                      Optional guidance for this batch.
+                      What should this calendar focus on?
                     </span>
                   </div>
                   <span className="hidden text-[9px] text-[#98A2B3] sm:block">
@@ -906,30 +618,27 @@ const togglePlatform = (platform: string) => {
                 <textarea
                   value={customInstructions}
                   onChange={(event) => { setCustomInstructions(event.target.value); if (!event.target.value.trim()) setReportingRecommendationLoaded(false); }}
-                  rows={4}
+                  rows={2}
                   placeholder="For example: Focus on our new service, address common customer questions, and use a friendly tone."
                   className="mt-3 w-full resize-y rounded-2xl border border-[#D9E2EC] bg-white px-4 py-3.5 text-[11px] leading-6 text-[#344054] outline-none transition-all placeholder:text-[#98A2B3] hover:border-[#B9C7D8] focus:border-[#2478FF] focus:ring-4 focus:ring-[#2478FF]/10"
                 />
                 <div className="mt-1.5 text-right text-[9px] text-[#98A2B3]">
-                  {customInstructions.length} characters
+                  Your business knowledge and brand voice guide every draft.
                 </div>
               </label>
+              </div>
+
             </>
           )}
         </div>
 
         {hasBusinessSummaryState && <aside className={studioStyles.summary} aria-label="Generation summary">
-          <div className={studioStyles.summaryTop}><span><WandSparkles size={17}/> Batch summary</span><span className={studioStyles.previewBadge}>{generating ? "Creating…" : "Drafts"}</span></div>
-          <h2>Your content batch</h2>
-          <div className={studioStyles.batchNumbers} aria-live="polite"><div><strong>{expected?.ideas ?? "—"}</strong><span>creative ideas</span></div><div><strong>{expected?.drafts ?? "—"}</strong><span>calendar drafts</span></div></div>
-          {!expected && <p className={studioStyles.summaryHelp}>Complete your dates and platform groups to calculate this batch.</p>}
-          <div className={studioStyles.summaryPlatforms}>{platforms.length ? platforms.map(platform => <span key={platform} title={PLATFORMS.find(p => p.value === platform)?.label}><PlatformBrandIcon platform={platform} size={20}/><span className="sr-only">{PLATFORMS.find(p => p.value === platform)?.label}</span></span>) : <p>Choose at least one platform.</p>}</div>
-          <dl className={studioStyles.summaryDetails}><div><dt>Objective</dt><dd>{campaignObjective || "Guided by your business"}</dd></div><div><dt>Date range</dt><dd>{startDate || "Choose start"}<br/>{endDate || "Choose end"}</dd></div><div><dt>Weekly rhythm</dt><dd>{postsPerWeek} per week</dd></div><div><dt>Time zone</dt><dd>{timeZone}</dd></div>{platforms.length > 1 && <div><dt>Content approach</dt><dd>{contentStrategy === "SAME_CONTENT" ? "Shared ideas, adapted" : contentStrategy === "DIFFERENT_CONTENT" ? "Distinct ideas per platform" : "Custom platform groups"}</dd></div>}</dl>
-          <details className={studioStyles.scheduleNote}><summary>How draft counts work</summary><p>Monday-based weeks. Partial weeks include only selected publishing days. {postsPerWeek > 7 ? "Two daily slots are used where needed." : "One slot per publishing day, per platform."}</p></details>
+          <button type="button" className={studioStyles.wizardBack} disabled={generating || stepIndex <= 0} onClick={() => moveStep(wizardSteps[stepIndex-1])}>Back</button>
+          <div className={studioStyles.compactCount} aria-live="polite">{wizardStep === "direction" && expected ? <strong>{expected.ideas} ideas → {expected.drafts} drafts</strong> : <span>{wizardStep === "platforms" ? `${platforms.length} selected` : wizardStep === "schedule" ? "Choose dates and a weekly frequency." : "Choose shared or separate ideas and timing."}</span>}</div>
             <button
               type="button"
-              onClick={() => void generate()}
-              disabled={generating || platforms.length === 0 || !expected?.drafts}
+              onClick={() => wizardStep === "direction" ? void generate() : moveStep(wizardSteps[stepIndex+1])}
+              disabled={generating || platforms.length === 0 || (wizardStep === "schedule" && (!startDate || !endDate || endDate < startDate)) || ((wizardStep === "options" || wizardStep === "direction") && !expected?.drafts)}
               className={studioStyles.generateButton}
             >
               {generating ? (
@@ -939,14 +648,14 @@ const togglePlatform = (platform: string) => {
                 </>
               ) : (
                 <>
-                  Generate content
+                  {wizardStep === "direction" ? "Generate calendar" : "Next"}
                   <span className="transition-transform group-hover:translate-x-0.5">
                     <ArrowIcon />
                   </span>
                 </>
               )}
             </button>
-          <div className={studioStyles.reviewNote}><ShieldCheck size={18}/><p><strong>Review comes first.</strong>Review every draft before approval. Generating content does not publish it.</p></div>
+          {wizardStep === "direction" && <p className={studioStyles.reviewHint}>You’ll review drafts before publishing.</p>}
         </aside>}
         </div>
 

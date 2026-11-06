@@ -2,7 +2,7 @@ import { getWorkspaceSetup } from "@/lib/workspaceSetupServer";
 import { canGenerateDuringSetup } from "@/lib/workspaceSetup";
 import ReportingProductionSummary from "@/components/calendars/ReportingProductionSummary";
 import ChannelsWorkspace from "@/components/calendars/ChannelsWorkspace";
-import KnowledgeWorkspaceHeader from "@/components/calendars/KnowledgeWorkspaceHeader";
+import KnowledgeSetupPanel from "@/components/calendars/KnowledgeSetupPanel";
 import WorkspaceOverview from "@/components/calendars/WorkspaceOverview";
 import { brandPersonalityDocumentId } from "@/lib/knowledge/brandPersonality";
 import BrandPersonalityCard from "@/components/calendars/BrandPersonalityCard";
@@ -30,7 +30,7 @@ import { isAdminEmail } from "@/lib/admin";
 import CalendarGrid from "@/components/calendars/CalendarGrid";
 import InviteCollaboratorForm from "@/components/calendars/InviteCollaboratorForm";
 import CalendarSettingsMenu from "@/components/calendars/CalendarSettingsMenu";
-import CalendarPasswordDisplay from "@/components/calendars/CalendarPasswordDisplay";
+import ClientSharingPanel from "@/components/calendars/ClientSharingPanel";
 import InstagramConnectionCard from "@/components/calendars/InstagramConnectionCard";
 import TikTokConnectionCard from "@/components/calendars/TikTokConnectionCard";
 import AdditionalChannelCard from "@/components/calendars/AdditionalChannelCard";
@@ -391,68 +391,12 @@ contentIdea: p.contentIdea,
     },
     {
       id: "access",
-      label: "Client",
-      eyebrow: "Client experience",
-      title: "Give the client a beautiful front door.",
-      description:
-        "Keep the private review link and access credentials together, ready to share.",
-      group: "Client",
-      content: (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <div className="relative overflow-hidden rounded-[28px] bg-[#0B1220] p-7 text-white shadow-[0_18px_50px_rgba(15,23,42,0.13)] md:p-9">
-            <div className="pointer-events-none absolute -right-28 -top-24 h-72 w-72 rounded-full bg-[#1768E8]/35 blur-3xl" />
-            <div className="relative max-w-2xl">
-              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8EB9FF]">
-                Private client view
-              </p>
-              <h3 className="mt-4 text-[34px] font-semibold leading-[1.02] tracking-[-0.055em] md:text-[42px]">
-                The work should look as good as the work you made.
-              </h3>
-              <p className="mt-4 max-w-xl text-[12px] leading-6 text-white/45">
-                Share a dedicated client-facing experience instead of exposing the production workspace.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href={clientUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-[11px] font-bold text-[#1768E8] transition hover:-translate-y-0.5"
-                >
-                  Open client view <IconArrowUpRight className="h-3.5 w-3.5" />
-                </a>
-                <div className="flex min-w-0 items-center rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-[10px] text-white/45">
-                  <span className="truncate">{clientUrl}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-[#DFE6EF] bg-white p-6 shadow-[0_14px_40px_rgba(15,23,42,0.045)]">
-  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#98A2B3]">
-    Access credentials
-  </p>
-
-  <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#101828]">
-    Private workspace password
-  </h3>
-
-  <p className="mt-2 text-[11px] leading-5 text-[#667085]">
-    Only share this with people who should see the client-facing view.
-  </p>
-
-  <div
-    className="mt-7 rounded-2xl border border-[#D8E0EA] bg-[#101828] p-4"
-    data-password-display
-  >
-    <CalendarPasswordDisplay
-      calendarId={calendar.id}
-      accessCode={calendar.accessCode ?? ""}
-      canManage={can("workspace.manage")}
-    />
-  </div>
-</div>
-        </div>
-      ),
+      label: "Share with client",
+      eyebrow: "Client access",
+      title: "Share with your client",
+      description: "Send their review link and password. Keep feedback and approvals in one place.",
+      group: "Workspace",
+      content: <ClientSharingPanel calendarId={calendar.id} clientUrl={clientUrl} clientName={calendar.clientName} accessCode={calendar.accessCode ?? ""} canManage={can("workspace.manage")} />,
     },
     ...((can("channels.view") || can("knowledge.view") || can("ai.generate"))
   ? [
@@ -506,16 +450,14 @@ contentIdea: p.contentIdea,
           },
           {
             id: "knowledge" as const,
-            label: "Knowledge",
+            label: "Business knowledge",
             eyebrow: "AI Studio · context",
             title: "Give AI the context this client deserves.",
             description:
               "Keep the client's brand, products, voice and source material close to every generation.",
             group: "AI Studio" as const,
             content: (
-              <>
-              <KnowledgeWorkspaceHeader clientName={calendar.clientName}/>
-              <BusinessKnowledgeCard
+              <KnowledgeSetupPanel calendarId={calendar.id} hasKnowledge={setup?.hasKnowledge ?? false} hasBrandVoice={setup?.hasBrandVoice ?? false} sourceCount={calendar.businessDocuments.filter(doc => doc.id !== brandPersonalityDocumentId(calendar.id)).length} nextSection={setup?.hasChannels ? (can("ai.generate") ? "generate" : undefined) : (can("channels.view") ? "channels" : undefined)} knowledge={<BusinessKnowledgeCard
                 hasBrandVoice={setup?.hasBrandVoice ?? false}
                 nextSection={setup?.hasChannels ? (can("ai.generate") ? "generate" : undefined) : (can("channels.view") ? "channels" : undefined)}
                 canEdit={can("knowledge.manage")}
@@ -530,9 +472,7 @@ contentIdea: p.contentIdea,
                   createdAt: doc.createdAt.toISOString(),
                   websiteUrl: doc.websiteUrl,
                 }))}
-              />
-              <BrandPersonalityCard key={calendar.id} calendarId={calendar.id} canEdit={can("knowledge.manage")} hasKnowledge={calendar.businessDocuments.some(doc => doc.id !== brandPersonalityDocumentId(calendar.id))} nextSection={setup?.hasChannels ? (can("ai.generate") ? "generate" : undefined) : (can("channels.view") ? "channels" : undefined)} />
-              </>
+              />} voice={<BrandPersonalityCard reviewOnSave key={calendar.id} calendarId={calendar.id} canEdit={can("knowledge.manage")} hasKnowledge={setup?.hasKnowledge ?? false} />} />
             ),
           },
           {
@@ -546,7 +486,7 @@ contentIdea: p.contentIdea,
           },
           {
             id: "generate" as const,
-            label: "Generate",
+            label: "Generate calendar",
             eyebrow: "AI Studio · create",
             title: "Turn context into the next content batch.",
             description:

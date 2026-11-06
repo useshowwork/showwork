@@ -472,9 +472,9 @@ function ThemeToggle({
       }}
     >
       {theme === "dark" ? (
-        <IconMoon className="h-4 w-4" />
-      ) : (
         <IconSun className="h-4 w-4" />
+      ) : (
+        <IconMoon className="h-4 w-4" />
       )}
     </button>
   );
@@ -5509,7 +5509,7 @@ export default function CalendarGrid({
           ===================================================== */}
 
       <div className={contentStyles.compactHeader}>
-        <div className="min-w-0">
+        <div className={contentStyles.calendarHeading}>
           <p
             className="
               mb-0.5
@@ -5540,13 +5540,7 @@ export default function CalendarGrid({
             }}
           >
             {viewMode === "calendar"
-              ? currentMonth.toLocaleDateString(
-                "en-US",
-                {
-                  month: "long",
-                  year: "numeric",
-                }
-              )
+              ? <><span className={contentStyles.fullMonth}>{currentMonth.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</span><span className={contentStyles.shortMonth}>{currentMonth.toLocaleDateString("en-US",{month:"short",year:"numeric"})}</span></>
               : viewMode === "instagram"
                 ? "Instagram Preview"
                 : viewMode === "tiktok" ? "TikTok Preview"
@@ -5555,17 +5549,10 @@ export default function CalendarGrid({
           </h2>
         </div>
 
-        <div className="
-          flex
-          min-w-0
-          flex-wrap
-          items-center
-          gap-1.5
-          sm:gap-2
-        ">
+        <div className={contentStyles.calendarActions}>
           <AutoPublishToggle compact calendarId={calendarId} canManage={isOwner || (permissions ? permissions.includes("publishing.manage") : userRole === "EDIT_CALENDAR")} />
           {(permissions ? permissions.includes("ai.generate") : userRole === "EDIT_CALENDAR") && <button type="button" className={contentStyles.aiShortcut} onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "generate" } }))}><Sparkles size={15}/><span>Generate with AI</span><small>~2 min</small></button>}
-          {userRole === "EDIT_CALENDAR" && <button type="button" onClick={() => setAddingDate(new Date())} className={contentStyles.addShortcut}><Plus size={15}/>Add post</button>}
+          <label className={contentStyles.previewControl}><span className="sr-only">Preview</span><select aria-label="Preview calendar or social channel" value={viewMode} onChange={event => { setViewMode(event.target.value as typeof viewMode); setPlatformFilter("ALL"); }}>{([['calendar','Calendar'],['instagram','Instagram'],['tiktok','TikTok'],['linkedin','LinkedIn'],['facebook','Facebook'],['x','X']] as const).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           {userRole === "EDIT_CALENDAR" && <ImportCalendar calendarId={calendarId} theme={theme} onImported={(importedPosts, firstDate) => {
             setPosts(importedPosts.map(normalize));
             clearFilters();
@@ -5575,16 +5562,7 @@ export default function CalendarGrid({
               setViewMode("calendar");
             }
           }} />}
-          <details className={contentStyles.moreActions}><summary>More <span aria-hidden="true">⌄</span></summary>
-          <div className={contentStyles.morePanel} role="group" aria-label="More calendar actions">
-          <label className={contentStyles.previewSelect}>Preview<select aria-label="Choose calendar or channel preview" value={viewMode} onChange={event => { setViewMode(event.target.value as typeof viewMode); setPlatformFilter("ALL"); }}>{([['calendar','Calendar'],['instagram','Instagram'],['tiktok','TikTok'],['linkedin','LinkedIn'],['facebook','Facebook'],['x','X']] as const).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <ThemeToggle
-            theme={theme}
-            onToggle={toggleTheme}
-          />
-
-          </div>
-          </details>
+          <ThemeToggle theme={theme} onToggle={toggleTheme}/>
           {viewMode === "calendar" && (
             <>
               <button
@@ -5650,10 +5628,7 @@ export default function CalendarGrid({
               : "0 12px 40px rgba(0,0,0,0.045)",
         }}
       >
-        <div className="
-          flex flex-col gap-2 p-2
-          sm:flex-row sm:flex-wrap sm:items-center
-        ">
+        <div className={contentStyles.mobileFilterRow}>
           <div
             className="
               flex min-w-0 flex-1 items-center gap-2.5
@@ -5678,7 +5653,7 @@ export default function CalendarGrid({
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search captions, ideas, categories, hashtags..."
+              placeholder="Search posts…"
               aria-label="Search content"
               className="
                 min-w-0 flex-1 bg-transparent text-xs
@@ -5711,11 +5686,7 @@ export default function CalendarGrid({
           ] as const).map(item => <option key={item.id} value={item.id}>{item.label} ({posts.filter(post => matchesCalendarStage(post, item.id)).length})</option>)}</select>
           {viewMode === "calendar" && (
             <>
-              <label
-                className="
-                  flex h-11 w-full flex-shrink-0 items-center gap-2.5 rounded-xl border
-                  px-3.5 sm:w-[220px] lg:w-[240px]
-                "
+              <label className={contentStyles.monthPicker}
                 style={{
                   background: t.inputBg,
                   borderColor: t.inputBorder,
@@ -5731,6 +5702,7 @@ export default function CalendarGrid({
                   <rect x="3" y="4" width="18" height="17" rx="3" />
                   <path d="M8 2.5v4M16 2.5v4M3 9h18" strokeLinecap="round" />
                 </svg>
+                <span className={contentStyles.mobileMonthLabel} aria-hidden="true">{currentMonth.toLocaleDateString("en-US",{month:"short",year:"numeric"})}</span>
                 <input
                   type="month"
                   value={monthInputValue}
@@ -5765,6 +5737,7 @@ export default function CalendarGrid({
 
           <button
             type="button"
+            aria-label="Filters"
             onClick={() => setFilterOpen((open) => !open)}
             aria-expanded={filterOpen}
             className="
@@ -5793,7 +5766,7 @@ export default function CalendarGrid({
             >
               <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
             </svg>
-            Filters
+            <span className={contentStyles.filterText}>Filters</span>
             {activeFilterCount > 0 && (
               <span
                 className="
