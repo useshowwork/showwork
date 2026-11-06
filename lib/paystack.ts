@@ -297,3 +297,45 @@ export async function listSuccessfulTransactions(params: {page:number;perPage:nu
   if (!result.status || !Array.isArray(result.data)) throw new Error("Invalid Paystack transaction list");
   return result as {status:boolean;data:{reference:string;domain:string;status:string;amount:number;currency:string}[];meta?:{total?:number;pageCount?:number}};
 }
+
+/** Bank data is resolved server-side; never trust a typed account holder name. */
+export async function listNigerianBanks(): Promise<{ name: string; code: string }[]> {
+  const banks = new Map<string, { name: string; code: string }>();
+  let cursor: string | null = null;
+  for (let page = 0; page < 20; page++) {
+    const query = new URLSearchParams({ country: "nigeria", currency: "NGN", perPage: "100", use_cursor: "true" });
+    if (cursor) query.set("next", cursor);
+    const res = await fetch(`${PAYSTACK_BASE_URL}/bank?${query}`, { headers: { Authorization: `Bearer ${paystackSecretKey()}` }, signal: AbortSignal.timeout(15000), cache: "no-store" });
+    const body = await res.json();
+    if (!res.ok || !body.status || !Array.isArray(body.data)) throw new Error("Bank list is temporarily unavailable. Try again.");
+    for (const bank of body.data) if (bank.active !== false && !bank.is_deleted && typeof bank.name === "string" && typeof bank.code === "string") banks.set(bank.code, { name: bank.name, code: bank.code });
+    const next = body.meta?.next;
+    if (!next) return [...banks.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    if (typeof next !== "string" || next === cursor) throw new Error("Bank pagination failed. Try again.");
+    cursor = next;
+  }
+  throw new Error("Could not load the complete bank list. Try again.");
+}
+export async function resolveNigerianAccount(bankCode: string, accountNumber: string) {
+  const banks = await listNigerianBanks();
+  const bank = banks.find(item => item.code === bankCode);
+  if (!bank) throw new Error("Select a supported Nigerian bank.");
+  const query = new URLSearchParams({ bank_code: bankCode, account_number: accountNumber });
+  const res = await fetch(`${PAYSTACK_BASE_URL}/bank/resolve?${query}`, { headers: { Authorization: `Bearer ${paystackSecretKey()}` }, signal: AbortSignal.timeout(15000), cache: "no-store" });
+  const body = await res.json();
+  if (!res.ok || !body.status || body.data?.account_number !== accountNumber || !body.data?.account_name?.trim()) throw new Error("Could not verify this bank account. Check the bank and account number.");
+  return { bankName: bank.name, bankCode, accountNumber, accountName: body.data.account_name.trim() as string, verifiedAt: new Date() };
+}
+export async function fetchPartnerPaymentIssue(kind: "refund" | "dispute", id: string) {
+  if (!/^\d+$/.test(id)) throw new Error("Invalid payment issue ID");
+  const res = await fetch(`${PAYSTACK_BASE_URL}/${kind}/${id}`, { headers: { Authorization: `Bearer ${paystackSecretKey()}` }, signal: AbortSignal.timeout(15000), cache: "no-store" });
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data || String(body.data.id) !== id) throw new Error("Could not verify payment issue");
+  if (typeof body.data.transaction === "number") {
+    const transaction = await fetch(`${PAYSTACK_BASE_URL}/transaction/${body.data.transaction}`, { headers: { Authorization: `Bearer ${paystackSecretKey()}` }, signal: AbortSignal.timeout(15000), cache: "no-store" });
+    const details = await transaction.json();
+    if (!transaction.ok || !details.status || String(details.data?.id) !== String(body.data.transaction)) throw new Error("Could not verify issue transaction");
+    body.data.transaction = details.data;
+  }
+  return body.data;
+}

@@ -1934,7 +1934,9 @@ export async function sendPartnerWelcomeEmail({
   name,
   partnerManagerName,
   partnerManagerEmail,
+  terms,
 }: {
+  terms: { commissionPercent: number; commissionMonths: number; discountPercent: number; discountMonths: number };
   to: string;
   name: string | null;
   partnerManagerName: string;
@@ -1967,14 +1969,17 @@ export async function sendPartnerWelcomeEmail({
           </p>
 
           <p style="margin:0 0 11px;font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#344054;">
-            <strong>10% commission</strong> on qualifying payments made by each customer you refer.
+            <strong>${terms.commissionPercent}% commission</strong> on qualifying payments made by each customer you refer.
           </p>
 
           <p style="margin:0 0 11px;font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#344054;">
-            <strong>12-month commission window</strong> for each referred customer, beginning with their first qualifying payment.
+            <strong>${terms.commissionMonths}-month commission window</strong> for each referred customer, beginning with their first qualifying payment.
           </p>
 
           <p style="margin:0 0 11px;font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#344054;">
+            <strong>${terms.discountPercent > 0 ? `${terms.discountPercent}% customer discount for ${terms.discountMonths} months` : "No referral customer discount"}</strong>. Discounts apply to eligible new subscriptions; annual discounts require a whole-year duration. Offers do not stack.
+          </p>
+          <p style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#344054;">
             <strong>₦5,000 minimum payout</strong> before you can request a payout.
           </p>
 
@@ -2003,8 +2008,7 @@ export async function sendPartnerWelcomeEmail({
 
         <div style="margin-top:18px;padding:16px 18px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;">
           <p style="margin:0;font-family:Arial,sans-serif;font-size:13px;line-height:1.7;color:#475467;">
-            Your Partnership Agreement is attached to this email for your records.
-            Please review it carefully and keep a copy for your records.
+            Your agreed commission and referral discount terms are recorded above and in your Partner Dashboard. Keep this email for your records.
           </p>
         </div>
       `,
@@ -2015,12 +2019,7 @@ export async function sendPartnerWelcomeEmail({
       footer:
         "We're looking forward to growing with you. Reply to this email if you need anything.",
     }),
-       attachments: [
-  {
-    filename: "Showwork_Partner_Program_Agreement.pdf",
-    path: `${APP_URL}/pdfs/Showwork_Partner_Program_Agreement.pdf`,
-  },
-],
+
   });
 }
 

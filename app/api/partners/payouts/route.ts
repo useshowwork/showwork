@@ -1,3 +1,4 @@
+import { assertPartnerPayable, netCommission } from "@/lib/partnerFinance";
 import { NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -70,9 +71,12 @@ export async function POST() {
        * an existing payout is still being processed.
        */
       const payoutAccount = await tx.partnerPayoutAccount.findUnique({
-        where: { partnerId: partner.id }, select: { id: true },
+        where: { partnerId: partner.id }, select: { id: true, bankName: true, bankCode: true, accountName: true, accountNumber: true, verifiedAt: true },
       });
-      if (!payoutAccount) throw new Error("PAYOUT_ACCOUNT_REQUIRED");
+      if (!payoutAccount?.verifiedAt || !payoutAccount.bankCode) throw new Error("PAYOUT_ACCOUNT_REQUIRED");
+      const current = await tx.partnerProfile.findUnique({ where: { id: partner.id }, select: { status: true } });
+      if (current?.status !== "ACTIVE") throw new Error("Partner access changed. Refresh and try again.");
+      await assertPartnerPayable(tx, partner.id);
 
       const activePayout = await tx.partnerPayout.findFirst({
         where: {
@@ -103,12 +107,12 @@ export async function POST() {
             referral: {
               partnerId: partner.id,
             },
-            status: "APPROVED",
+            status: "APPROVED", onHold: false,
             payoutAllocation: null,
           },
           select: {
             id: true,
-            commissionAmountNgn: true,
+            commissionAmountNgn: true, reversedAmountNgn: true,
           },
           orderBy: {
             earnedAt: "asc",
@@ -121,7 +125,7 @@ export async function POST() {
 
       const availableNgn = approvedCommissions.reduce(
         (total, commission) =>
-          total + commission.commissionAmountNgn,
+          total + netCommission(commission),
         0
       );
 
@@ -142,13 +146,15 @@ export async function POST() {
         data: {
           partnerId: partner.id,
           amountNgn: availableNgn,
+          bankName: payoutAccount.bankName, bankCode: payoutAccount.bankCode, accountName: payoutAccount.accountName,
+          accountNumber: payoutAccount.accountNumber, accountVerifiedAt: payoutAccount.verifiedAt,
           status: "PENDING",
 
           payoutCommissions: {
-            create: approvedCommissions.map(
+            create: approvedCommissions.filter(c => netCommission(c) > 0).map(
               (commission) => ({
                 commissionId: commission.id,
-                amountNgn: commission.commissionAmountNgn,
+                amountNgn: netCommission(commission),
               })
             ),
           },
@@ -183,7 +189,7 @@ export async function POST() {
       return NextResponse.json({ error: "Your payout balance changed. Refresh and try again." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "PAYOUT_ACCOUNT_REQUIRED") {
-      return NextResponse.json({ error: "Please add your payout account before requesting a payout." }, { status: 400 });
+      return NextResponse.json({ error: "Please verify your payout account before requesting a payout." }, { status: 400 });
     }
     if (
       error instanceof Error &&
@@ -230,6 +236,8 @@ export async function POST() {
         { status: 400 }
       );
     }
+
+    if (error instanceof Error && /under review|recovery|access changed/.test(error.message)) return NextResponse.json({ error: error.message }, { status: 409 });
 
     console.error(
       "Partner payout request error:",

@@ -19,7 +19,7 @@ export async function GET() {
     },
     select: {
       id: true,
-      referralCode: true,
+      referralCode: true, status: true,
       isActive: true,
       createdAt: true,
       updatedAt: true,
@@ -41,10 +41,11 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    enrolled: true,
+    enrolled: partner.status === "ACTIVE",
+    access: partner.status,
     partner: {
       id: partner.id,
-      referralCode: partner.referralCode,
+      referralCode: partner.status === "ACTIVE" ? partner.referralCode : null,
       isActive: partner.isActive,
       createdAt: partner.createdAt,
       updatedAt: partner.updatedAt,

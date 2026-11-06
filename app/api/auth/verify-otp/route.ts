@@ -1,3 +1,4 @@
+import { recordPartnerReferral } from "@/lib/partnerTerms";
 import { queueGlobalBenefitsForNewUser, scheduleBenefitEmailDelivery } from "@/lib/billingBenefitNotifications";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           creatorId: true,
+          commissionPercent: true, commissionMonths: true, discountPercent: true, discountMonths: true,
           isActive: true,
           status: true,
           creator: {
@@ -119,13 +121,7 @@ export async function POST(req: NextRequest) {
         partner.status === "ACTIVE" &&
         partner.creatorId !== creator.id
       ) {
-        await tx.referral.create({
-          data: {
-            partnerId: partner.id,
-            referredCreatorId: creator.id,
-            status: "PENDING",
-          },
-        });
+        await recordPartnerReferral(tx, partner, creator.id);
 
         partnerForEmail = {
           email: partner.creator.email,

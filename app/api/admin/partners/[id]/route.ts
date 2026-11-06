@@ -1,3 +1,4 @@
+import { parsePartnerTerms, type PartnerTerms } from "@/lib/partnerTerms";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed, nativePolicyExecutionAllowed } from "@/lib/publishing/applicationBoundary";
 import { queuePartnerWelcomeBenefit, scheduleBenefitEmailDelivery } from "@/lib/billingBenefitNotifications";
 import { NextRequest, NextResponse } from "next/server";
@@ -70,7 +71,7 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: { action?: string };
+  let body: { action?: string; terms?: unknown };
 
   try {
     body = await req.json();
@@ -83,13 +84,35 @@ export async function PATCH(
 
   const action = body.action;
 
-  if (action !== "approve" && action !== "reject") {
+  if (!["approve", "reject", "pause", "resume", "suspend"].includes(action ?? "")) {
     return NextResponse.json(
       {
-        error: 'Action must be either "approve" or "reject"',
+        error: 'Invalid partner action',
       },
       { status: 400 }
     );
+  }
+
+  if (action === "pause" || action === "resume" || action === "suspend") {
+    try {
+      const partner = await db.$transaction(async tx => {
+        const current = await tx.partnerProfile.findUnique({ where: { id }, select: { status: true, isActive: true } });
+        if (!current || !["ACTIVE", "SUSPENDED"].includes(current.status)) throw new Error("Only approved partners can be paused, suspended or resumed.");
+        if (action === "pause" && current.status !== "ACTIVE") throw new Error("Resume this suspended partner first.");
+        const changed = await tx.partnerProfile.updateMany({ where: { id, status: current.status, isActive: current.isActive }, data: { status: action === "suspend" ? "SUSPENDED" : "ACTIVE", isActive: action === "resume" } });
+        if (changed.count !== 1) throw new Error("Partner changed. Refresh and retry.");
+        await tx.partnerAuditEvent.create({ data: { actorId: admin.id, targetId: id, action: `PARTNER_${action.toUpperCase()}`, detail: { previousStatus: current.status, previousActive: current.isActive } } });
+        return tx.partnerProfile.findUnique({ where: { id } });
+      }, { isolationLevel: "Serializable" });
+      return NextResponse.json({ ok: true, partner });
+    } catch (error) { return NextResponse.json({ error: ["P2034", "P2002"].includes((error as { code?: string }).code ?? "") ? "Partner changed. Refresh and retry." : (error as Error).message }, { status: 409 }); }
+  }
+
+  let terms: PartnerTerms | undefined;
+  if (action === "approve") {
+    try { terms = parsePartnerTerms(body.terms); } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
   }
 
   try {
@@ -144,6 +167,7 @@ export async function PATCH(
           },
         });
 
+        await tx.partnerAuditEvent.create({ data: { actorId: admin.id, targetId: id, action: "PARTNER_REJECT", detail: {} } });
         return {
           action: "reject" as const,
           partner: updated,
@@ -174,6 +198,7 @@ export async function PATCH(
           id: partner.id,
         },
         data: {
+          ...terms!,
           referralCode,
           status: "ACTIVE",
           isActive: true,
@@ -198,6 +223,7 @@ export async function PATCH(
       });
 
       await queuePartnerWelcomeBenefit(tx, partner.creator, compedUntil);
+      await tx.partnerAuditEvent.create({ data: { actorId: admin.id, targetId: id, action: "PARTNER_APPROVE", detail: { ...terms! } } });
 
       return {
         action: "approve" as const,
@@ -205,7 +231,7 @@ export async function PATCH(
         creator: partner.creator,
         compedUntil,
       };
-    });
+    }, { isolationLevel: "Serializable" });
 
     if (result.action === "reject") {
       try {
@@ -232,6 +258,7 @@ export async function PATCH(
       await sendPartnerWelcomeEmail({
         to: result.creator.email,
         name: result.creator.name,
+        terms: terms!,
         partnerManagerName: "Tijesu",
         partnerManagerEmail: "otolulope@useshowwork.com",
       });
@@ -251,6 +278,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
+    if (["P2034", "P2002"].includes((error as { code?: string }).code ?? "")) return NextResponse.json({ error: "Application changed during review. Refresh and retry." }, { status: 409 });
     if (error instanceof Error) {
       if (error.message === "PARTNER_NOT_FOUND") {
         return NextResponse.json(

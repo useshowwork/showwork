@@ -1,3 +1,4 @@
+import { syncPartnerPaymentIssue } from "@/lib/partnerPaymentIssues";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed, nativePolicyExecutionAllowed } from "@/lib/publishing/applicationBoundary";
 import { syncVerifiedPayment } from "@/lib/paymentSync";
 import { extractPaystackPlanCode } from "@/lib/paystackPlan";
@@ -178,6 +179,14 @@ export async function POST(req: NextRequest) {
     console.warn("Paystack webhook: invalid JSON payload");
 
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  if (typeof event.event === "string" && (event.event.startsWith("refund.") || event.event.startsWith("charge.dispute."))) {
+    try {
+      const kind = event.event.startsWith("refund.") ? "refund" : "dispute";
+      await syncPartnerPaymentIssue(kind, String(event.data?.id ?? ""));
+      return NextResponse.json({ received: true });
+    } catch { return NextResponse.json({ error: "Payment review verification failed; retry required." }, { status: 503 }); }
   }
 
   console.log(`Paystack webhook received: ${event.event}`, {

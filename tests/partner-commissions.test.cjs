@@ -6,6 +6,7 @@ function setup(referral = { id: 'ref', status: 'PENDING' }, failOnce = false) {
   const records = new Map();
   let transactions = 0;
   const tx = {
+    paymentRecord: { findUnique: async () => null },
     referral: { findUnique: async () => referral, update: async ({ data }) => Object.assign(referral, data) },
     referralCommission: {
       findUnique: async ({ where }) => records.get(where.paymentRecordId),
@@ -81,4 +82,18 @@ test('email outages do not turn saved applications into failed submissions', asy
     sendPartnerApplicationNotificationEmail: async () => { throw new Error('outage'); },
   } });
   const response = await route.POST(); assert.equal(response.status, 200); assert.equal(response.body.status, 'PENDING');
+});
+test('custom agreement determines commission and expiry, including month-end clamping', async () => {
+  const s = setup({ id: 'ref', status: 'PENDING', commissionPercent: 25, commissionMonths: 3 });
+  const start = new Date('2026-01-31T10:00:00Z');
+  await s.run({ ...payment, amountNgn: 12900, createdAt: start });
+  assert.equal(s.records.get('pay').commissionAmountNgn, 3225);
+  assert.equal(s.records.get('pay').commissionPercent, 25);
+  assert.equal(s.referral.commissionEndsAt.toISOString(), '2026-04-30T10:00:00.000Z');
+  await s.run({ ...payment, id: 'expired-custom', createdAt: new Date('2026-04-30T10:00:00Z') });
+  assert.equal(s.records.has('expired-custom'), false);
+});
+test('zero commission agreement generates no commission', async () => {
+  const s = setup({ id:'ref', status:'PENDING', commissionPercent:0, commissionMonths:6 });
+  await s.run(payment); assert.equal(s.records.size,0);
 });

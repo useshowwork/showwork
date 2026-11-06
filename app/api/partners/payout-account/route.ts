@@ -1,3 +1,4 @@
+import { resolveNigerianAccount } from "@/lib/paystack";
 import { NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -27,7 +28,7 @@ export async function GET() {
         payoutAccount: {
           select: {
             id: true,
-            bankName: true,
+            bankName: true, bankCode: true, verifiedAt: true,
             accountNumber: true,
             accountName: true,
             createdAt: true,
@@ -119,14 +120,14 @@ export async function PUT(request: Request) {
 
     const body = await request.json();
 
-    const bankName = normalize(body.bankName);
+    const bankCode = normalize(body.bankCode);
     const accountNumber = normalize(body.accountNumber);
-    const accountName = normalize(body.accountName);
 
-    if (!bankName) {
+
+    if (!bankCode) {
       return NextResponse.json(
         {
-          error: "Bank name is required.",
+          error: "Select a bank.",
         },
         { status: 400 }
       );
@@ -151,34 +152,25 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (!accountName) {
-      return NextResponse.json(
-        {
-          error: "Account name is required.",
-        },
-        { status: 400 }
-      );
-    }
+    let verified;
+    try { verified = await resolveNigerianAccount(bankCode, accountNumber); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 422 }); }
 
-    const payoutAccount =
-      await db.partnerPayoutAccount.upsert({
+    const payoutAccount = await db.$transaction(async tx => {
+      const account = await tx.partnerPayoutAccount.upsert({
         where: {
           partnerId: partner.id,
         },
         create: {
           partnerId: partner.id,
-          bankName,
-          accountNumber,
-          accountName,
+          ...verified,
         },
         update: {
-          bankName,
-          accountNumber,
-          accountName,
+          ...verified,
         },
         select: {
           id: true,
-          bankName: true,
+          bankName: true, bankCode: true, verifiedAt: true,
           accountNumber: true,
           accountName: true,
           createdAt: true,
@@ -186,11 +178,16 @@ export async function PUT(request: Request) {
         },
       });
 
+      await tx.partnerAuditEvent.create({ data: { actorId: creator.id, targetId: partner.id, action: "BANK_VERIFIED", detail: { bankCode, lastFour: accountNumber.slice(-4) } } });
+      return account;
+    }, { isolationLevel: "Serializable" });
+
     return NextResponse.json({
       ok: true,
       payoutAccount,
     });
   } catch (error) {
+    if (["P2034", "P2002"].includes((error as { code?: string }).code ?? "")) return NextResponse.json({ error: "Account changed. Refresh and retry verification." }, { status: 409 });
     console.error(
       "Partner payout account PUT error:",
       error

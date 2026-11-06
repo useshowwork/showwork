@@ -128,7 +128,7 @@ export async function PATCH(req: NextRequest) {
             },
             select: {
               id: true,
-              status: true,
+              status: true, onHold: true, reversedAmountNgn: true,
               payoutAllocation: {
                 select: {
                   id: true,
@@ -144,6 +144,7 @@ export async function PATCH(req: NextRequest) {
           );
         }
 
+        if (commission.onHold) throw new Error("Payment is under review. Resolve it first.");
         if (commission.status !== "PENDING") {
           throw new Error(
             "This commission has already been reviewed."
@@ -156,34 +157,18 @@ export async function PATCH(req: NextRequest) {
           );
         }
 
-        if (action === "APPROVE") {
-          return tx.referralCommission.update({
-            where: {
-              id: commission.id,
-            },
-            data: {
-              status: "APPROVED",
-              approvedAt: new Date(),
-            },
-          });
-        }
-
-        return tx.referralCommission.update({
-          where: {
-            id: commission.id,
-          },
-          data: {
-            status: "VOIDED",
-          },
-        });
-      }
-    );
+        const changed = await tx.referralCommission.updateMany({ where: { id: commission.id, status: "PENDING", onHold: false }, data: { status: action === "APPROVE" ? "APPROVED" : "VOIDED", ...(action === "APPROVE" ? { approvedAt: new Date() } : {}) } });
+        if (changed.count !== 1) throw new Error("Commission changed during review.");
+        await tx.partnerAuditEvent.create({ data: { actorId: creator.id, targetId: commission.id, action: `COMMISSION_${action}`, detail: {} } });
+        return tx.referralCommission.findUnique({ where: { id: commission.id } });
+      }, { isolationLevel: "Serializable" });
 
     return NextResponse.json({
       ok: true,
       commission: result,
     });
   } catch (error) {
+    if (["P2034", "P2002"].includes((error as { code?: string }).code ?? "")) return NextResponse.json({ error: "Commission changed. Refresh and retry." }, { status: 409 });
     const message =
       error instanceof Error
         ? error.message
@@ -204,6 +189,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (
+      message === "Payment is under review. Resolve it first." || message === "Commission changed during review." ||
       message ===
         "This commission has already been reviewed." ||
       message ===

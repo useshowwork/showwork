@@ -305,6 +305,11 @@ model PartnerProfile {
 
   status PartnerStatus @default(PENDING)
 
+  commissionPercent Int @default(10)
+  commissionMonths Int @default(12)
+  discountPercent Int @default(0)
+  discountMonths Int @default(0)
+
   // Allows Showwork to disable a partner without
   // deleting their historical referral/commission data.
 
@@ -339,6 +344,8 @@ model PartnerPayoutAccount {
   bankName      String
   accountNumber String
   accountName   String
+  bankCode      String?
+  verifiedAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -352,6 +359,12 @@ model PartnerPayout {
 
   // Amount requested for this payout in Nigerian Naira.
   amountNgn Int
+
+  bankName String?
+  bankCode String?
+  accountNumber String?
+  accountName String?
+  accountVerifiedAt DateTime?
 
   status PartnerPayoutStatus @default(PENDING)
 
@@ -428,6 +441,12 @@ model Referral {
 
   status PartnerReferralStatus @default(PENDING)
 
+  // Snapshot the agreement at verified signup; later partner edits apply to new referrals.
+  commissionPercent Int @default(10)
+  commissionMonths Int @default(12)
+  discountPercent Int @default(0)
+  discountMonths Int @default(0)
+
   // When the referred account became eligible for
   // commissions — normally the first successful
   // qualifying subscription payment.
@@ -480,6 +499,9 @@ model ReferralCommission {
 
   // Actual amount owed to the partner.
   commissionAmountNgn Int
+  reversedAmountNgn Int @default(0)
+  onHold Boolean @default(false)
+  recoverySettledNgn Int @default(0)
 
   status PartnerCommissionStatus @default(PENDING)
 
@@ -2940,4 +2962,27 @@ model WorkspaceVideoUpload {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([state, expiresAt])
+}
+
+// Provider-verified payment issues are retained even if commission creation arrives later.
+model PartnerPaymentIssue {
+  id String @id
+  reference String
+  kind String
+  relatedIssueId String?
+  state String
+  amountKobo Int @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  @@index([reference])
+}
+
+model PartnerAuditEvent {
+  id String @id @default(uuid())
+  actorId String
+  targetId String
+  action String
+  detail Json
+  createdAt DateTime @default(now())
+  @@index([targetId, createdAt])
 }

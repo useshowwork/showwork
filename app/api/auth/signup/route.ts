@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
@@ -65,9 +66,11 @@ export async function POST(req: NextRequest) {
 
   // Referral codes are optional. If one was supplied, verify on the
   // server that it belongs to an active partner before storing it.
+  const savedReferralCode = (await cookies()).get("showwork_referral")?.value;
+  const candidateReferralCode = typeof referralCode === "string" && referralCode.trim() ? referralCode : savedReferralCode;
   const normalizedReferralCode =
-    typeof referralCode === "string" && referralCode.trim()
-      ? referralCode.trim().toUpperCase()
+    typeof candidateReferralCode === "string" && candidateReferralCode.trim()
+      ? candidateReferralCode.trim().toUpperCase()
       : null;
 
   let validReferralCode: string | null = null;

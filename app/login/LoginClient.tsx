@@ -28,7 +28,9 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const journey = readProductJourney(searchParams);
   const next = journey.destination;
-  const signupHref = next ? `/signup?next=${encodeURIComponent(next)}` : "/signup";
+  const signupQuery = new URLSearchParams(next ? { next } : {});
+  if (searchParams.get("ref")) signupQuery.set("ref", searchParams.get("ref")!);
+  const signupHref = `/signup${signupQuery.size ? `?${signupQuery}` : ""}`;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

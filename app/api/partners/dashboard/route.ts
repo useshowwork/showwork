@@ -1,3 +1,5 @@
+import { effectiveReferralStatus } from "@/lib/partnerLifecycle";
+import { netCommission, outstandingRecovery } from "@/lib/partnerFinance";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentCreator } from "@/lib/auth";
@@ -23,6 +25,7 @@ export async function GET() {
         id: true,
         status: true,
         referralCode: true,
+        commissionPercent: true, commissionMonths: true, discountPercent: true, discountMonths: true,
         isActive: true,
         createdAt: true,
         referrals: {
@@ -38,7 +41,7 @@ export async function GET() {
                 paymentRecordId: true,
                 paymentAmountNgn: true,
                 commissionPercent: true,
-                commissionAmountNgn: true,
+                commissionAmountNgn: true, reversedAmountNgn: true, onHold: true, recoverySettledNgn: true,
                 status: true,
                 earnedAt: true,
                 approvedAt: true,
@@ -90,7 +93,7 @@ export async function GET() {
         payoutAccount: {
           select: {
             id: true,
-            bankName: true,
+            bankName: true, bankCode: true, verifiedAt: true,
             accountNumber: true,
             accountName: true,
             createdAt: true,
@@ -119,7 +122,7 @@ export async function GET() {
       });
     }
 
-    const referrals = partner.referrals;
+    const referrals = partner.referrals.map(row => ({ ...row, status: effectiveReferralStatus(row) }));
 
     const commissions = referrals.flatMap(
       (referral) => referral.commissions
@@ -127,7 +130,7 @@ export async function GET() {
 
     const totalEarnedNgn = commissions.filter((commission) => commission.status !== "VOIDED").reduce(
       (total, commission) =>
-        total + commission.commissionAmountNgn,
+        total + netCommission(commission),
       0
     );
 
@@ -135,7 +138,7 @@ export async function GET() {
       .filter((commission) => commission.status === "PENDING")
       .reduce(
         (total, commission) =>
-          total + commission.commissionAmountNgn,
+          total + netCommission(commission),
         0
       );
 
@@ -143,7 +146,7 @@ export async function GET() {
       .filter((commission) => commission.status === "APPROVED")
       .reduce(
         (total, commission) =>
-          total + commission.commissionAmountNgn,
+          total + netCommission(commission),
         0
       );
 
@@ -159,7 +162,7 @@ export async function GET() {
       .filter((commission) => commission.status === "VOIDED")
       .reduce(
         (total, commission) =>
-          total + commission.commissionAmountNgn,
+          total + netCommission(commission),
         0
       );
 
@@ -173,18 +176,19 @@ export async function GET() {
      */
     const availableCommissions = commissions.filter(
       (commission) =>
-        commission.status === "APPROVED" &&
+        commission.status === "APPROVED" && !commission.onHold &&
         !commission.payoutAllocation
     );
 
     const availableNgn = availableCommissions.reduce(
       (total, commission) =>
-        total + commission.commissionAmountNgn,
+        total + netCommission(commission),
       0
     );
 
-    const canRequestPayout =
-      availableNgn >= MINIMUM_PAYOUT_NGN;
+    const recoveryDueNgn = commissions.reduce((sum,row)=>sum+outstandingRecovery(row),0);
+    const paymentUnderReview = commissions.some(row=>row.onHold);
+    const canRequestPayout = availableNgn >= MINIMUM_PAYOUT_NGN && recoveryDueNgn === 0 && !paymentUnderReview && Boolean(partner.payoutAccount?.verifiedAt) && !partner.payouts.some(row => ["PENDING", "APPROVED"].includes(row.status));
 
     const activePayout =
       partner.payouts.find(
@@ -216,6 +220,8 @@ export async function GET() {
         id: partner.id,
         status: partner.status,
         referralCode: partner.referralCode,
+        commissionPercent: partner.commissionPercent, commissionMonths: partner.commissionMonths,
+        discountPercent: partner.discountPercent, discountMonths: partner.discountMonths,
         isActive: partner.isActive,
         createdAt: partner.createdAt,
       },
@@ -237,10 +243,11 @@ export async function GET() {
         paidNgn,
         voidedNgn,
         totalCount: commissions.length,
+        reversedNgn: commissions.filter(row=>row.status !== "VOIDED").reduce((sum,row)=>sum+row.reversedAmountNgn,0),
       },
 
       payout: {
-        minimumPayoutNgn: MINIMUM_PAYOUT_NGN,
+        minimumPayoutNgn: MINIMUM_PAYOUT_NGN, recoveryDueNgn, paymentUnderReview,
         availableNgn,
         canRequestPayout,
         activePayout: activePayout
@@ -293,8 +300,8 @@ export async function GET() {
           paymentRecordId: commission.paymentRecordId,
           paymentAmountNgn: commission.paymentAmountNgn,
           commissionPercent: commission.commissionPercent,
-          commissionAmountNgn:
-            commission.commissionAmountNgn,
+          commissionAmountNgn: netCommission(commission),
+          originalCommissionAmountNgn: commission.commissionAmountNgn, reversedAmountNgn: commission.reversedAmountNgn, onHold: commission.onHold,
           status: commission.status,
           earnedAt: commission.earnedAt,
           approvedAt: commission.approvedAt,

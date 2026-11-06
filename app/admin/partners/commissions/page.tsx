@@ -9,7 +9,7 @@ type Commission = {
   paymentRecordId: string;
   paymentAmountNgn: number;
   commissionPercent: number;
-  commissionAmountNgn: number;
+  commissionAmountNgn: number; reversedAmountNgn: number; onHold: boolean; recoverySettledNgn: number;
   status: "PENDING" | "APPROVED" | "PAID" | "VOIDED";
   earnedAt: string;
   approvedAt: string | null;
@@ -152,7 +152,7 @@ export default function AdminPartnerCommissionsPage() {
     .filter((commission) => commission.status === "PENDING")
     .reduce(
       (total, commission) =>
-        total + commission.commissionAmountNgn,
+        total + (commission.status === "VOIDED" ? 0 : Math.max(0, commission.commissionAmountNgn - commission.reversedAmountNgn)),
       0
     );
 
@@ -164,7 +164,7 @@ export default function AdminPartnerCommissionsPage() {
     .filter((commission) => commission.status === "APPROVED")
     .reduce(
       (total, commission) =>
-        total + commission.commissionAmountNgn,
+        total + (commission.status === "VOIDED" ? 0 : Math.max(0, commission.commissionAmountNgn - commission.reversedAmountNgn)),
       0
     );
 
@@ -207,9 +207,9 @@ export default function AdminPartnerCommissionsPage() {
         <section className="mt-8">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard
-              label="Total Commissions"
+              label="Commission records"
               value={loading ? "—" : formatNumber(commissions.length)}
-              description="All commission records"
+              description="All statuses; amounts below reflect reversals"
             />
 
             <SummaryCard
@@ -424,7 +424,9 @@ function CommissionRow({
 
       <td className="px-5 py-4 text-right">
         <p className="text-sm font-semibold text-[#101828]">
-          {formatNgn(commission.commissionAmountNgn)}
+          {formatNgn(Math.max(0, commission.commissionAmountNgn - commission.reversedAmountNgn))}
+          {commission.reversedAmountNgn > 0 && <p className="mt-1 text-xs text-amber-700">₦{commission.reversedAmountNgn.toLocaleString()} reversed{commission.status === "PAID" ? " · recovery tracked separately" : ""}</p>}
+          {commission.onHold && <p className="mt-1 text-xs text-amber-700">Payment under review</p>}
         </p>
 
         <p className="mt-1 text-[10px] text-[#98A2B3]">

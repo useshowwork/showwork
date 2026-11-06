@@ -1,13 +1,15 @@
 "use client";
 import {calendarMutationFetch} from "@/lib/publishing/clientRequests";
 
+import type { PartnerTerms } from "@/lib/partnerTerms";
 import UiSymbol from "@/components/ui/UiSymbol";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Partner = {
   id: string;
   referralCode: string;
+  commissionPercent: number; commissionMonths: number; discountPercent: number; discountMonths: number;
   status: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED";
   isActive: boolean;
   createdAt: string;
@@ -139,7 +141,8 @@ const [processingId, setProcessingId] = useState<string | null>(null);
 
     async function handlePartnerAction(
     partnerId: string,
-    action: "approve" | "reject"
+    action: "approve" | "reject" | "pause" | "resume" | "suspend",
+    terms?: PartnerTerms
   ) {
     try {
       setProcessingId(partnerId);
@@ -151,7 +154,7 @@ const [processingId, setProcessingId] = useState<string | null>(null);
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          action,
+          action, terms,
         }),
       });
 
@@ -180,12 +183,14 @@ const [processingId, setProcessingId] = useState<string | null>(null);
       }
 
       setData(refreshedData);
+      return true;
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : `Failed to ${action === "approve" ? "approve" : "reject"} partner.`
       );
+      return false;
     } finally {
       setProcessingId(null);
     }
@@ -194,6 +199,7 @@ const [processingId, setProcessingId] = useState<string | null>(null);
   return (
     <main className="min-h-screen bg-[#F8FAFC] px-5 py-8 text-[#101828] sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
+        <Link href="/admin/partners/payment-reviews" className="mb-5 inline-flex rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm text-blue-700">Payment reviews & recoveries →</Link>
         {/* Header */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -607,13 +613,13 @@ const [processingId, setProcessingId] = useState<string | null>(null);
             <div className="mt-5 grid gap-5 sm:grid-cols-3">
               <PolicyItem
                 label="Commission"
-                value="10%"
+                value="Custom per partner"
                 description="Earned on qualifying payments."
               />
 
               <PolicyItem
                 label="Commission window"
-                value="12 months"
+                value="Custom duration"
                 description="Starts when a referred customer makes their first qualifying payment."
               />
 
@@ -775,10 +781,19 @@ function PartnerRow({
   partner: Partner;
   onAction: (
     partnerId: string,
-    action: "approve" | "reject"
-  ) => Promise<void>;
+    action: "approve" | "reject" | "pause" | "resume" | "suspend",
+    terms?: PartnerTerms
+  ) => Promise<boolean>;
   processing: boolean;
 }) {
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [termsError, setTermsError] = useState("");
+  const termsDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { if (termsOpen) termsDialog.current?.showModal(); }, [termsOpen]);
+  const [commissionPercent, setCommissionPercent] = useState("");
+  const [commissionMonths, setCommissionMonths] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("0");
+  const [discountMonths, setDiscountMonths] = useState("");
   const displayName =
     partner.creator.name?.trim() ||
     partner.creator.email;
@@ -822,6 +837,7 @@ function PartnerRow({
         <span className="rounded-lg bg-[#F2F4F7] px-2.5 py-1.5 font-mono text-xs font-semibold tracking-[0.04em] text-[#475467]">
           {partner.referralCode}
         </span>
+        {partner.status === "ACTIVE" && <p className="mt-2 text-xs leading-5 text-slate-500">{partner.commissionPercent}% commission · {partner.commissionMonths} months<br/>{partner.discountPercent > 0 ? `${partner.discountPercent}% customer discount · ${partner.discountMonths} months` : "No customer discount"}</p>}
       </td>
 
       <td className="px-5 py-4">
@@ -834,7 +850,7 @@ function PartnerRow({
         <span
           className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${status.className}`}
         >
-          {status.label}
+          {partner.status === "ACTIVE" && !partner.isActive ? "Referrals paused" : status.label}
         </span>
       </td>
 
@@ -845,6 +861,27 @@ function PartnerRow({
       </td>
 
       <td className="px-5 py-4 text-right">
+        {termsOpen && <dialog ref={termsDialog} onCancel={event => { event.preventDefault(); setTermsOpen(false); }} aria-modal="true" aria-labelledby={`partner-terms-${partner.id}`} className="fixed inset-0 z-[100] m-0 flex h-dvh max-h-none w-screen max-w-none items-center justify-center overflow-y-auto bg-slate-950/40 p-4 backdrop:bg-transparent" onKeyDown={event => { if (event.key === "Escape") setTermsOpen(false); }}>
+          <form className="my-auto w-full max-w-lg rounded-2xl bg-white p-6 text-left shadow-xl" onSubmit={async event => {
+            event.preventDefault();
+            setTermsError("");
+            const approved = await onAction(partner.id, "approve", { commissionPercent: Number(commissionPercent), commissionMonths: Number(commissionMonths), discountPercent: Number(discountPercent), discountMonths: Number(discountPercent) > 0 ? Number(discountMonths) : 0 });
+            if (approved) setTermsOpen(false);
+            else setTermsError("Could not approve this partner. Check the terms and try again.");
+          }}>
+            <h3 id={`partner-terms-${partner.id}`} className="text-xl font-semibold">Set partner terms</h3>
+            <p className="mt-2 text-sm text-slate-500">{displayName} · These terms will apply to their new referrals.</p>
+            <div className="mt-5 grid grid-cols-2 gap-4">
+              <label className="text-sm">Commission (%)<input autoFocus required type="number" min="0" max="100" step="1" value={commissionPercent} onChange={e => setCommissionPercent(e.target.value)} className="mt-2 w-full rounded-lg border p-3"/></label>
+              <label className="text-sm">Commission months<input required type="number" min="1" max="120" step="1" value={commissionMonths} onChange={e => setCommissionMonths(e.target.value)} className="mt-2 w-full rounded-lg border p-3"/></label>
+              <label className="text-sm">Customer discount (%)<input required type="number" min="0" max="99" step="1" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="mt-2 w-full rounded-lg border p-3"/></label>
+              {Number(discountPercent) > 0 && <label className="text-sm">Discount months<input required type="number" min="1" max="36" step="1" value={discountMonths} onChange={e => setDiscountMonths(e.target.value)} className="mt-2 w-full rounded-lg border p-3"/></label>}
+            </div>
+            <p className="mt-4 text-xs leading-5 text-slate-500">Set discount to 0 for no customer discount. Commission starts with the first qualifying payment. Discounts start with each product’s first discounted payment, apply to Delivery and Marketing Workspace, and do not stack. Annual discounts require a whole-year duration. Approval also grants one complimentary month.</p>
+            {termsError && <p role="alert" className="mt-3 text-sm text-red-600">{termsError}</p>}
+            <div className="mt-5 flex flex-wrap justify-end gap-3"><button type="button" onClick={() => setTermsOpen(false)} className="rounded-lg border px-4 py-3">Cancel</button><button type="submit" disabled={processing} className="rounded-lg bg-[#2478FF] px-4 py-3 text-white disabled:opacity-50">{processing ? "Approving…" : "Approve with these terms"}</button></div>
+          </form>
+        </dialog>}
         {partner.status === "PENDING" ? (
           <div className="flex justify-end gap-2">
             <button
@@ -867,25 +904,18 @@ function PartnerRow({
             <button
               type="button"
               disabled={processing}
-              onClick={() => {
-  const confirmed = window.confirm(
-    "Approve this Partner Program application?\n\nThis will activate Partner Program access, generate their referral link, grant one complimentary month, and send the onboarding email."
-  );
-
-  if (confirmed) {
-    void onAction(partner.id, "approve");
-  }
-}}
+              onClick={() => setTermsOpen(true)}
               className="rounded-lg bg-[#2478FF] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#1769E0] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {processing ? "Processing..." : "Approve"}
             </button>
           </div>
-        ) : (
-          <span className="text-xs text-[#98A2B3]">
-            —
-          </span>
-        )}
+        ) : ["ACTIVE", "SUSPENDED"].includes(partner.status) ? (
+          <div className="flex flex-wrap justify-end gap-2">
+            <button disabled={processing} className="rounded-lg border px-3 py-2 text-xs" onClick={() => { if (window.confirm(partner.status === "SUSPENDED" || !partner.isActive ? "Resume this partner’s referrals and payout access?" : "Pause new referrals? Existing earnings remain payable.")) void onAction(partner.id, partner.status === "SUSPENDED" || !partner.isActive ? "resume" : "pause"); }}>{partner.status === "SUSPENDED" || !partner.isActive ? "Resume" : "Pause referrals"}</button>
+            {partner.status !== "SUSPENDED" && <button disabled={processing} className="rounded-lg border px-3 py-2 text-xs text-red-600" onClick={() => { if(window.confirm("Suspend this partner? New referrals and payout processing will stop; financial history is preserved.")) void onAction(partner.id,"suspend"); }}>Suspend</button>}
+          </div>
+        ) : <span className="text-xs text-slate-400">—</span>}
       </td>
     </tr>
   );

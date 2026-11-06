@@ -88,3 +88,10 @@ for(const product of ['workspace','delivery'])for(const cycle of ['monthly','ann
  if(product==='delivery')assert.ok(destinations.includes('/dashboard/projects'));
  assert.ok(destinations.includes('/dashboard/portfolio'));
 });
+for(const screen of ['signup','login'])test(`${screen} auth switch preserves the referral code together with product choice`,()=>{
+ const destination=journey.productDestination('workspace','STUDIO','ANNUAL');
+ const Component=load(`app/${screen}/${screen==='signup'?'Signup':'Login'}Client.tsx`,{react:{...React,useState:initial=>[typeof initial==='function'?initial():initial,()=>{}]},'next/navigation':{useSearchParams:()=>new URLSearchParams({next:destination,ref:'ABCDEF1234'}),useRouter:()=>({})}}).default;
+ const Form=Component().props.children.type;const tree=Form();
+ const crosslink=nodes(tree,n=>typeof n.props?.href==='string'&&n.props.href.startsWith(screen==='signup'?'/login?':'/signup?'))[0];
+ const params=new URL(crosslink.props.href,'https://example.com').searchParams;assert.equal(params.get('ref'),'ABCDEF1234');assert.equal(params.get('next'),destination);
+});

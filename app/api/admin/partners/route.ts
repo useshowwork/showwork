@@ -1,3 +1,4 @@
+import { effectiveReferralStatus } from "@/lib/partnerLifecycle";
 import { NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
@@ -34,16 +35,11 @@ export async function GET() {
 
       db.partnerProfile.count({
         where: {
-          isActive: true,
+          isActive: true, status: "ACTIVE",
         },
       }),
 
-      db.referral.groupBy({
-        by: ["status"],
-        _count: {
-          _all: true,
-        },
-      }),
+      db.referral.findMany({ select: { status: true, commissionEndsAt: true } }),
 
       db.referralCommission.groupBy({
         by: ["status"],
@@ -51,7 +47,7 @@ export async function GET() {
           _all: true,
         },
         _sum: {
-          commissionAmountNgn: true,
+          commissionAmountNgn: true, reversedAmountNgn: true,
         },
       }),
 
@@ -66,12 +62,14 @@ export async function GET() {
       }),
 
       db.referralCommission.aggregate({
+        where: { status: { not: "VOIDED" } },
         _sum: {
-          commissionAmountNgn: true,
+          reversedAmountNgn: true, commissionAmountNgn: true,
         },
       }),
 
       db.partnerPayout.aggregate({
+        where: { status: "PAID" },
         _sum: {
           amountNgn: true,
         },
@@ -86,8 +84,7 @@ export async function GET() {
     };
 
     for (const item of referralCounts) {
-      referrals[item.status.toLowerCase() as keyof typeof referrals] =
-        item._count._all;
+      referrals[effectiveReferralStatus(item).toLowerCase() as keyof typeof referrals] += 1;
     }
 
     const commissions = {
@@ -115,7 +112,7 @@ export async function GET() {
 
       commissions[key] = {
         count: item._count._all,
-        amountNgn: item._sum.commissionAmountNgn ?? 0,
+        amountNgn: item.status === "PAID" ? item._sum.commissionAmountNgn ?? 0 : (item._sum.commissionAmountNgn ?? 0) - (item._sum.reversedAmountNgn ?? 0),
       };
     }
 
@@ -157,6 +154,7 @@ export async function GET() {
       select: {
   id: true,
   referralCode: true,
+  commissionPercent: true, commissionMonths: true, discountPercent: true, discountMonths: true,
   status: true,
   isActive: true,
   createdAt: true,
@@ -188,7 +186,7 @@ export async function GET() {
         pendingPayouts: payouts.pending.amountNgn,
 
         totalCommissions:
-          commissionTotals._sum.commissionAmountNgn ?? 0,
+          (commissionTotals._sum.commissionAmountNgn ?? 0) - (commissionTotals._sum.reversedAmountNgn ?? 0),
 
         totalPayouts:
           payoutTotals._sum.amountNgn ?? 0,

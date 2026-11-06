@@ -63,6 +63,7 @@ type DashboardData = {
   partner?: {
     id: string;
     referralCode: string;
+    commissionPercent: number; commissionMonths: number; discountPercent: number; discountMonths: number;
     isActive: boolean;
     createdAt: string;
   };
@@ -84,7 +85,7 @@ type DashboardData = {
   };
   commissionHistory?: Commission[];
 payout?: {
-  minimumPayoutNgn: number;
+  minimumPayoutNgn: number; recoveryDueNgn?: number; paymentUnderReview?: boolean;
   availableNgn: number;
   canRequestPayout: boolean;
   activePayout: Payout | null;
@@ -93,7 +94,7 @@ payout?: {
 
     payoutAccount?: {
     id: string;
-    bankName: string;
+    bankName: string; bankCode: string | null; verifiedAt: string | null;
     accountNumber: string;
     accountName: string;
     createdAt: string;
@@ -224,6 +225,10 @@ const [payoutError, setPayoutError] = useState("");
   const [savingPayoutAccount, setSavingPayoutAccount] = useState(false);
 
   const [bankName, setBankName] = useState("");
+  const [bankCode, setBankCode] = useState("");
+  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
+  const [banksError, setBanksError] = useState("");
+  useEffect(() => { fetch("/api/partners/banks").then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); setBanks(result.banks); }).catch(() => setBanksError("Could not load banks. Reload this page to retry.")); }, []);
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
 
@@ -299,6 +304,7 @@ const [payoutError, setPayoutError] = useState("");
 
           if (account) {
             setBankName(account.bankName);
+            setBankCode(account.bankCode ?? "");
             setAccountNumber(account.accountNumber);
             setAccountName(account.accountName);
           }
@@ -408,9 +414,8 @@ loadPayoutAccount();
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            bankName,
+            bankCode,
             accountNumber,
-            accountName,
           }),
         }
       );
@@ -427,12 +432,15 @@ loadPayoutAccount();
 
       setPayoutAccount(account);
       setBankName(account.bankName);
+            setBankCode(account.bankCode ?? "");
       setAccountNumber(account.accountNumber);
       setAccountName(account.accountName);
 
       setPayoutAccountMessage(
-        "Your payout account has been saved."
+        "Your bank account has been verified and saved."
       );
+      const refreshed = await fetch("/api/partners/dashboard", { cache: "no-store" });
+      if (refreshed.ok) setData(await refreshed.json());
     } catch (err) {
       console.error(
         "Failed to save payout account:",
@@ -671,9 +679,9 @@ loadPayoutAccount();
 
                   <p className="mt-5 max-w-xl text-sm leading-6 text-[#617087] sm:text-[16px]">
                     Share Showwork with people in your network and earn
-                    10% of verified Delivery and Marketing Workspace subscription payments
+                    Your agreed commission on verified Delivery and Marketing Workspace subscription payments
                     made by customers who sign up through your referral link, for
-                    12 months from their first qualifying payment. Commissions are
+                    the duration agreed during onboarding, starting with their first qualifying payment. Commissions are
                     based on the amount paid, including any annual discount.
                     Approved earnings can be withdrawn from ₦5,000.
                   </p>
@@ -744,6 +752,8 @@ loadPayoutAccount();
 
       <div className="mx-auto max-w-[1280px] px-4 pb-16 sm:px-6 lg:px-8">
         <section className="pt-10 sm:pt-14 lg:pt-16">
+          {(data.payout?.paymentUnderReview || !!data.payout?.recoveryDueNgn) && <p role="status" className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">{data.payout.paymentUnderReview ? "A referred payment is being reviewed. Payouts are temporarily paused." : `A refunded commission of ₦${data.payout.recoveryDueNgn?.toLocaleString()} needs reconciliation. Contact your partner manager before requesting another payout.`}</p>}
+          <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-slate-700"><strong>Your partner agreement</strong><p>{data.partner?.commissionPercent}% commission for {data.partner?.commissionMonths} months per referred customer.</p><p>{data.partner?.discountPercent ? `${data.partner.discountPercent}% customer discount for ${data.partner.discountMonths} months on eligible subscriptions.` : "No customer discount is included."}</p></div>
           <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#D9E6FF] bg-[#F1F6FF] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-[#2478FF]">
@@ -1140,7 +1150,7 @@ loadPayoutAccount();
                 {payoutAccount && (
                   <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#CDEBD8] bg-[#F0FAF4] px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[#20864B]">
                     <Check className="h-3 w-3" />
-                    Account saved
+                    {payoutAccount.verifiedAt ? "Account verified" : "Verification required"}
                   </span>
                 )}
               </div>
@@ -1161,15 +1171,8 @@ loadPayoutAccount();
                         Bank name
                       </span>
 
-                      <input
-                        type="text"
-                        value={bankName}
-                        onChange={(event) =>
-                          setBankName(event.target.value)
-                        }
-                        placeholder="e.g. GTBank"
-                        className="w-full rounded-2xl border border-[#E1E4E8] bg-white px-4 py-3.5 text-[13px] font-medium text-[#101114] outline-none transition-colors placeholder:text-[#B0B4BA] focus:border-[#2478FF] focus:ring-4 focus:ring-[#2478FF]/10"
-                      />
+                      <select value={bankCode} onChange={event => { setBankCode(event.target.value); setAccountName(""); }} className="w-full rounded-2xl border border-[#E1E4E8] bg-white px-4 py-3.5 text-sm"><option value="">Select your bank</option>{banks.map(bank => <option key={bank.code} value={bank.code}>{bank.name}</option>)}</select>
+                      {banksError && <p role="alert" className="mt-2 text-xs text-red-600">{banksError}</p>}
                     </label>
 
                     <label className="block">
@@ -1200,10 +1203,8 @@ loadPayoutAccount();
                       <input
                         type="text"
                         value={accountName}
-                        onChange={(event) =>
-                          setAccountName(event.target.value)
-                        }
-                        placeholder="Name registered on the bank account"
+                        readOnly
+                        placeholder="Resolved automatically when you verify and save"
                         className="w-full rounded-2xl border border-[#E1E4E8] bg-white px-4 py-3.5 text-[13px] font-medium text-[#101114] outline-none transition-colors placeholder:text-[#B0B4BA] focus:border-[#2478FF] focus:ring-4 focus:ring-[#2478FF]/10"
                       />
                     </label>
@@ -1231,14 +1232,14 @@ loadPayoutAccount();
                     <button
                       type="button"
                       onClick={handleSavePayoutAccount}
-                      disabled={savingPayoutAccount}
+                      disabled={savingPayoutAccount || !bankCode || accountNumber.length !== 10}
                       className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#2478FF] px-5 py-3 text-xs font-bold text-white shadow-[0_10px_25px_rgba(36,120,255,.18)] transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-[#0052FF] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                     >
                       {savingPayoutAccount
-                        ? "Saving..."
+                        ? "Verifying…"
                         : payoutAccount
-                          ? "Update account"
-                          : "Save payout account"}
+                          ? "Verify & update account"
+                          : "Verify & save account"}
                     </button>
                   </div>
                 </>

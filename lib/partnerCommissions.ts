@@ -1,6 +1,6 @@
+import { reconcilePartnerIssues } from "@/lib/partnerPaymentIssues";
 import { db } from "@/lib/db";
 
-const PARTNER_COMMISSION_PERCENT = 10;
 const QUALIFYING_PAYMENT_TYPES = new Set([
   "SUBSCRIPTION_INITIAL",
   "SUBSCRIPTION_RENEWAL",
@@ -8,12 +8,14 @@ const QUALIFYING_PAYMENT_TYPES = new Set([
   "CONTENT_WORKSPACE_SUBSCRIPTION_RENEWAL",
 ]);
 
-function addTwelveMonths(date: Date): Date {
+function addMonths(date: Date, months: number): Date {
   const result = new Date(date);
   // Clamp leap-day anniversaries to February's last day, in UTC.
-  const month = result.getUTCMonth();
-  result.setUTCFullYear(result.getUTCFullYear() + 1);
-  if (result.getUTCMonth() !== month) result.setUTCDate(0);
+  const day = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() + months);
+  const last = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(day, last));
   return result;
 }
 
@@ -38,21 +40,28 @@ export async function processReferralCommission(
       await db.$transaction(async (tx) => {
         const referral = await tx.referral.findUnique({
           where: { referredCreatorId: payment.creatorId },
-          select: { id: true, status: true, startedAt: true, commissionEndsAt: true },
+          select: { id: true, status: true, startedAt: true, commissionEndsAt: true, commissionPercent: true, commissionMonths: true },
         });
         if (!referral || !["PENDING", "ACTIVE"].includes(referral.status)) return;
+
+        const percent = referral.commissionPercent ?? 10; // Legacy agreement fallback.
+        const months = referral.commissionMonths ?? 12;
 
         const existing = await tx.referralCommission.findUnique({
           where: { paymentRecordId: payment.id }, select: { id: true },
         });
-        if (existing) return;
+        if (existing) {
+          const record = await tx.paymentRecord.findUnique({ where: { id: payment.id }, select: { paystackReference: true } });
+          if (record?.paystackReference) await reconcilePartnerIssues(tx, record.paystackReference);
+          return;
+        }
 
         if (referral.status === "PENDING") {
           await tx.referral.update({
             where: { id: referral.id },
             data: {
               status: "ACTIVE", startedAt: payment.createdAt,
-              commissionEndsAt: addTwelveMonths(payment.createdAt),
+              commissionEndsAt: addMonths(payment.createdAt, months),
             },
           });
         } else if (!referral.startedAt || !referral.commissionEndsAt ||
@@ -61,16 +70,20 @@ export async function processReferralCommission(
           return;
         }
 
+        if (percent === 0) return;
+
         // Stopping new referrals does not cancel existing customers' eligibility.
         await tx.referralCommission.create({
           data: {
             referralId: referral.id, paymentRecordId: payment.id,
             paymentAmountNgn: payment.amountNgn,
-            commissionPercent: PARTNER_COMMISSION_PERCENT,
-            commissionAmountNgn: Math.floor(payment.amountNgn * PARTNER_COMMISSION_PERCENT / 100),
+            commissionPercent: percent,
+            commissionAmountNgn: Math.floor(payment.amountNgn * percent / 100),
             status: "PENDING", earnedAt: payment.createdAt,
           },
         });
+        const record = await tx.paymentRecord.findUnique({ where: { id: payment.id }, select: { paystackReference: true } });
+        if (record?.paystackReference) await reconcilePartnerIssues(tx, record.paystackReference);
       }, { isolationLevel: "Serializable" });
       return;
     } catch (error) {

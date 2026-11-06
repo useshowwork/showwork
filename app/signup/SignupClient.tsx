@@ -215,7 +215,7 @@ function SignupForm() {
           <Brand />
           <p className="text-right text-[11px] leading-5 text-[#697B70] sm:text-sm">
             Already have an account?{" "}
-            <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-bold text-[#155FC7] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[#155FC7]">
+            <Link href={`/login?${new URLSearchParams({ ...(next ? { next } : {}), ...(referralCode ? { ref: referralCode } : {}) })}`} className="font-bold text-[#155FC7] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[#155FC7]">
               Log in <ArrowUpRight size={14} className="inline" />
             </Link>
           </p>

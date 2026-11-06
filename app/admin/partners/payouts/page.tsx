@@ -491,7 +491,7 @@ function PayoutRow({
     </p>
 
     <p className="mt-1 text-xs font-medium text-[#B42318]">
-      No payout account provided
+      Bank snapshot unavailable (legacy request)
     </p>
   </div>
 )}
@@ -556,6 +556,7 @@ function PayoutRow({
     </button>
   </div>
 ) : payout.status === "APPROVED" ? (
+  <div className="flex flex-wrap justify-end gap-2"><button disabled={processing} type="button" onClick={() => onReview(payout.id, "REJECT")} className="rounded-lg border px-3 py-2 text-xs">Cancel unpaid request</button>
   <button
     type="button"
     disabled={processing}
@@ -565,7 +566,7 @@ function PayoutRow({
     className="rounded-lg bg-[#101828] px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-[#1D2939] disabled:cursor-not-allowed disabled:opacity-50"
   >
     {processing ? "..." : "Mark as paid"}
-  </button>
+  </button></div>
 ) : (
   <span className="text-xs text-[#98A2B3]">
     —
