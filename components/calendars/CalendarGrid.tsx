@@ -1,5 +1,6 @@
 "use client";
 import contentStyles from "./ContentPlanner.module.css";
+import { calendarWeek, moveCalendarPeriod } from "@/lib/calendarView";
 import CreativeBriefEditor from "./CreativeBriefEditor";
 import type { CreativeBrief, CreativeDevelopment } from "@/lib/content/brief";
 import { FilePenLine, ShieldCheck, Users, Send, X, Plus, CalendarDays, Layers3, Sparkles } from "lucide-react";
@@ -226,6 +227,16 @@ const THEME_STORAGE_KEY = "showwork-calendar-theme";
 /* =========================================================
    PLATFORM ICON
    ========================================================= */
+
+function CalendarDateHeading({ date, today, spacious, count }: { date: Date; today: boolean; spacious: boolean; count: number }) {
+  return <div className={`${contentStyles.dateHeading} ${spacious ? contentStyles.spaciousDate : ""}`}>
+    <div className={contentStyles.dateIdentity}>
+      <span className={contentStyles.dateNumber}><CalendarDays size={14} aria-hidden="true" />{date.getDate()}</span>
+      <div><span className={contentStyles.dateMonth}>{date.toLocaleDateString("en-US", {month:"short"})}</span>{spacious && <strong className={contentStyles.dateWeekday}>{date.toLocaleDateString("en-US", {weekday:"long",year:"numeric"})}</strong>}</div>
+    </div>
+    <div className={contentStyles.dateBadges}>{today && <span className={contentStyles.todayBadge}><span aria-hidden="true" />Today</span>}{spacious && <span className={contentStyles.dayPostCount}>{count} {count === 1 ? "post" : "posts"}</span>}</div>
+  </div>;
+}
 
 function PlatformIcon({
   platform,
@@ -5158,16 +5169,18 @@ export default function CalendarGrid({
     return () => mediaQuery.removeEventListener("change", updateLayout);
   }, []);
 
-  const [currentMonth, setCurrentMonth] =
-    useState(() => {
-      const now = new Date();
-
-      return new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        1
-      );
-    });
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [calendarPeriod, setCalendarPeriod] = useState<"day" | "week" | "month">("week");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("showwork:calendar-period");
+      if (saved === "day" || saved === "week" || saved === "month") setCalendarPeriod(saved);
+    } catch { /* Use the weekly default when storage is unavailable. */ }
+  }, []);
+  const changeCalendarPeriod = (period: "day" | "week" | "month") => {
+    setCalendarPeriod(period);
+    try { localStorage.setItem("showwork:calendar-period", period); } catch { /* Selection still works. */ }
+  };
 
   const normalize = (
     p: CalendarPostData
@@ -5376,7 +5389,7 @@ export default function CalendarGrid({
   const jumpToToday = () => {
     const now = new Date();
     setCurrentMonth(
-      new Date(now.getFullYear(), now.getMonth(), 1)
+      new Date(now.getFullYear(), now.getMonth(), now.getDate())
     );
   };
 
@@ -5472,17 +5485,16 @@ export default function CalendarGrid({
       new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime(),
     ) ?? [];
 
-  const goToMonth = (
-    delta: number
-  ) => {
-    setCurrentMonth(
-      new Date(
-        year,
-        month + delta,
-        1
-      )
-    );
+  const goToMonth = (delta: number) => {
+    setCurrentMonth(previous => moveCalendarPeriod(previous, calendarPeriod, delta));
   };
+  const weekDates = calendarWeek(currentMonth);
+  const periodCells = calendarPeriod === "month" ? cells : calendarPeriod === "week" ? weekDates : [currentMonth];
+  const periodLabel = calendarPeriod === "day"
+    ? currentMonth.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : calendarPeriod === "week"
+      ? `${weekDates[0].toLocaleDateString("en-US", {month:"short",day:"numeric"})} – ${weekDates[6].toLocaleDateString("en-US", {month:"short",day:"numeric",year:"numeric"})}`
+      : currentMonth.toLocaleDateString("en-US", {month:"long",year:"numeric"});
 
   const today = new Date();
 
@@ -5497,7 +5509,7 @@ export default function CalendarGrid({
     today.getDate();
 
   const visibleDays =
-    cells.filter(
+    (isMobileLayout && calendarPeriod === "week" ? [currentMonth] : periodCells).filter(
       (date): date is Date =>
         date !== null
     );
@@ -5540,7 +5552,7 @@ export default function CalendarGrid({
             }}
           >
             {viewMode === "calendar"
-              ? <><span className={contentStyles.fullMonth}>{currentMonth.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</span><span className={contentStyles.shortMonth}>{currentMonth.toLocaleDateString("en-US",{month:"short",year:"numeric"})}</span></>
+              ? <><span className={contentStyles.fullMonth}>{periodLabel}</span><span className={contentStyles.shortMonth}>{calendarPeriod === "week" ? `${weekDates[0].toLocaleDateString("en-US",{month:"short",day:"numeric"})}–${weekDates[6].toLocaleDateString("en-US",{month:"short",day:"numeric"})}` : currentMonth.toLocaleDateString("en-US",{month:"short",...(calendarPeriod === "day" ? {day:"numeric" as const} : {year:"numeric" as const})})}</span></>
               : viewMode === "instagram"
                 ? "Instagram Preview"
                 : viewMode === "tiktok" ? "TikTok Preview"
@@ -5558,7 +5570,7 @@ export default function CalendarGrid({
             clearFilters();
             if (firstDate) {
               const date = new Date(firstDate);
-              setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+              setCurrentMonth(date);
               setViewMode("calendar");
             }
           }} />}
@@ -5570,7 +5582,7 @@ export default function CalendarGrid({
                 onClick={() =>
                   goToMonth(-1)
                 }
-                aria-label="Previous month"
+                aria-label={`Previous ${calendarPeriod}`}
                 className="
                   flex h-9 w-9
                   items-center
@@ -5591,7 +5603,7 @@ export default function CalendarGrid({
                 onClick={() =>
                   goToMonth(1)
                 }
-                aria-label="Next month"
+                aria-label={`Next ${calendarPeriod}`}
                 className="
                   flex h-9 w-9
                   items-center
@@ -5702,16 +5714,16 @@ export default function CalendarGrid({
                   <rect x="3" y="4" width="18" height="17" rx="3" />
                   <path d="M8 2.5v4M16 2.5v4M3 9h18" strokeLinecap="round" />
                 </svg>
-                <span className={contentStyles.mobileMonthLabel} aria-hidden="true">{currentMonth.toLocaleDateString("en-US",{month:"short",year:"numeric"})}</span>
+                <span className={contentStyles.mobileMonthLabel} aria-hidden="true">{currentMonth.toLocaleDateString("en-US",{month:"short",...(calendarPeriod === "month" ? {year:"numeric" as const} : {day:"numeric" as const})})}</span>
                 <input
-                  type="month"
-                  value={monthInputValue}
+                  type={calendarPeriod === "month" ? "month" : "date"}
+                  value={calendarPeriod === "month" ? monthInputValue : `${year}-${String(month + 1).padStart(2,"0")}-${String(currentMonth.getDate()).padStart(2,"0")}`}
                   onChange={(e) => {
                     if (!e.target.value) return;
-                    const [y, m] = e.target.value.split("-").map(Number);
-                    setCurrentMonth(new Date(y, m - 1, 1));
+                    const [y, m, d = 1] = e.target.value.split("-").map(Number);
+                    setCurrentMonth(new Date(y, m - 1, d));
                   }}
-                  aria-label="Choose month"
+                  aria-label={calendarPeriod === "month" ? "Choose month" : "Choose date"}
                   className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
                   style={{ color: t.text }}
                 />
@@ -6050,7 +6062,13 @@ export default function CalendarGrid({
           DESKTOP / TABLET CALENDAR
           ===================================================== */}
 
-          {!isMobileLayout && <div className={contentStyles.calendar}>
+          <div className={contentStyles.periodSelector} role="group" aria-label="Calendar view">
+            {(["day", "week", "month"] as const).map(period => <button key={period} type="button" aria-pressed={calendarPeriod === period} onClick={() => changeCalendarPeriod(period)}>{period === "day" ? "Day" : period === "week" ? "Week" : "Month"}</button>)}
+          </div>
+          {isMobileLayout && calendarPeriod === "week" && <div className={contentStyles.weekStrip} aria-label="Select a day this week">
+            {weekDates.map(date => <button key={date.getTime()} type="button" aria-pressed={date.toDateString() === currentMonth.toDateString()} aria-label={date.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})} onClick={() => setCurrentMonth(date)}><span>{date.toLocaleDateString("en-US",{weekday:"short"})}</span><strong>{date.getDate()}</strong><small>{postsForDate(date).length || "·"}</small></button>)}
+          </div>}
+          {!isMobileLayout && <div className={contentStyles.calendar} style={calendarPeriod === "day" ? {gridTemplateColumns:"minmax(0,1fr)"} : undefined}>
             {[
               "Sun",
               "Mon",
@@ -6059,7 +6077,7 @@ export default function CalendarGrid({
               "Thu",
               "Fri",
               "Sat",
-            ].map((day, dayIdx) => (
+            ].filter((_, index) => calendarPeriod !== "day" || index === currentMonth.getDay()).map((day) => (
               <div
                 key={day}
                 className="
@@ -6075,112 +6093,29 @@ export default function CalendarGrid({
             "
                 style={{
                   color:
-                    DAY_COLORS[dayIdx],
+                    DAY_COLORS[["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(day)],
                 }}
               >
                 {day}
               </div>
             ))}
 
-            {cells.map((date, i) => {
-              if (!date) {
-                return (
-                  <div
-                    key={i}
-                    className="
-                  min-h-[125px]
-                  rounded-xl
-                  md:min-h-[145px]
-                  lg:min-h-[170px]
-                "
-                    aria-hidden="true"
-                  />
-                );
-              }
-
-              const dayPosts =
-                postsForDate(date);
-
-              const dayColor =
-                DAY_COLORS[
-                date.getDay()
-                ];
-
-              const todayDate =
-                isToday(date);
-
+            {periodCells.map((date, i) => {
+              if (!date) return <div key={i} aria-hidden="true" />;
+              const dayPosts = postsForDate(date);
+              const dayColor = DAY_COLORS[date.getDay()];
+              const todayDate = isToday(date);
               return (
-                <div
-                  key={i}
-                  className="
-                flex
-                min-h-[125px]
-                flex-col
-                gap-1
-                overflow-hidden
-                rounded-xl
-                p-1.5
-                pt-1
-                transition-all
-                md:min-h-[145px]
-                md:p-2
-                lg:min-h-[170px]
-              "
+                <div key={date.getTime()} data-period={calendarPeriod} data-today={todayDate || undefined} className={contentStyles.dateCell}
                   style={{
                     background: theme === "dark" ? `${dayColor}18` : `${dayColor}0C`,
-                    border: todayDate ? `1.5px solid ${dayColor}` : `1px solid ${dayColor}35`,
-                    boxShadow: todayDate ? `0 0 0 3px ${dayColor}12` : "none",
-                  }}
-                >
-                  {/* DAY HEADER */}
-                  <div className="
-                flex
-                items-center
-                justify-between
-                gap-1
-              ">
-                    <span
-                      className="
-                    flex
-                    h-5
-                    min-w-5
-                    items-center
-                    justify-center
-                    rounded-full
-                    px-1
-                    text-[9px]
-                    font-bold
-                    md:h-6
-                    md:min-w-6
-                    md:text-[10px]
-                    lg:text-xs
-                  "
-                      style={{
-                        color: todayDate
-                          ? "#FFFFFF"
-                          : dayColor,
-                        background:
-                          todayDate
-                            ? dayColor
-                            : "transparent",
-                      }}
-                    >
-                      {date.getDate()}
-                    </span>
-                  </div>
+                    border: `1px solid ${dayColor}35`,
+                  }}>
+                  <CalendarDateHeading date={date} today={todayDate} spacious={calendarPeriod === "day"} count={dayPosts.length} />
 
                   {/* POSTS */}
-                  <div className="
-                flex
-                min-h-0
-                flex-1
-                flex-col
-                gap-1.5
-                overflow-y-auto
-                pt-0.5
-                md:gap-2
-                md:pt-1
-              ">
+                  <div className={calendarPeriod === "day" ? contentStyles.dayPostGrid : contentStyles.datePostList}>
+                    {calendarPeriod === "day" && !dayPosts.length && <div className={contentStyles.dayEmpty}><CalendarDays size={28} aria-hidden="true" /><strong>{filtersActive ? "No matching posts" : "A little room for your next idea"}</strong><span>{filtersActive ? "Try changing your filters." : "Add a post or generate your next content calendar."}</span></div>}
                     {dayPosts.map(
                       (
                         post,
@@ -6293,11 +6228,9 @@ export default function CalendarGrid({
               return (
                 <section
                   key={date.toISOString()}
-                  className="
-                overflow-hidden
-                rounded-2xl
-                border
-              "
+                  data-period={calendarPeriod}
+                  data-today={todayDate || undefined}
+                  className={contentStyles.dateCell}
                   style={{
                     background: theme === "dark" ? `${dayColor}16` : `${dayColor}09`,
                     borderColor: todayDate ? dayColor : `${dayColor}35`,
@@ -6306,146 +6239,7 @@ export default function CalendarGrid({
                       : "none",
                   }}
                 >
-                  {/* DAY HEADER */}
-                  <div
-                    className="
-                  flex
-                  items-center
-                  justify-between
-                  gap-3
-                  border-b
-                  px-3.5
-                  py-3
-                "
-                    style={{
-                      borderColor:
-                        `${dayColor}22`,
-                      background:
-                        theme === "dark"
-                          ? "rgba(255,255,255,0.025)"
-                          : "rgba(0,0,0,0.018)",
-                    }}
-                  >
-                    <div className="
-                  flex
-                  min-w-0
-                  items-center
-                  gap-3
-                ">
-                      <div
-                        className="
-                      flex h-10 w-10
-                      flex-shrink-0
-                      items-center
-                      justify-center
-                      rounded-xl
-                      text-sm
-                      font-bold
-                    "
-                        style={{
-                          background:
-                            todayDate
-                              ? dayColor
-                              : `${dayColor}16`,
-                          color: todayDate
-                            ? "#FFFFFF"
-                            : dayColor,
-                        }}
-                      >
-                        {date.getDate()}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p
-                          className="
-                        truncate
-                        text-xs
-                        font-bold
-                      "
-                          style={{
-                            color: t.text,
-                          }}
-                        >
-                          {date.toLocaleDateString(
-                            "en-US",
-                            {
-                              weekday:
-                                "long",
-                            }
-                          )}
-                        </p>
-
-                        <p
-                          className="
-                        mt-0.5
-                        truncate
-                        text-[10px]
-                      "
-                          style={{
-                            color:
-                              t.textFaint,
-                          }}
-                        >
-                          {date.toLocaleDateString(
-                            "en-US",
-                            {
-                              month:
-                                "long",
-                            }
-                          )}
-                        </p>
-                      </div>
-
-                      {todayDate && (
-                        <span
-                          className="
-                        hidden
-                        rounded-full
-                        px-2
-                        py-1
-                        text-[8px]
-                        font-bold
-                        uppercase
-                        tracking-wider
-                        min-[360px]:inline-flex
-                      "
-                          style={{
-                            background:
-                              `${dayColor}18`,
-                            color:
-                              dayColor,
-                          }}
-                        >
-                          Today
-                        </span>
-                      )}
-                    </div>
-
-                    <span
-                      className="
-                    flex-shrink-0
-                    rounded-full
-                    px-2.5
-                    py-1
-                    text-[9px]
-                    font-semibold
-                  "
-                      style={{
-                        background:
-                          theme === "dark"
-                            ? "rgba(255,255,255,0.06)"
-                            : "rgba(0,0,0,0.05)",
-                        color:
-                          t.textMuted,
-                      }}
-                    >
-                      {dayPosts.length}{" "}
-                      {dayPosts.length ===
-                        1
-                        ? "post"
-                        : "posts"}
-                    </span>
-                  </div>
+                  <CalendarDateHeading date={date} today={todayDate} spacious count={dayPosts.length} />
 
                   {/* DAY CONTENT */}
                   <div className="flex flex-col gap-2 p-3">
