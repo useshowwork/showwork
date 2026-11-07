@@ -5,7 +5,9 @@ import {
   useState,
   type TextareaHTMLAttributes,
 } from "react";
-import { Sparkles, Check, Save, Loader2 } from "lucide-react";
+import { Sparkles, Check, Save, Loader2, FileText, Target, Palette } from "lucide-react";
+import styles from "./CreativeBriefEditor.module.css";
+import { createPortal } from "react-dom";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import {
   reconcileBrief,
@@ -102,11 +104,13 @@ export default function CreativeBriefEditor({
   onUpdated,
   onStateChange,
   onSaveReady,
+  tabBarHost,
   readOnly = false,
 }: {
   calendarId: string;
   post: BriefEditorPost;
   onUpdated: (post: any) => void;
+  tabBarHost?: HTMLElement | null;
   readOnly?: boolean;
   onStateChange?: (state: BriefEditorState) => void;
   onSaveReady?: (save: (() => void) | null) => void;
@@ -264,16 +268,15 @@ export default function CreativeBriefEditor({
     </div>
   );
   const tabs = [
-    { id: "copy", label: "Post copy" },
-    { id: "strategy", label: "Strategy" },
-    { id: "creative", label: "Creative direction" },
+    { id: "copy", label: "Post copy", icon: FileText },
+    { id: "strategy", label: "Strategy", icon: Target },
+    { id: "creative", label: "Creative direction", icon: Palette },
   ];
-  return (
-    <div className="min-w-0 space-y-5">
+  const tabBar = (
       <div
         role="tablist"
         aria-label="Post editor sections"
-        className="grid grid-cols-3 gap-1 rounded-xl border border-slate-200 bg-slate-100/70 p-1"
+        className={styles.tabs}
       >
         {tabs.map((item, index) => (
           <button
@@ -284,7 +287,10 @@ export default function CreativeBriefEditor({
             aria-selected={tab === item.id}
             aria-controls={`${post.id}-editor-panel`}
             tabIndex={tab === item.id ? 0 : -1}
-            onClick={() => setTab(item.id)}
+            onClick={(event) => {
+              setTab(item.id);
+              event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
+            }}
             onKeyDown={(event) => {
               const next =
                 event.key === "ArrowRight"
@@ -304,12 +310,17 @@ export default function CreativeBriefEditor({
                   ?.focus();
               }
             }}
-            className={`min-h-11 rounded-lg px-2 py-2 text-[11px] font-semibold sm:text-xs ${tab === item.id ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-blue-600"}`}
+            className={styles.tab}
           >
+            <item.icon size={17} aria-hidden="true" />
             {item.label}
           </button>
         ))}
       </div>
+  );
+  return (
+    <div className="min-w-0 space-y-5">
+      {tabBarHost ? createPortal(tabBar, tabBarHost) : tabBar}
       {!!brief.reviewWarnings?.length && (
         <div
           role="status"

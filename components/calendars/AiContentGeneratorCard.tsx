@@ -244,7 +244,9 @@ const togglePlatform = (platform: string) => {
   return (
     <>
       <section className={studioStyles.studio}>
-        <header className={studioStyles.simpleHeader}><div><h1>Generate your content calendar</h1><p>Build your calendar, one simple step at a time.</p></div></header>
+        <header className={studioStyles.simpleHeader}><div><h1>Generate your content calendar</h1><p>Build your calendar, one simple step at a time.</p></div>
+          <button type="button" onClick={() => setReviewOpen(true)} className={studioStyles.savedDraftsButton}><ShieldCheck size={18} aria-hidden="true" />Review saved drafts</button>
+        </header>
         <div className={`${studioStyles.layout} ${!hasBusinessSummaryState ? studioStyles.singleColumn : ""}`}>
         <div className={studioStyles.form}>
           {reportingRecommendationLoaded && (

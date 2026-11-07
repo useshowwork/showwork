@@ -164,10 +164,30 @@
   color: #2478ff;
 }
 .content {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   min-width: 0;
   padding: 24px 30px;
   scrollbar-gutter: stable;
+}
+.reviewPane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+.tabBarHost:not(:empty) {
+  flex-shrink: 0;
+  padding: 12px 30px;
+  background: #f7f9fd;
+  border-bottom: 1px solid #dce6f5;
+}
+.tabBarHost > div { max-width: 800px; margin: auto; }
+@media (max-width: 640px) {
+  .tabBarHost:not(:empty) { padding: 7px 12px; }
 }
 .editorWrap {
   max-width: 800px;
@@ -277,38 +297,23 @@
 .mobilePicker {
   display: none;
 }
-.menu {
-  position: relative;
-}
-.menu summary {
-  list-style: none;
+.discardButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #efcaca;
+  border-radius: 10px;
+  background: #fff5f5;
+  color: #b33535;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
 }
-.menu summary::-webkit-details-marker {
-  display: none;
-}
-.menu > div {
-  position: absolute;
-  right: 0;
-  top: 48px;
-  z-index: 10;
-  width: 205px;
-  padding: 7px;
-  border: 1px solid #e0e8f5;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 15px 30px #1234661a;
-}
-.menu > div > button {
-  width: 100%;
-  padding: 12px;
-  text-align: left;
-  font-size: 12px;
-  border-radius: 7px;
-}
-.danger {
-  color: #b34646;
-}
+.discardButton:hover:not(:disabled) { background: #ffe7e7; }
+.discardButton:disabled { opacity: .45; cursor: not-allowed; }
 .history {
   margin-top: 22px;
   border-top: 1px solid #e0e8f4;
@@ -348,9 +353,16 @@
   .headerActions {
     width: 100%;
   }
-  .headerActions > .primary {
+  .headerActions { gap: 6px; }
+  .headerActions > .primary,
+  .headerActions > .discardButton {
     flex: 1;
+    min-width: 0;
+    padding: 9px 6px;
+    font-size: 11px;
+    gap: 4px;
   }
+  .headerActions > .iconButton { flex-shrink: 0; }
   .header h1 {
     font-size: 18px;
   }

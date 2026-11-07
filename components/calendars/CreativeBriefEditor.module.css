@@ -1,0 +1,64 @@
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px;
+  border: 1px solid #dce6f5;
+  border-radius: 14px;
+  background: #eef3fb;
+  box-shadow: 0 5px 15px #1738600c;
+  scrollbar-width: thin;
+  scroll-padding-inline: 8px;
+}
+.tab {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #d5e1f2;
+  border-radius: 9px;
+  background: #fff;
+  color: #405b7e;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+.tab:hover {
+  border-color: #2478ff;
+  background: #e6efff;
+  color: #145bd6;
+}
+.tab[aria-selected="true"] {
+  border-color: #1765ed;
+  background: #1765ed;
+  color: #fff;
+  box-shadow: 0 3px 8px #1765ed26;
+}
+.tab:focus-visible {
+  outline: 2px solid #1765ed;
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .tabs {
+    gap: 5px;
+    padding: 5px;
+    border-radius: 11px;
+  }
+  .tab {
+    gap: 5px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .tab svg { width: 15px; height: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab { transition: none; }
+}

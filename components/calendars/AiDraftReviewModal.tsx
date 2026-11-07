@@ -6,7 +6,7 @@ import {
   Check,
   CheckCircle2,
   Loader2,
-  MoreHorizontal,
+  Trash2,
   X,
 } from "lucide-react";
 import CreativeBriefEditor, {
@@ -86,6 +86,7 @@ export default function AiDraftReviewModal({
     (state: BriefEditorState) => setEditorState(state),
     [],
   );
+  const [tabBarHost, setTabBarHost] = useState<HTMLDivElement | null>(null);
   const selected = drafts?.find((row) => row.id === selectedId) ?? null;
   const locked = busy || editorState.busy;
   const confirmNavigation = () =>
@@ -405,23 +406,15 @@ export default function AiDraftReviewModal({
               <Check size={16} />
               Accept all drafts
             </button>
-            <details className={styles.menu}>
-              <summary
-                aria-label="Draft review options"
-                className={styles.iconButton}
-              >
-                <MoreHorizontal size={19} />
-              </summary>
-              <div>
-                <button
-                  disabled={locked || jobRunning || !remaining}
-                  className={styles.danger}
-                  onClick={() => void discardAll()}
-                >
-                  Discard all drafts
-                </button>
-              </div>
-            </details>
+            <button
+              type="button"
+              disabled={locked || jobRunning || !remaining}
+              className={styles.discardButton}
+              onClick={() => void discardAll()}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              Discard all drafts
+            </button>
             <button
               type="button"
               className={styles.iconButton}
@@ -509,6 +502,8 @@ export default function AiDraftReviewModal({
               </button>
             </div>
           </aside>
+          <div className={styles.reviewPane}>
+            <div className={styles.tabBarHost} ref={setTabBarHost} />
           <div className={styles.content} ref={content}>
             <div className={styles.editorWrap}>
               {error && (
@@ -564,6 +559,7 @@ export default function AiDraftReviewModal({
                   <CreativeBriefEditor
                     key={selected.id}
                     calendarId={calendarId}
+                    tabBarHost={tabBarHost}
                     post={selected}
                     onStateChange={onEditorState}
                     onSaveReady={onSaveReady}
@@ -656,6 +652,7 @@ export default function AiDraftReviewModal({
               )}
             </div>
           </div>
+        </div>
         </div>
         <footer className={styles.footer}>
           <span role="status" className={styles.saveState}>

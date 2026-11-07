@@ -59,3 +59,21 @@
 @media(max-width:700px){.studio{margin:20px auto}.form{padding:24px 20px}.simpleHeader h1{font-size:24px}.wizardTitle{font-size:20px}.channelRow{gap:9px}.channelRow>button{gap:7px;padding:9px}.channelRow .platformLogo{width:28px;height:28px}.channelRow>button>span:nth-child(2){font-size:11px}.summary{padding:16px 20px}}
 @media(max-width:550px){.studio{margin:16px auto 22px}.simpleHeader{margin-bottom:18px}.simpleHeader h1{font-size:23px}.simpleHeader p{font-size:12px}.form{padding:22px 16px 24px}.wizardTitle{margin-bottom:22px}.channelRow{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.channelRow>button{width:100%;height:60px;min-height:60px;min-width:0;flex-basis:auto;padding:10px}.channelRow>button>span:nth-child(2){font-size:12px}.channelRow .platformLogo{width:30px;height:30px}.scheduleRow{gap:7px;margin-top:12px}.scheduleRow label{font-size:10px;gap:7px}.scheduleRow input{font-size:12px;height:44px;min-height:44px;padding:7px 4px}.goalField select,.directionPanel textarea,.optionFields>label>select{font-size:16px!important}.directionPanel textarea{height:110px;min-height:110px}.summary{padding:16px;gap:10px}.summary .generateButton{min-width:110px}.wizardBack{padding:9px 13px}.compactCount>span{font-size:10px}.calendarBrief{min-height:180px!important}}
 @media(prefers-reduced-motion:reduce){.channelRow>button{transition:none}}
+.savedDraftsButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #b8d1fb;
+  border-radius: 10px;
+  background: #edf4ff;
+  color: #145bd6;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.savedDraftsButton:hover { background: #dfeaff; }
+.savedDraftsButton:focus-visible { outline: 2px solid #1765ed; outline-offset: 3px; }
