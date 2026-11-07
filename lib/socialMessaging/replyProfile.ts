@@ -46,6 +46,8 @@ export const REPLY_TONES = [
 export type ReplyTone = (typeof REPLY_TONES)[number]["value"];
 export type ReplyProfile = {
   tone: ReplyTone;
+  allowWebSearch?: boolean;
+  paymentInstructions?: string;
   industry: string;
   businessContext: string;
   pricingAndPolicies: string;
@@ -53,6 +55,7 @@ export type ReplyProfile = {
   handoffRules: string;
 };
 export const REPLY_PROFILE_FIELDS = [
+  { key: "paymentInstructions", label: "Approved payment instructions", limit: 1500, placeholder: "Payment methods, official checkout link, or business bank details you approve AI to share. Never include customer card details, PINs or passwords." },
   {
     key: "industry",
     label: "Industry",
@@ -82,7 +85,7 @@ export const REPLY_PROFILE_FIELDS = [
   },
   {
     key: "handoffRules",
-    label: "When your team should take over",
+    label: "When AI should offer your team",
     limit: 1200,
     placeholder:
       "e.g. Custom quotes, refund decisions, order-specific issues, or a customer asking to speak to a person. Include your support contact if appropriate.",
@@ -99,6 +102,8 @@ export function normalizeReplyProfile(value: unknown): ReplyProfile {
       : {};
   const profile: ReplyProfile = {
     tone: isReplyTone(data.tone) ? data.tone : "professional",
+    allowWebSearch: data.allowWebSearch === true,
+    paymentInstructions: "",
     industry: "",
     businessContext: "",
     pricingAndPolicies: "",
@@ -116,8 +121,11 @@ export function validateReplyProfile(value: unknown): string | null {
   if (!value || typeof value !== "object" || Array.isArray(value))
     return "Customer-care settings must be an object.";
   const data = value as Record<string, unknown>;
+  if (data.allowWebSearch !== undefined && typeof data.allowWebSearch !== "boolean") return "Web search must be on or off.";
   if (!isReplyTone(data.tone)) return "Choose a supported reply tone.";
   for (const field of REPLY_PROFILE_FIELDS) {
+    if (field.key === "paymentInstructions" && data[field.key] === undefined) continue;
+    if (field.key === "paymentInstructions" && /\b(password|passcode|otp|cvv|cvc|pin|private key|card number)\b/i.test(String(data[field.key]))) return "Approved payment instructions must not contain private credentials or customer card details.";
     if (typeof data[field.key] !== "string")
       return `${field.label} must be text.`;
     if ((data[field.key] as string).length > field.limit)

@@ -4,7 +4,7 @@ import { getCurrentCreator } from "@/lib/auth";
 import { canAccessCalendarById, hasCalendarPermission } from "@/lib/calendarPermissions";
 import { db } from "@/lib/db";
 import { sendSocialInboxMessage, supportsMessaging } from "@/lib/socialMessaging/registry";
-import { MetaMessagingWindowClosedError } from "@/lib/socialMessaging/meta";
+import { InboxSendConflict, reconcileStaleInboxSends, sendDurableInboxReply, UNCONFIRMED_REPLY } from "@/lib/socialMessaging/outbound";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; conversationId: string }> }) {
   const creator = await getCurrentCreator();
@@ -26,41 +26,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!conversation.connection || !supportsMessaging(conversation.platform)) {
     return NextResponse.json({ error: "Replies are not available for this platform connection yet." }, { status: 409 });
   }
-  const now = new Date();
+  const operationKey = req.headers.get("idempotency-key")?.trim();
+  if (!operationKey || operationKey.length > 200) return NextResponse.json({ error: "A send operation ID is required. Refresh the inbox and try again." }, { status: 400 });
   try {
-    // A staff reply is a takeover, including while an AI draft is in flight.
-    await db.socialLeadConversation.update({ where: { id: conversationId }, data: {
-      aiPausedAt: conversation.aiPausedAt || now,
-      aiHandoffReason: conversation.aiHandoffReason || "A team member replied. AI stays paused until explicitly resumed.",
-      aiHandoffAcknowledgedAt: now,
-      aiControlVersion: { increment: 1 },
-    } });
-    const providerMessageId = await sendSocialInboxMessage({
-      connection: conversation.connection,
-      instagramPageId: conversation.calendar.instagramPageId,
-      recipientId: conversation.participantPlatformId,
-      conversationId: conversation.providerConversationId,
-      text,
+    await reconcileStaleInboxSends(calendarId);
+    const operation = await sendDurableInboxReply({
+      conversationId, operationKey, text, actorId: creator.id, takeover: true,
+      send: () => sendSocialInboxMessage({ connection: conversation.connection!, instagramPageId: conversation.calendar.instagramPageId, recipientId: conversation.participantPlatformId, conversationId: conversation.providerConversationId, text }),
     });
-    if (providerMessageId) {
-      await db.socialLeadMessage.createMany({
-        data: [{ conversationId, providerMessageId, direction: "OUTBOUND", status: "SENT", text, platformCreatedAt: now, sentByCreatorId: creator.id }],
-        skipDuplicates: true,
-      });
-    } else {
-      await db.socialLeadMessage.create({ data: { conversationId, direction: "OUTBOUND", status: "SENT", text, platformCreatedAt: now, sentByCreatorId: creator.id } });
-    }
-    await db.socialLeadConversation.update({ where: { id: conversationId }, data: { lastMessagePreview: text.slice(0, 500), lastMessageAt: now, unreadCount: 0, leadStatus: conversation.leadStatus === "NEW" ? "CONTACTED" : conversation.leadStatus } });
-    const message = providerMessageId
-      ? await db.socialLeadMessage.findFirstOrThrow({ where: { conversationId, providerMessageId } })
-      : await db.socialLeadMessage.findFirstOrThrow({ where: { conversationId, text, platformCreatedAt: now, sentByCreatorId: creator.id } });
+    if (operation.state === "UNCONFIRMED") return NextResponse.json({ error: UNCONFIRMED_REPLY, code: "SEND_UNCONFIRMED" }, { status: 409 });
+    if (operation.state === "CANCELLED") return NextResponse.json({ error: "The reply was cancelled before delivery.", code: "SEND_CANCELLED" }, { status: 409 });
+    if (operation.state !== "SENT") return NextResponse.json({ error: "This reply is still being sent. Check its status before trying again.", code: "SEND_PENDING" }, { status: 409 });
+    const message = await db.socialLeadMessage.findUniqueOrThrow({ where: { id: operation.messageId } });
     return NextResponse.json({ message: { id: message.id, direction: message.direction, status: message.status, text: message.text, platformCreatedAt: message.platformCreatedAt.toISOString(), isAiGenerated: false } });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "Could not send this reply.";
-    await db.socialLeadMessage.create({ data: { conversationId, direction: "OUTBOUND", status: "FAILED", text, platformCreatedAt: now, sentByCreatorId: creator.id, sendError: reason.slice(0, 1500) } }).catch(() => undefined);
-    if (error instanceof MetaMessagingWindowClosedError) {
-      return NextResponse.json({ error: reason, code: error.code }, { status: 409 });
-    }
-    return NextResponse.json({ error: reason }, { status: 502 });
+    return NextResponse.json({ error: error instanceof InboxSendConflict ? error.message : "Could not confirm this reply. Refresh the inbox and check its delivery status before sending again." }, { status: error instanceof InboxSendConflict ? 409 : 503 });
   }
 }

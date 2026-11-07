@@ -1,3 +1,4 @@
+import { reconcileStaleInboxSends } from "@/lib/socialMessaging/outbound";
 import { normalizeReplyProfile } from "@/lib/socialMessaging/replyProfile";
 import { tikTokMessagingAccess } from "@/lib/socialMessaging/tiktok";
 import { whatsappMessagingAccess } from "@/lib/socialMessaging/whatsapp";
@@ -10,6 +11,7 @@ export const SOCIAL_LEAD_STATUSES: SocialLeadStatus[] = ["NEW", "CONTACTED", "QU
 export const SOCIAL_INBOX_PLATFORMS: SocialPlatform[] = ["INSTAGRAM", "FACEBOOK", "X", "TIKTOK", "LINKEDIN", "YOUTUBE", "WHATSAPP"];
 
 export async function getSocialInbox(calendarId: string, params: URLSearchParams) {
+  await reconcileStaleInboxSends(calendarId);
   const platform = params.get("platform")?.toUpperCase();
   const status = params.get("status")?.toUpperCase();
   const query = params.get("q")?.trim();
@@ -46,6 +48,7 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
       orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
       take: 100,
       include: {
+        outboundOperations: { where: { state: { in: ["PENDING", "SENDING", "UNCONFIRMED"] } }, select: { id: true, messageId: true, state: true, reviewedAt: true } },
         messages: { orderBy: { platformCreatedAt: "desc" }, take: 50 },
         connection: { select: { id: true, accountName: true, username: true, status: true, accessToken: true, connectedAt: true, tikTokMessagingBusinessId: true } },
       },
@@ -67,6 +70,7 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
     const linkedConversation = await db.socialLeadConversation.findFirst({
       where: { ...where, id: linkedConversationId },
       include: {
+        outboundOperations: { where: { state: { in: ["PENDING", "SENDING", "UNCONFIRMED"] } }, select: { id: true, messageId: true, state: true, reviewedAt: true } },
         messages: { orderBy: { platformCreatedAt: "desc" }, take: 50 },
         connection: { select: { id: true, accountName: true, username: true, status: true, accessToken: true, connectedAt: true, tikTokMessagingBusinessId: true } },
       },
@@ -157,6 +161,7 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
       const participantName = rawName && !genericNames.includes(rawName.trim().toLowerCase()) ? rawName : null;
       return ({
       id: conversation.id,
+      deliveryChecks: conversation.outboundOperations.map(operation => ({ id: operation.id, state: operation.state, reviewedAt: operation.reviewedAt?.toISOString() ?? null })),
       aiPausedAt: conversation.aiPausedAt?.toISOString() ?? null,
       aiHandoffReason: conversation.aiHandoffReason,
       aiHandoffAcknowledgedAt: conversation.aiHandoffAcknowledgedAt?.toISOString() ?? null,
@@ -179,6 +184,7 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
       } : null,
       messages: [...visibleMessages].reverse().map((message) => ({
         id: message.id,
+        deliveryState: conversation.outboundOperations.find(operation => operation.messageId === message.id)?.state ?? null,
         direction: message.direction,
         status: message.status,
         text: message.text,

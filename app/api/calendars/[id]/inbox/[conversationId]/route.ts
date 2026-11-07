@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           aiHandoffReason: resume ? null : "A team member took over this conversation.",
           aiHandoffAcknowledgedAt: resume ? null : now,
           aiControlVersion: { increment: 1 },
+          aiHandoffOfferedAt: null, aiHandoffOfferMessageId: null,
         },
       });
       if (result.count) await tx.socialLeadMessage.updateMany({

@@ -13,7 +13,7 @@ export async function handoffSocialConversation(conversationId: string, reason: 
   return db.$transaction(async tx => {
     const changed = await tx.socialLeadConversation.updateMany({
       where: { id: conversationId, aiPausedAt: null, ...(expectedVersion === undefined ? {} : { aiControlVersion: expectedVersion }) },
-      data: { aiPausedAt: new Date(), aiHandoffReason: reason.slice(0, 1000), aiHandoffAcknowledgedAt: null, aiControlVersion: { increment: 1 } },
+      data: { aiPausedAt: new Date(), aiHandoffOfferedAt: null, aiHandoffOfferMessageId: null, aiHandoffReason: reason.slice(0, 1000), aiHandoffAcknowledgedAt: null, aiControlVersion: { increment: 1 } },
     });
     if (!changed.count) return changed;
     const thread = await tx.socialLeadConversation.findUniqueOrThrow({ where: { id: conversationId }, select: { aiControlVersion: true, calendar: { select: { managerId: true, collaborators: { select: { creatorId: true, role: true, permissions: true, customPermissions: true } } } } } });
@@ -25,15 +25,12 @@ export async function handoffSocialConversation(conversationId: string, reason: 
 /** Explicit requests bypass generation, so even a model failure cannot ignore them. */
 export function explicitHumanRequest(text: string): boolean {
   return /\b(?:speak|talk|chat|connect|transfer)\s+(?:me\s+)?(?:to|with)\s+(?:a\s+|an\s+|your\s+|the\s+)?(?:real\s+|human\s+)?(?:human|person|agent|representative|manager|owner|someone)\b/i.test(text)
+    || /\b(?:want|need|prefer|like)\s+(?:to\s+(?:speak|talk|chat)\s+(?:to|with)\s+)?(?:a\s+|your\s+|a member of (?:your|the)\s+)?(?:human|person|sales rep(?:resentative)?|team member|team)\b/i.test(text)
     || /^\s*(?:human|real person|human agent|agent|representative)(?:\s+please)?[.!?\s]*$/i.test(text)
     || /\b(?:stop|don['’]?t|do not)\s+(?:using\s+)?(?:the\s+)?(?:bot|ai|automated replies)\b/i.test(text);
 }
 
 export function requiredHandoffReason(text: string): string | null {
   if (explicitHumanRequest(text)) return "The customer asked to speak to a person.";
-  if (/\b(?:ready\s+to\s+(?:buy|pay|purchase|order)|(?:want|like|need)\s+to\s+(?:pay|buy|purchase|order)|(?:how|where)\s+(?:do|can)\s+i\s+pay|place\s+(?:an?|my|the)\s+order|(?:have|already|just)\s+paid|payment\s+(?:made|sent|completed)|(?:sent|made)\s+(?:the\s+|a\s+)?transfer|(?:send|share|give).*\b(?:payment\s+link|bank\s+details|account\s+(?:number|details))|make\s+(?:a\s+|the\s+)?payment|checkout|check\s+out)\b/i.test(text)) return "Buying or payment request: the team needs to guide the next step.";
-  if (/\b(?:refund|chargeback|fraud|scam|unauthori[sz]ed|complaint|complain|damaged|broken|never\s+(?:arrived|received)|speak\s+to\s+(?:your\s+)?lawyer)\b/i.test(text)) return "Complaint, dispute, or sensitive issue needs team review.";
-  if (/\b(?:password|passcode|one[- ]time\s+(?:code|password)|otp|cvv|cvc|security\s+code|card\s+(?:number|details)|passport\s+(?:number|details)|national\s+id|social\s+security)\b/i.test(text)
-    || /(?:\d[ -]?){13,19}/.test(text)) return "Potential sensitive personal or payment information needs private team review.";
   return null;
 }

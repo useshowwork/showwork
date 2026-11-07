@@ -14,11 +14,13 @@ export async function sendMetaInboxMessage({
   instagramPageId,
   recipientId,
   text,
+  offerHandoff,
 }: {
   connection: SocialConnection;
   instagramPageId?: string | null;
   recipientId: string;
   text: string;
+  offerHandoff?: boolean;
 }) {
   if (connection.platform !== "FACEBOOK" && connection.platform !== "INSTAGRAM") {
     throw new Error("This platform’s inbox is not enabled yet.");
@@ -41,7 +43,7 @@ export async function sendMetaInboxMessage({
     body: JSON.stringify({
       recipient: { id: recipientId },
       ...(connection.platform === "INSTAGRAM" ? { messaging_type: "RESPONSE" } : {}),
-      message: { text },
+      message: { text, ...(offerHandoff && connection.platform === "FACEBOOK" ? {quick_replies:[{content_type:"text",title:"Yes, connect me",payload:"SHOWWORK_TEAM_YES"},{content_type:"text",title:"No, keep helping",payload:"SHOWWORK_TEAM_NO"}]} : {}) },
       access_token: connection.accessToken,
     }),
     cache: "no-store",

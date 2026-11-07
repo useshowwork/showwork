@@ -227,11 +227,23 @@ test('shared AI worker skips superseded WhatsApp messages and rechecks before se
       connection: connection(), calendar: { clientName: 'Haelo', aiBusinessSummary: 'We sell design', instagramPageId: null }, messages: [] } };
   const db = { socialLeadConversation: { findUniqueOrThrow: async () => ({aiPausedAt:null,aiControlVersion:0}) }, socialInboxSettings: { findMany: async () => [{ calendarId: 'workspace' }], findUnique: async () => ({ aiAutoReplyEnabled: true }) },
     socialLeadMessage: { findMany: async () => [inbound], updateMany: async () => ({ count: 1 }), update: async args => changes.push(args.data) } };
-  const api = load('lib/socialMessaging/autoReply.ts', { '@/lib/knowledge/context': { getBusinessKnowledgeContext: async () => 'Facts from current documents' }, '@/lib/socialMessaging/handoffNotifications': { deliverHandoffNotifications: async () => {} }, '@/lib/contentWorkspaceUsage': { consumeCalendarAiGeneration: async () => ({ allowed: true, limit: 2000 }) }, '@/lib/calendarPermissions': { canUseCalendarFeature: async () => true }, '@/lib/db': { db }, '@/lib/openai': { generateSocialInboxAutoReply: async () => { generated++; return { shouldReply: true, replyText: 'Hello' }; } },
+  const api = load('lib/socialMessaging/autoReply.ts', { './outbound': require('./helpers/mock-inbox-outbound.cjs').outboundMock(db), '@/lib/knowledge/context': { getBusinessKnowledgeContext: async () => 'Facts from current documents' }, '@/lib/socialMessaging/handoffNotifications': { deliverHandoffNotifications: async () => {} }, '@/lib/contentWorkspaceUsage': { consumeCalendarAiGeneration: async () => ({ allowed: true, limit: 2000 }) }, '@/lib/calendarPermissions': { canUseCalendarFeature: async () => true }, '@/lib/db': { db }, '@/lib/openai': { generateSocialInboxAutoReply: async () => { generated++; return { shouldReply: true, replyText: 'Hello' }; } },
     '@/lib/socialMessaging/registry': { supportsMessaging: () => true, sendSocialInboxMessage: async () => sent++ },
     '@/lib/socialMessaging/whatsapp': { whatsappAutoReplyHandoff: async () => { checks++; return skipFirst || checks > 1 ? 'Already answered' : null; } } });
   const first = await api.processSocialInboxAutoReplies(); assert.equal(first.handedOff, 1); assert.equal(generated, 0); assert.equal(sent, 0);
   skipFirst = false; checks = 0;
   const second = await api.processSocialInboxAutoReplies(); assert.equal(second.handedOff, 1); assert.equal(generated, 1); assert.equal(checks, 2); assert.equal(sent, 0);
   assert.equal(changes[1].autoReplyHandoffReason, 'Already answered');
+});
+test('WhatsApp team offer uses interactive Yes/No buttons within the existing reply window',async()=>{
+ configure();let body;const db={socialLeadConversation:{findFirst:async()=>({messages:[{platformCreatedAt:new Date()}]})},socialConnection:{findUniqueOrThrow:async()=>connection()}};
+ global.fetch=async(_url,init)=>{body=JSON.parse(init.body);return json({messages:[{id:'offer'}]});};
+ assert.equal(await whatsapp(db).sendWhatsAppMessage({connection:connection(),conversationId:'2348000000000',recipientId:'2348000000000',text:'Would you like a member of our team to join?',offerHandoff:true}),'offer');
+ assert.equal(body.type,'interactive');assert.equal(body.interactive.type,'button');assert.deepEqual(body.interactive.action.buttons.map(item=>item.reply.title),['Yes, connect me','No, keep helping']);
+});
+test('WhatsApp text delivery preserves paragraph breaks and punctuation',async()=>{
+ configure();let body;const db={socialLeadConversation:{findFirst:async()=>({messages:[{platformCreatedAt:new Date()}]})},socialConnection:{findUniqueOrThrow:async()=>connection()}};
+ global.fetch=async(_url,init)=>{body=JSON.parse(init.body);return json({messages:[{id:'formatted'}]});};
+ const text='Your package is ₦50,000.00.\n\nPlease use the official checkout link.\n\nWould you like help choosing a date?';
+ await whatsapp(db).sendWhatsAppMessage({connection:connection(),conversationId:'2348000000000',recipientId:'2348000000000',text});assert.equal(body.text.body,text);
 });

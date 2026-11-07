@@ -1,9 +1,10 @@
-export type UnifiedInboxMessage = { id: string; direction: "INBOUND" | "OUTBOUND"; status: string; text: string; platformCreatedAt: string; isAiGenerated: boolean; sendError?: string | null; autoReplyHandoffReason?: string | null };
+export type UnifiedInboxMessage = { id: string; direction: "INBOUND" | "OUTBOUND"; status: string; text: string; platformCreatedAt: string; isAiGenerated: boolean; deliveryState?: string | null; sendError?: string | null; autoReplyHandoffReason?: string | null };
 export type UnifiedInboxConversation = {
   id: string; platform: string; participantPlatformId: string; participantName: string | null; participantUsername: string | null;
   leadStatus: string; unreadCount: number; lastMessageAt: string | null; lastMessagePreview: string | null;
   connection: { id?: string; accountName: string | null; username: string | null; status: string } | null;
   messages: UnifiedInboxMessage[];
+  deliveryChecks?: Array<{ id: string; state: string; reviewedAt: string | null }>;
   replyWindowExpiresAt?: string | null;
   aiPausedAt?: string | null;
   aiHandoffReason?: string | null;

@@ -1,3 +1,4 @@
+import { maskSensitiveText } from "@/lib/socialMessaging/safety";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
 import { consumeCalendarAiGeneration } from "@/lib/contentWorkspaceUsage";
 import { calendarFeatureGate } from "@/lib/calendarPermissions";
@@ -88,7 +89,7 @@ export async function POST(
   try {
     const draft = await generateSocialInboxAutoReply({
       clientName: conversation.calendar.clientName,
-      businessSummary: await getBusinessKnowledgeContext(calendarId, conversation.messages.map(m => m.text).join("\n") + "\n" + inbound.text + "\n" + body.context, "reply"),
+      businessSummary: await getBusinessKnowledgeContext(calendarId, maskSensitiveText(conversation.messages.map(m => m.text).join("\n") + "\n" + inbound.text + "\n" + body.context), "reply"),
       instructions: settings?.aiAutoReplyInstructions ?? null,
       profile,
       mode: "draft",

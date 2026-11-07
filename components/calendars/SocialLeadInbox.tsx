@@ -1,5 +1,6 @@
 "use client";
-import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
+import { formatInboxReply } from "@/lib/socialMessaging/replyFormatting";
+import { calendarMutationFetch, clearCheckedInboxReply } from "@/lib/publishing/clientRequests";
 
 import WorkspaceFeatureNotice from "@/components/calendars/WorkspaceFeatureNotice";
 import styles from "./SocialLeadInbox.module.css";
@@ -217,7 +218,7 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
     try {
       const response = await calendarMutationFetch(`${endpoint}/${encodeURIComponent(selected.id)}/reply`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: draft.trim() }) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Could not send reply.");
+      if (!response.ok) { if (["SEND_UNCONFIRMED", "SEND_PENDING"].includes(result.code)) await latestLoadRef.current(true); throw new Error(result.error || "Could not send reply."); }
       setDraft(""); setSuccess("Reply sent to the platform.");
       await latestLoadRef.current(true);
       window.setTimeout(() => setSuccess(""), 3000);
@@ -239,8 +240,19 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
     finally { setSavingSettings(false); }
   }
 
+  const unresolvedDelivery = selected?.deliveryChecks?.find(operation => operation.state !== "UNCONFIRMED" || !operation.reviewedAt);
+  async function acknowledgeDeliveryCheck() {
+    if (!selected || !unresolvedDelivery || unresolvedDelivery.state !== "UNCONFIRMED") return;
+    if (!window.confirm("Have you checked this reply in the platform inbox? This will allow new messages. It will not resend this reply or mark it delivered.")) return;
+    try {
+      const response = await calendarMutationFetch(`${endpoint}/${encodeURIComponent(selected.id)}/delivery-check`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({operationId:unresolvedDelivery.id,confirmation:"CHECKED_PLATFORM_INBOX"})});
+      if (!response.ok) throw Error("Could not record the delivery check. Refresh and try again.");
+      clearCheckedInboxReply(`${endpoint}/${encodeURIComponent(selected.id)}/reply`);
+      await latestLoadRef.current(true);
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not record the check."); }
+  }
   const whatsappWindowClosed = selected?.platform === "WHATSAPP" && (!selected.replyWindowExpiresAt || Date.parse(selected.replyWindowExpiresAt) <= Date.now());
-  const canReply = selected?.encrypted ? inboxAccess && !!selectedX && selectedX.selected === selected.encrypted.conversationId && !clientMode && isOwner : !clientMode && canReplyFromWorkspace && selected && !whatsappWindowClosed && ["FACEBOOK", "INSTAGRAM", "X", "LINKEDIN", "TIKTOK", "WHATSAPP"].includes(selected.platform) && selected.connection?.status === "CONNECTED" && data?.accounts.some(account => account.status === "CONNECTED" && account.platform === selected.platform && (!selected.connection?.id || account.id === selected.connection.id) && account.messagingAvailable);
+  const canReply = selected?.encrypted ? inboxAccess && !!selectedX && selectedX.selected === selected.encrypted.conversationId && !clientMode && isOwner : !clientMode && canReplyFromWorkspace && selected && !unresolvedDelivery && !whatsappWindowClosed && ["FACEBOOK", "INSTAGRAM", "X", "LINKEDIN", "TIKTOK", "WHATSAPP"].includes(selected.platform) && selected.connection?.status === "CONNECTED" && data?.accounts.some(account => account.status === "CONNECTED" && account.platform === selected.platform && (!selected.connection?.id || account.id === selected.connection.id) && account.messagingAvailable);
   const replyUnavailable = clientMode ? "Read-only client view. Ask your workspace manager to reply."
     : !inboxAccess ? "Your plan does not include replying from the inbox."
     : selected?.encrypted ? (!isOwner ? "The workspace owner can unlock X to reply." : "Unlock X to read and reply to this conversation.")
@@ -326,10 +338,11 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
             <div ref={historyRef} className={styles.history} aria-label="Message history" tabIndex={0} onScroll={event => { const element = event.currentTarget; nearBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }}>
               {selected.messages.map((message, index) => <div key={message.id}>
                 {(index === 0 || dayLabel(selected.messages[index - 1].platformCreatedAt) !== dayLabel(message.platformCreatedAt)) && <div className={styles.dayLabel}><span>{dayLabel(message.platformCreatedAt)}</span></div>}
-                <div className={`${styles.messageRow} ${message.direction === "OUTBOUND" ? styles.messageOutbound : ""}`}><div className={styles.bubble}><p>{message.text}</p><div className={styles.messageMeta}><span>{message.direction === "OUTBOUND" ? `${message.isAiGenerated ? "AI · " : ""}${message.status === "READ" ? "Read" : message.status === "DELIVERED" ? "Delivered" : message.status === "FAILED" ? "Failed" : "Sent"}` : "Received"}</span><time dateTime={message.platformCreatedAt} title={new Date(message.platformCreatedAt).toLocaleString()}>{new Date(message.platformCreatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</time></div>{message.autoReplyHandoffReason && <p className={styles.handoff}>{message.autoReplyHandoffReason}</p>}{message.sendError && <p className={styles.messageError}>{message.sendError}</p>}</div></div>
+                <div className={`${styles.messageRow} ${message.direction === "OUTBOUND" ? styles.messageOutbound : ""}`}><div className={styles.bubble}><p>{message.isAiGenerated ? formatInboxReply(message.text) : message.text}</p><div className={styles.messageMeta}><span>{message.direction === "OUTBOUND" ? `${message.isAiGenerated ? "AI · " : ""}${message.deliveryState === "UNCONFIRMED" ? "Unconfirmed—check before retrying" : message.status === "PENDING" ? "Sending…" : message.status === "READ" ? "Read" : message.status === "DELIVERED" ? "Delivered" : message.status === "FAILED" ? "Failed" : "Sent"}` : "Received"}</span><time dateTime={message.platformCreatedAt} title={new Date(message.platformCreatedAt).toLocaleString()}>{new Date(message.platformCreatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</time></div>{message.autoReplyHandoffReason && <p className={styles.handoff}>{message.autoReplyHandoffReason}</p>}{message.sendError && <p className={styles.messageError}>{message.sendError}</p>}</div></div>
               </div>)}
               {!selected.messages.length && <div className={styles.empty}><MessageSquareText size={28} aria-hidden="true" /><p>{selected.encrypted && selectedX?.busy ? "Loading messages…" : "No messages in this conversation yet."}</p></div>}
             </div>
+            {!clientMode && unresolvedDelivery && <div role="status" className="mx-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><strong>{unresolvedDelivery.state === "UNCONFIRMED" ? "Unconfirmed—check before retrying" : "Reply is being sent"}</strong><p className="mt-1">{unresolvedDelivery.state === "UNCONFIRMED" ? "Check the platform inbox to avoid sending the same message twice." : "Wait for confirmation before sending another reply."}</p>{unresolvedDelivery.state === "UNCONFIRMED" && canReplyFromWorkspace && <button type="button" className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 font-semibold" onClick={() => void acknowledgeDeliveryCheck()}>I’ve checked the platform inbox</button>}</div>}
             {!clientMode ? <form onSubmit={sendReply} className={styles.composer}>
               {!selected.encrypted && canReply && data && <div className={styles.assistant}>
                 <button type="button" className={styles.assistantToggle} aria-expanded={assistantOpen} aria-controls="inbox-reply-assistant" onClick={() => setAssistantOpen(value => !value)}><Sparkles size={14} aria-hidden="true" />AI reply assistant<span aria-hidden="true">{assistantOpen ? "−" : "+"}</span></button>

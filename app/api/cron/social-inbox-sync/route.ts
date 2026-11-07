@@ -4,7 +4,7 @@ import { syncSocialInboxes } from "@/lib/socialMessaging/x";
 export async function POST(req: NextRequest) {
   if (
     !process.env.CRON_SECRET ||
-    req.headers.get("authorization") !== `Bearer undefined`
+    req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

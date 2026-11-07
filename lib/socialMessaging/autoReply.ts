@@ -1,3 +1,6 @@
+import { handoffChoice, shouldOfferTeam, withTeamOffer, TEAM_ACKNOWLEDGEMENT } from "./handoffConsent";
+import { sendDurableInboxReply, reconcileStaleInboxSends, findInboxSend } from "./outbound";
+import { maskSensitiveText } from "./safety";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
 import { requiredHandoffReason, handoffSocialConversation } from "@/lib/socialMessaging/handoff";
 import { deliverHandoffNotifications } from "@/lib/socialMessaging/handoffNotifications";
@@ -29,6 +32,7 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
   for (const { calendarId } of settings) {
     // Re-evaluate the owner at execution time; never discard queued trial data.
     if (!(await canUseCalendarFeature(calendarId, "aiAutoReplies"))) continue;
+    await reconcileStaleInboxSends(calendarId);
     const queue = await db.socialLeadMessage.findMany({
       where: {
         direction: "INBOUND",
@@ -78,7 +82,14 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
         await retire(reason);
       };
       try {
-        const control = await db.socialLeadConversation.findUniqueOrThrow({ where: { id: inbound.conversationId }, select: { aiPausedAt: true, aiControlVersion: true } });
+        const priorSend = await findInboxSend(inbound.conversationId, `ai:${inbound.id}`);
+        if (priorSend) {
+          if (priorSend.state === "SENT") await retire("Automatic reply was already sent.");
+          else await handoff("An earlier reply is already tracked. Check its delivery status before replying again.");
+          summary.handedOff++;
+          continue;
+        }
+        const control = await db.socialLeadConversation.findUniqueOrThrow({ where: { id: inbound.conversationId }, select: { aiPausedAt: true, aiControlVersion: true, aiHandoffOfferedAt: true, aiHandoffOfferMessageId: true, aiHandoffDeclinedAt: true } });
         controlVersion = control.aiControlVersion;
         if (control.aiPausedAt) {
           await retire("AI is paused while a team member handles this conversation.");
@@ -107,6 +118,30 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
           summary.handedOff++;
           continue;
         }
+        const latestOutbound = inbound.conversation.messages.find(message => message.direction === "OUTBOUND" && ["SENT", "DELIVERED", "READ"].includes(message.status));
+        const choice = handoffChoice(inbound.text, {offeredAt:control.aiHandoffOfferedAt, offerMessageId:control.aiHandoffOfferMessageId, latestOutboundId:latestOutbound?.id});
+        if (detectedHandoff || choice === "yes") {
+          const reason = detectedHandoff || "The customer accepted an offer to speak with the team.";
+          await handoff(reason);
+          if (inbound.conversation.connection && supportsMessaging(inbound.conversation.platform)) {
+            const acknowledgement = TEAM_ACKNOWLEDGEMENT;
+            const operation = await sendDurableInboxReply({
+              conversationId: inbound.conversationId, operationKey: `ai:${inbound.id}`, text: acknowledgement, isAiGenerated: false,
+              beforeSend: async () => {
+                const latest = await db.socialLeadConversation.findUniqueOrThrow({ where: { id: inbound.conversationId }, select: { aiControlVersion: true, aiPausedAt: true } });
+                const settings = await db.socialInboxSettings.findUnique({ where: { calendarId }, select: { aiAutoReplyEnabled: true } });
+                return !!settings?.aiAutoReplyEnabled && !!latest.aiPausedAt && latest.aiControlVersion === control.aiControlVersion + 1 && await canUseCalendarFeature(calendarId, "aiAutoReplies");
+              },
+              send: () => sendSocialInboxMessage({ connection: inbound.conversation.connection!, conversationId: inbound.conversation.providerConversationId, instagramPageId: inbound.conversation.calendar.instagramPageId, recipientId: inbound.conversation.participantPlatformId, text: acknowledgement }),
+            });
+            if (operation.state === "UNCONFIRMED") summary.failed++;
+          }
+          summary.handedOff++;
+          continue;
+        }
+        if (choice === "no") {
+          await db.socialLeadConversation.updateMany({where:{id:inbound.conversationId,aiControlVersion:control.aiControlVersion,aiPausedAt:null},data:{aiHandoffOfferedAt:null,aiHandoffOfferMessageId:null,aiHandoffDeclinedAt:new Date()}});
+        }
         const recent = [...inbound.conversation.messages].reverse().map((message) => ({
           direction: message.direction,
           text: message.text.slice(0, 2000),
@@ -124,21 +159,24 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
         const generationStartedAt = Date.now();
         const generated = await generateSocialInboxAutoReply({
           clientName: inbound.conversation.calendar.clientName,
-          businessSummary: await getBusinessKnowledgeContext(calendarId, recent.map(m => m.text).join("\n") + "\n" + inbound.text, "reply"),
+          businessSummary: await getBusinessKnowledgeContext(calendarId, maskSensitiveText(recent.map(m => m.text).join("\n") + "\n" + inbound.text), "reply"),
           instructions: replySettings?.aiAutoReplyInstructions ?? null,
           profile: normalizeReplyProfile(replySettings?.aiReplyProfile),
           platform: inbound.conversation.platform,
           participantName: inbound.conversation.participantName,
           conversation: recent,
           latestInbound: inbound.text.slice(0, 3000),
-          detectedHandoffReason: detectedHandoff,
+          teamOfferPending: !!control.aiHandoffOfferedAt && choice !== "no",
+          teamOfferDeclined: choice === "no" || !!(control.aiHandoffDeclinedAt && Date.now() - control.aiHandoffDeclinedAt.getTime() < 24 * 60 * 60_000),
         });
         generationMs = Date.now() - generationStartedAt;
-        if (!generated.shouldReply || !generated.replyText || !inbound.conversation.connection || !supportsMessaging(inbound.conversation.platform)) {
-          await handoff(generated.handoffReason || detectedHandoff || "This message needs a human response.");
-          summary.handedOff++;
+        if (!inbound.conversation.connection || !supportsMessaging(inbound.conversation.platform)) {
+          await retire("This channel cannot currently deliver a reply. Check its connection.");
           continue;
         }
+        const offerHandoff = shouldOfferTeam({offeredAt:control.aiHandoffOfferedAt,declinedAt:choice === "no" ? new Date() : control.aiHandoffDeclinedAt,aiReplyCount:inbound.conversation.messages.filter(message => message.direction === "OUTBOUND" && message.isAiGenerated && ["SENT","DELIVERED","READ"].includes(message.status)).length + 1,needsHelp:generated.handoffNeeded || !generated.shouldReply || !generated.replyText});
+        const helpfulText = generated.shouldReply && generated.replyText ? generated.replyText : "I can’t complete this request here. A member of our team needs to handle the next step and can respond in this conversation when available.";
+        const replyText = offerHandoff ? withTeamOffer(helpfulText) : helpfulText;
         const latestSettings = await db.socialInboxSettings.findUnique({ where: { calendarId }, select: { aiAutoReplyEnabled: true } });
         if (!(await canUseCalendarFeature(calendarId, "aiAutoReplies"))) {
           await db.socialLeadMessage.update({ where: { id: inbound.id }, data: { autoReplyClaimedAt: null } });
@@ -168,34 +206,25 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
         }
         sendAttempted = true;
         const deliveryStartedAt = Date.now();
-        const providerMessageId = await sendSocialInboxMessage({
-          connection: inbound.conversation.connection,
-          conversationId: inbound.conversation.providerConversationId,
-          instagramPageId: inbound.conversation.calendar.instagramPageId,
-          recipientId: inbound.conversation.participantPlatformId,
-          text: generated.replyText,
+        const operation = await sendDurableInboxReply({
+          conversationId: inbound.conversationId, operationKey: `ai:${inbound.id}`, text: replyText, isAiGenerated: true, handoffOffer: offerHandoff, expectedControlVersion: control.aiControlVersion,
+          beforeSend: async () => {
+            const latest = await db.socialLeadConversation.findUniqueOrThrow({ where: { id: inbound.conversationId }, select: { aiPausedAt: true, aiControlVersion: true } });
+            const settings = await db.socialInboxSettings.findUnique({ where: { calendarId }, select: { aiAutoReplyEnabled: true } });
+            const newer = await db.socialLeadMessage.findFirst({ where: { conversationId: inbound.conversationId, id: { not: inbound.id }, createdAt: { gt: inbound.createdAt }, OR: [{ direction: "INBOUND" }, { direction: "OUTBOUND", isAiGenerated: false, status: { in: ["SENT", "DELIVERED", "READ"] } }] }, select: { id: true } });
+            return !latest.aiPausedAt && latest.aiControlVersion === control.aiControlVersion && !newer && !!settings?.aiAutoReplyEnabled && await canUseCalendarFeature(calendarId, "aiAutoReplies");
+          },
+          send: () => sendSocialInboxMessage({ connection: inbound.conversation.connection!, conversationId: inbound.conversation.providerConversationId, instagramPageId: inbound.conversation.calendar.instagramPageId, recipientId: inbound.conversation.participantPlatformId, text: replyText, offerHandoff }),
         });
-        deliveryMs = Date.now() - deliveryStartedAt;
-        const sentAt = new Date();
-        await db.$transaction(async (tx) => {
-          if (providerMessageId) {
-            await tx.socialLeadMessage.createMany({
-              data: [{ conversationId: inbound.conversationId, providerMessageId, direction: "OUTBOUND", status: "SENT", text: generated.replyText, platformCreatedAt: sentAt, isAiGenerated: true }],
-              skipDuplicates: true,
-            });
-          } else {
-            await tx.socialLeadMessage.create({ data: { conversationId: inbound.conversationId, direction: "OUTBOUND", status: "SENT", text: generated.replyText, platformCreatedAt: sentAt, isAiGenerated: true } });
-          }
-          await tx.socialLeadMessage.update({ where: { id: inbound.id }, data: { autoReplyHandledAt: sentAt, autoReplyClaimedAt: null, autoReplyHandoffReason: generated.handoffReason } });
-          await tx.socialLeadConversation.update({ where: { id: inbound.conversationId }, data: { lastMessageAt: sentAt, lastMessagePreview: generated.replyText.slice(0, 500) } });
-        });
-        if (generated.handoffNeeded || detectedHandoff) {
-          const finalReason = generated.handoffReason || detectedHandoff || "A team member needs to guide the next step.";
-          await handoffSocialConversation(inbound.conversationId, finalReason, beforeSend.aiControlVersion);
+        if (operation.state !== "SENT") {
+          if (operation.state === "UNCONFIRMED") { summary.failed++; await handoff("Reply delivery is unconfirmed. Check the platform inbox before replying again."); }
+          else await retire("This reply is already being tracked or was cancelled. Check the conversation delivery status.");
           summary.handedOff++;
-        } else {
-          summary.sent++;
+          continue;
         }
+        deliveryMs = Date.now() - deliveryStartedAt;
+        await retire("Automatic reply sent.");
+        summary.sent++;
         // Aggregate timings only; no customer text, credentials, or account IDs.
         console.info("Social inbox AI reply timing", {
           platform: inbound.conversation.platform,

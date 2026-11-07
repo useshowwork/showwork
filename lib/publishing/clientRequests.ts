@@ -25,3 +25,9 @@ export async function calendarMutationFetch(input:Parameters<typeof fetch>[0],in
  if(response.ok||response.status<500)pending.delete(key);
  return response;
 }
+
+/** Only after a successful explicit platform check; the server still retains the original send intent. */
+export function clearCheckedInboxReply(url: string) {
+ if (!/^\/api\/calendars\/[^/]+\/inbox\/[^/]+\/reply$/.test(url)) return;
+ for (const key of pending.keys()) { const [method, target] = JSON.parse(key); if (method === "POST" && target === url) pending.delete(key); }
+}

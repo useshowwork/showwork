@@ -2036,6 +2036,9 @@ model SocialLeadConversation {
   aiHandoffReason        String?             @db.Text
   aiHandoffAcknowledgedAt DateTime?
   aiControlVersion       Int                 @default(0)
+  aiHandoffOfferedAt      DateTime?
+  aiHandoffOfferMessageId String?
+  aiHandoffDeclinedAt     DateTime?
   lastMessagePreview     String?             @db.Text
   lastMessageAt          DateTime?
   createdAt              DateTime            @default(now())
@@ -2043,6 +2046,7 @@ model SocialLeadConversation {
   messages               SocialLeadMessage[]
   crmLead                CalendarLead?
   handoffNotifications   InboxHandoffNotification[]
+  outboundOperations     SocialInboxOutbound[]
 
   @@unique([socialConnectionId, providerConversationId])
   @@index([calendarId, lastMessageAt])
@@ -2985,4 +2989,24 @@ model PartnerAuditEvent {
   detail Json
   createdAt DateTime @default(now())
   @@index([targetId, createdAt])
+}
+
+// One durable send intent per logical operation. Unconfirmed sends are never replayed.
+model SocialInboxOutbound {
+  id                String @id
+  conversationId    String
+  conversation      SocialLeadConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  requestHash       String
+  messageId         String @unique
+  state             String @default("PENDING")
+  providerMessageId String?
+  handoffOffer      Boolean @default(false)
+  reviewedAt        DateTime?
+  reviewedByCreatorId String?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([conversationId, state])
+  @@index([state, startedAt])
 }

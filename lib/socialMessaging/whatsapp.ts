@@ -136,7 +136,7 @@ export async function receiveWhatsAppNotification(payload: unknown) {
   return { imported };
 }
 
-export async function sendWhatsAppMessage(input: { connection: SocialConnection; conversationId?: string; recipientId: string; text: string }) {
+export async function sendWhatsAppMessage(input: { connection: SocialConnection; conversationId?: string; recipientId: string; text: string; offerHandoff?: boolean }) {
   const access = whatsappMessagingAccess(input.connection);
   if (!access.available) throw new Error(access.reason);
   if (!validId(input.recipientId) || !input.conversationId || !input.text.trim() || input.text.length > 2000) throw new Error("Select a WhatsApp conversation and enter a reply of 1–2,000 characters.");
@@ -154,7 +154,7 @@ export async function sendWhatsAppMessage(input: { connection: SocialConnection;
   if (connection.accessTokenExpiresAt && connection.accessTokenExpiresAt.getTime() <= Date.now()) throw new Error("WhatsApp authorization expired. Update the access token in Channels.");
   try {
     const result = await whatsappRequest<{ messages?: Array<{ id?: string }> }>(`${connection.platformAccountId}/messages`, connection.accessToken,
-      { messaging_product: "whatsapp", recipient_type: "individual", to: input.recipientId, type: "text", text: { preview_url: false, body: input.text.trim() } });
+      { messaging_product: "whatsapp", recipient_type: "individual", to: input.recipientId, ...(input.offerHandoff ? { type:"interactive", interactive:{ type:"button", body:{text:input.text.trim()}, action:{buttons:[{type:"reply",reply:{id:"SHOWWORK_TEAM_YES",title:"Yes, connect me"}},{type:"reply",reply:{id:"SHOWWORK_TEAM_NO",title:"No, keep helping"}}]} } } : {type: "text", text: { preview_url: false, body: input.text.trim() }}) });
     const id = result.messages?.[0]?.id;
     if (!id || typeof id !== "string") throw new Error("WhatsApp did not confirm the reply. Check the business inbox before retrying.");
     return id;

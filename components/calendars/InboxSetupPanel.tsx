@@ -16,6 +16,8 @@ export default function InboxSetupPanel({ calendarId, knowledge, settings, savin
 }) {
   const toneId = useId();
   const profile = normalizeReplyProfile(settings.aiReplyProfile);
+  const [paymentInstructions, setPaymentInstructions] = useState(profile.paymentInstructions || "");
+  useEffect(() => { setPaymentInstructions(profile.paymentInstructions || ""); }, [profile.paymentInstructions]);
   const [handoffRules, setHandoffRules] = useState(profile.handoffRules);
   useEffect(() => { setHandoffRules(profile.handoffRules); }, [profile.handoffRules]);
   return <div className={styles.panel}>
@@ -39,8 +41,11 @@ export default function InboxSetupPanel({ calendarId, knowledge, settings, savin
           <label htmlFor={toneId} className={styles.fieldLabel}>Reply tone</label>
           <select id={toneId} className={styles.select} value={profile.tone} disabled={saving || !inboxAccess} onChange={event => onChange({ aiReplyProfile: { ...profile, tone: event.target.value as ReplyProfile["tone"] } })}>{REPLY_TONES.map(tone => <option key={tone.value} value={tone.value}>{tone.label}</option>)}</select>
           <p className={styles.toneDescription}>{REPLY_TONES.find(tone => tone.value === profile.tone)?.description}</p>
-          <label htmlFor={`${toneId}-handoff`} className={styles.fieldLabel}>When a person should take over</label>
-          <textarea id={`${toneId}-handoff`} className={styles.select} rows={4} maxLength={1200} value={handoffRules} disabled={saving || !inboxAccess} placeholder="For example: custom quotes, complaints, booking confirmation, or existing customers asking about an order." onChange={event => setHandoffRules(event.target.value)} onBlur={() => { if (handoffRules !== profile.handoffRules) onChange({ aiReplyProfile: { ...profile, handoffRules } }); }} />
+          <label className="my-3 flex items-start gap-3 text-xs leading-5"><input type="checkbox" checked={profile.allowWebSearch === true} disabled={saving || !inboxAccess} onChange={event => onChange({aiReplyProfile:{...profile,allowWebSearch:event.target.checked}})} /><span><strong>Allow public web search</strong><br/>Only for current public-information questions. Business prices and policies still come from your saved knowledge.</span></label>
+          <label htmlFor={`${toneId}-payment`} className={styles.fieldLabel}>Approved payment instructions</label>
+          <textarea id={`${toneId}-payment`} className={styles.select} rows={3} maxLength={1500} value={paymentInstructions} disabled={saving || !inboxAccess} placeholder="Official payment link, accepted methods or business bank details AI may share." onChange={event => setPaymentInstructions(event.target.value)} onBlur={() => { if (paymentInstructions !== (profile.paymentInstructions || "")) onChange({aiReplyProfile:{...profile,paymentInstructions}}); }} />
+          <label htmlFor={`${toneId}-handoff`} className={styles.fieldLabel}>When AI should offer your team</label>
+          <textarea id={`${toneId}-handoff`} className={styles.select} rows={4} maxLength={1200} value={handoffRules} disabled={saving || !inboxAccess} placeholder="For example: offer a teammate for custom quotes or questions that need private records. Customers choose whether to connect." onChange={event => setHandoffRules(event.target.value)} onBlur={() => { if (handoffRules !== profile.handoffRules) onChange({ aiReplyProfile: { ...profile, handoffRules } }); }} />
           <p className={styles.toneDescription}>Rules save when you leave this field. Payment requests, sensitive issues, and requests for a person go to your team. A handoff pauses AI until your team resumes it.</p>
           <div className={styles.voiceFoot}><CheckCheck size={14} aria-hidden="true" /> Applies to AI drafts and automatic replies.</div>
         </div>
