@@ -9,3 +9,36 @@
    retains its sidebar column so project content never moves underneath. */
 @media(min-width:1024px){.rail{position:fixed;left:12px;top:12px;bottom:12px;width:240px;height:auto;z-index:60}}
 @media(min-width:1024px) and (max-width:1200px){.rail{width:210px}}
+
+.menuTrigger{display:none}
+.mobileDrawer{position:fixed;inset:0 auto 0 0;margin:0;width:min(300px,85vw);max-width:none;height:100dvh;max-height:100dvh;padding:0;border:0;border-right:1px solid #315481;background:#123568;color:#edf4ff;box-shadow:12px 0 50px #081b3633;overflow-y:auto;overscroll-behavior:contain}
+.mobileDrawer::backdrop{background:#081b3670;backdrop-filter:blur(3px)}
+.mobileDrawer[open]{animation:deliveryDrawerIn .2s ease-out}
+.drawerInner{min-height:100%;padding:20px 18px max(24px,env(safe-area-inset-bottom))}
+.drawerHeader{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:26px}
+.drawerHeader button{display:grid;place-items:center;width:40px;height:40px;border:1px solid #ffffff30;border-radius:10px;background:#ffffff09;color:white;cursor:pointer}
+.drawerInner h2{font-size:15px;font-weight:600;margin-bottom:20px}
+.drawerInner nav{display:grid;gap:8px}
+.drawerInner nav>a{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-height:46px;padding:12px;border:1px solid #ffffff18;border-radius:11px;background:#ffffff06;color:#edf4ff;font-size:13px;text-decoration:none}
+.drawerInner nav>a:hover{background:#24518b}
+.drawerInner nav>a>span{margin-left:auto;padding:2px 7px;background:#ffffff18;border-radius:6px;font-size:11px}
+.mobileDrawer :focus-visible{outline:2px solid #b4d4ff;outline-offset:3px}
+@keyframes deliveryDrawerIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@media(max-width:1023px){
+ .frame>.rail{display:none}
+ .toolbar{gap:8px;padding:0 10px;min-width:0}
+ .menuTrigger{display:grid;place-items:center;flex-shrink:0;width:36px;height:36px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-soft);color:var(--pd-text);cursor:pointer}
+ .toolbar .toolbarTitle{display:none}
+ .toolbar .toolbarActions{width:auto;margin-left:auto;gap:6px;justify-content:flex-end;min-width:0}
+ .toolbarActions>a,.toolbarActions>button{flex-shrink:0;white-space:nowrap;font-size:11px;line-height:1.2}
+ .toolbarActions>a{padding:8px 6px}
+ .toolbarActions>button{height:34px;min-height:34px;padding:7px 9px;gap:5px}
+ .toolbarActions>button[aria-pressed]{width:34px;padding:7px}
+ .toolbarActions>button>span{white-space:nowrap}
+ .toolbarActions>button svg{width:14px;height:14px}
+ .toolbarActions .headerHelp{display:none}
+}
+@media(max-width:359px){.toolbar .toolbarActions{gap:2px}.toolbarActions>a{padding:8px 4px}.toolbarActions>button{padding:7px}.toolbar{padding:0 7px;gap:5px}}
+@media(prefers-reduced-motion:reduce){.mobileDrawer[open]{animation:none}}
+.toolbar>.toolbarTitle{font-size:12px;font-weight:550;color:var(--pd-muted)}
+.toolbar>.toolbarTitle>svg{color:var(--pd-brand)}

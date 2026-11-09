@@ -1,3 +1,4 @@
+import ProjectDeliveryMobileMenu from "@/components/projects/ProjectDeliveryMobileMenu";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import DeliveryHelpLink from "@/components/help/DeliveryHelpLink";
 import { cookies } from "next/headers";
@@ -258,7 +259,14 @@ export default async function ProjectDeliveryPage() {
         <div className={styles.planCard}><span>YOUR PLAN</span><strong>{planName}</strong><p>{usage.limit===Infinity?'Unlimited projects':`${usage.used} of ${usage.limit} projects used`}</p>{usage.limit!==Infinity&&<div className={styles.usageTrack} role="progressbar" aria-label="Project allowance used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={usagePercentage}><span style={{width:`${usagePercentage}%`}}/></div>}<Link href={BILLING_HREF}>Manage plan <ArrowUpRight size={13}/></Link></div>
         <div className={styles.railFooter}><DeliveryHelpLink className={styles.railHelp}/><Link href="/dashboard"><ArrowLeft size={16}/>All tools</Link></div>
       </aside>
-      <header className={styles.toolbar}><div><Layers size={16}/><span>Project Delivery</span></div><div><DeliveryHelpLink className={styles.headerHelp}/><ProjectThemeToggle/><Link href="/dashboard/profile" className={styles.profile}>Account</Link>{isAdminEmail(creator.email)&&<Link href="/admin" className={styles.profile}>Admin</Link>}<LogoutButton/></div></header>
+      <header className={styles.toolbar}>
+        <ProjectDeliveryMobileMenu>
+          <a href="#projects"><FolderOpen size={18}/>Projects<span>{totalCount}</span></a>
+          {managedProjects.length>0&&<a href="#managed"><BriefcaseBusiness size={18}/>Managed projects<span>{managedProjects.length}</span></a>}
+          <Link href={BILLING_HREF}><CreditCard size={18}/>Billing &amp; plan</Link>
+          <DeliveryHelpLink/><Link href="/dashboard"><ArrowLeft size={18}/>All tools</Link>
+        </ProjectDeliveryMobileMenu>
+        <div className={styles.toolbarTitle}><Layers size={16}/><span>Project Delivery</span></div><div className={styles.toolbarActions}><DeliveryHelpLink className={styles.headerHelp}/><ProjectThemeToggle/><Link href="/dashboard/profile" className={styles.profile}>Account</Link>{isAdminEmail(creator.email)&&<Link href="/admin" className={styles.profile}>Admin</Link>}<LogoutButton/></div></header>
       <section className={styles.content} aria-labelledby="delivery-title">
         <div className={styles.pageHeading}><div><p className={styles.kicker}>YOUR CLIENT WORK, TOGETHER</p><h1 id="delivery-title">Project Delivery</h1><p>{totalCount>0||sharedProjects.length>0?'Open a project to manage files, feedback, and final delivery.':'Create a project to share your work and collect client feedback.'}</p></div><Link href="/dashboard/start" className={styles.primary}><Plus size={16}/>New project</Link></div>
         {(nearCap||atCap)&&<aside className={styles.allowance} aria-label="Project allowance"><p>{atCap?'You’ve used your current project allowance.':`You have ${usage.remaining} ${usage.remaining===1?'project':'projects'} left on your plan.`}</p><Link href={BILLING_HREF}>{nextTierInfo?`Explore ${PLAN_DISPLAY_NAME[nextTier!]}`:'Manage plan'}<ArrowRight size={14}/></Link></aside>}

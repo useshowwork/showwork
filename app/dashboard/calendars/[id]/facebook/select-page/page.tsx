@@ -1,3 +1,4 @@
+import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import UiSymbol from "@/components/ui/UiSymbol";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -30,7 +31,7 @@ export default async function FacebookPageSelectionPage({
     },
   });
 
-  if (!calendar || calendar.managerId !== creator.id) {
+  if (!calendar || !(await hasCalendarPermission(creator.id, calendarId, "channels.manage"))) {
     redirect("/dashboard/calendars");
   }
 
@@ -91,6 +92,7 @@ export default async function FacebookPageSelectionPage({
           </div>
 
           <div className="px-6 py-6 sm:px-8">
+            {!!selection.diagnostics?.issues.length && <p role="status" className="mb-4 text-sm text-[#AAB4C3]">Some Pages could not be checked. You can select an available Page or reconnect to retry account discovery.</p>}
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-white">

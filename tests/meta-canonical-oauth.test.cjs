@@ -35,3 +35,22 @@ test('canonical callback uses real shared discovery, keeps Page tokens and recon
   }
  } finally {for(const [key,value] of Object.entries(old))if(value===undefined)delete process.env[key];else process.env[key]=value;}
 });
+
+test('canonical picker retains safe discovery diagnostics and never returns selection credentials',async()=>{
+ const old=process.env.JWT_SECRET;process.env.JWT_SECRET='meta-test-selection-secret';
+ try {
+  const {createFacebookPageSelection}=load('lib/facebookPageSelection.ts');
+  const diagnostics={discoveryStatus:'DISCOVERY_INCOMPLETE',facebookPagesFound:2,instagramAccountsFound:1,businessDiscovery:'NOT_GRANTED',sources:{accounts:1,granular:1,business:0},issues:[{stage:'instagram_link',code:'META_PAGE_ACCESS_FAILED',providerCode:100}]};
+  const selection=createFacebookPageSelection({calendarId:'workspace-a',pages:[{id:JSON.stringify({pageId:'101',accountId:'ig-101'}),name:'Client A',accessToken:'secret-page-token'}],grantedPermissions:['instagram_basic'],userTokenExpiresAt:Date.now()+60000,diagnostics});
+  const {createCanonicalShowworkOAuth}=load('lib/publishing/showworkOAuth.ts',{
+   './validationAdapters':{createPublishingValidationAdapters:()=>({validateWorkspacePermission:async()=>{}})},
+  });
+  const invoke=createCanonicalShowworkOAuth({database:{transaction:async fn=>fn({query:async sql=>({rows:sql.includes('PublishingApplicationOperation')?[{result:{encryptedSelection:selection.value}}]:[]})})},actions:{},policy:{},authenticate:async()=>({id:'manager'})});
+  for(const id of ['workspace-a','workspace-b']) {
+   const response=await invoke('app/api/calendars/[id]/instagram/select-account/route.ts#GET',[new NextRequest(`https://showwork.test/api/calendars/${id}/instagram/select-account`,{headers:{cookie:'showwork_instagram_account_selection=ticket'}}),{params:Promise.resolve({id})}]);
+   assert.equal(response.status,id==='workspace-a'?200:409);
+   const text=await response.text();assert.ok(!text.includes('secret-page-token'));assert.ok(!text.includes(selection.value));
+   if(id==='workspace-a')assert.deepEqual(JSON.parse(text).diagnostics,diagnostics);
+  }
+ } finally {if(old===undefined)delete process.env.JWT_SECRET;else process.env.JWT_SECRET=old;}
+});

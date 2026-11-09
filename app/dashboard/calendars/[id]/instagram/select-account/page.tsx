@@ -9,7 +9,7 @@ type Selection = {
   accounts: { accountId: string; pageId: string; name: string }[];
   expectedVersion: number;
   grantedPermissions?: string[];
-  diagnostics?: { discoveryStatus?: string };
+  diagnostics?: { discoveryStatus?: string; businessDiscovery?: string; issues?: {stage: string; code: string; providerCode?: number; providerSubcode?: number}[] };
 };
 const capabilities = [
   { title: 'Account & profile', description: 'Access your Instagram professional profile and media.', scopes: ['instagram_basic'], icon: Camera },
@@ -26,13 +26,15 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
   const [options, setOptions] = useState<Selection | null>(null);
   const [selected, setSelected] = useState('');
   const [error, setError] = useState('');
+  const [failureDetails, setFailureDetails] = useState<Selection['diagnostics']>();
+  const diagnostics = options?.diagnostics ?? failureDetails;
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     void fetch(`/api/calendars/${id}/instagram/select-account`, { cache: 'no-store', signal: controller.signal })
       .then(async response => {
         const body = await response.json();
-        if (!response.ok) throw Error(body.error);
+        if (!response.ok) { if (!controller.signal.aborted && body.diagnostics) setFailureDetails(body.diagnostics); throw Error(body.error); }
         if (!controller.signal.aborted) setOptions(body);
       }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
     return () => controller.abort();
@@ -66,7 +68,9 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
           <div className={styles.sectionHeading}><span className={styles.step}>1</span><h2 id="account-heading">Choose your account</h2></div>
           <p className={styles.intro}>Select a Facebook Page and its linked Instagram professional account.</p>
           {!options && !error && <p role="status" className={styles.notice}><Loader2 size={18} className={styles.spinner} /> Loading your linked accounts…</p>}
-          {options && options.accounts.length === 0 && <p className={styles.notice}>{options.diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' ? 'No accessible Facebook Pages found. Check your Facebook profile’s Page access and Business Portfolio asset assignment, then restart authorization.' : options.diagnostics?.discoveryStatus === 'PAGES_PERMISSION_MISSING' ? 'Page access was not granted. Restart authorization and allow access to your Facebook Page.' : 'No linked Instagram professional accounts found. Check your Page-to-Instagram connection and allow access to both assets when reconnecting.'}</p>}
+          {options && options.accounts.length === 0 && <p className={styles.notice}>{options.diagnostics?.discoveryStatus === 'DISCOVERY_INCOMPLETE' ? 'Some account checks failed. Meta has not confirmed the complete list of Pages you can use.' : options.diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' ? 'Meta returned no eligible Pages for this authorization. Ask the client to check your Page assignment in Business Portfolio, then reconnect and select the Page and Instagram account.' : options.diagnostics?.discoveryStatus === 'PAGES_PERMISSION_MISSING' ? 'Page access was not granted. Restart authorization and allow access to your Facebook Page.' : 'No linked Instagram professional accounts found. Check your Page-to-Instagram connection and allow access to both assets when reconnecting.'}</p>}
+          {!!diagnostics?.issues?.length && <details className={styles.notice}><summary>Connection check details</summary><p>Some accounts could not be checked. You can connect an available account or retry authorization.</p><ul>{diagnostics.issues.map((issue, index) => <li key={index}>{issue.stage.replaceAll('_', ' ')}: {issue.code}{issue.providerCode !== undefined ? ` (Meta ${issue.providerCode}${issue.providerSubcode !== undefined ? ` / ${issue.providerSubcode}` : ''})` : ''}</li>)}</ul></details>}
+          {options?.accounts.length === 0 && <p className={styles.footnote}>You do not need to own the Page. Your Facebook profile needs the appropriate assigned access, and the Instagram account must be a linked professional account.</p>}
           <fieldset className={styles.accounts} disabled={busy}>
             <legend className="sr-only">Instagram accounts linked to Facebook Pages</legend>
             {options?.accounts.map(account => <label key={account.accountId} className={`${styles.account} ${selected === account.accountId ? styles.selected : ''}`}>
@@ -86,12 +90,12 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
         <section className={`${styles.card} ${styles.permissions}`} aria-labelledby="permissions-heading">
           <div className={styles.permissionHeading}><ShieldCheck size={21} /><h2 id="permissions-heading">Your Meta permissions</h2></div>
           <p className={styles.intro}>Access granted during this authorization, across your Instagram use cases.</p>
-          <p role="status" className={styles.summary}>{options ? `${grantedCount} of ${capabilities.length} use cases have all required permissions` : 'Checking permissions…'}</p>
+          <p role="status" className={styles.summary}>{options ? `${grantedCount} of ${capabilities.length} use cases have all required permissions` : error ? 'Permissions could not be verified.' : 'Checking permissions…'}</p>
           <div className={styles.capabilities}>{capabilities.map(({ title, description, scopes, icon: Icon }) => {
             const enabled = scopes.every(scope => granted.has(scope));
             return <div key={title} className={styles.capability}>
               <span className={styles.capabilityIcon}><Icon size={18} /></span>
-              <div><div className={styles.capabilityTitle}><h3>{title}</h3><span className={enabled ? styles.granted : styles.missing}>{!options ? 'Checking' : enabled ? <><Check size={11} /> Granted</> : 'Not granted'}</span></div><p>{description}</p></div>
+              <div><div className={styles.capabilityTitle}><h3>{title}</h3><span className={enabled ? styles.granted : styles.missing}>{!options ? (error ? 'Unknown' : 'Checking') : enabled ? <><Check size={11} /> Granted</> : 'Not granted'}</span></div><p>{description}</p></div>
             </div>;
           })}</div>
           <p className={styles.permissionNote}>Granted permissions apply to this connection. Publishing, messaging, and live metrics also depend on the selected account’s eligibility and setup. Reauthorize to request any missing access.</p>

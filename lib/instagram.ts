@@ -1,4 +1,4 @@
-import { discoverMetaPages } from "@/lib/metaPageDiscovery";
+import { discoverMetaPages, type MetaPageDiscoveryResult } from "@/lib/metaPageDiscovery";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { publishingFetch as fetch } from "@/lib/publishing/executionContext";
 // ─────────────────────────────────────────────────────────────
@@ -277,7 +277,7 @@ export async function exchangeForLongLivedToken(
 
 export async function listManagedPages(
   userAccessToken: string
-): Promise<FacebookPage[]> {
+): Promise<MetaPageDiscoveryResult> {
   const { APP_ID, APP_SECRET } = requireAppCredentials();
   return discoverMetaPages(userAccessToken, { appId: APP_ID, appSecret: APP_SECRET, instagram: true });
 }

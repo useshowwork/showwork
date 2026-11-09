@@ -49,6 +49,8 @@ async function invoke(
       return NextResponse.json(
         {
           error: error instanceof MetaDiscoveryError ? error.message : "Account selection failed. Please reconnect.",
+          code: error instanceof MetaDiscoveryError ? error.code : "INSTAGRAM_DISCOVERY_FAILED",
+          diagnostics: error instanceof MetaDiscoveryError ? error.diagnostics : undefined,
         },
         {
           status: 409,
@@ -222,7 +224,8 @@ async function invoke(
 
       instagramAccountsFound: eligiblePages.length,
 
-      discoveryStatus,
+      ...allPages.diagnostics,
+      discoveryStatus: allPages.diagnostics?.discoveryStatus ?? discoveryStatus,
 
       permissions: permissionDiagnostics,
     };
@@ -237,6 +240,7 @@ async function invoke(
 
         pageId: page.id,
 
+        tasks: page.tasks ?? null,
         name: `${
           page.name
         } — ${
@@ -301,7 +305,7 @@ async function invoke(
       return NextResponse.json(
         {
           error:
-            "Select an Instagram account linked to a Facebook Page you administer.",
+            "Select an Instagram account linked to a Facebook Page you have permission to use.",
           code: "INSTAGRAM_ACCOUNT_NOT_FOUND",
         },
         {
@@ -368,6 +372,7 @@ async function invoke(
           error instanceof MetaDiscoveryError ? error.message : "Instagram account discovery failed. Please reconnect and try again.",
 
         code: error instanceof MetaDiscoveryError ? error.code : "INSTAGRAM_DISCOVERY_FAILED",
+        diagnostics: error instanceof MetaDiscoveryError ? error.diagnostics : undefined,
       },
       {
         status: 502,

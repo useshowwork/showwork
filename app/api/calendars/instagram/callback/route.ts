@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   /* canonical-integration-boundary */ if (publishingIntegrationInstalled()) { try { return await invokePublishingEntrypoint<never>("app/api/calendars/instagram/callback/route.ts#GET@27",Array.from(arguments)); }
     catch (error) {
       if (!(error instanceof MetaDiscoveryError)) throw error;
-      return NextResponse.json({ error: error.message, code: error.code }, { status: 502, headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ error: error.message, code: error.code, diagnostics: error.diagnostics }, { status: 502, headers: { "Cache-Control": "no-store" } });
     } } /* end-canonical-integration-boundary */
 
   const calendarId = verifyChannelOAuthState("instagram", req.nextUrl.searchParams.get("state"), req.cookies.get("showwork_instagram_oauth_state")?.value);

@@ -20,9 +20,14 @@ const CHANNEL_META: Record<AdditionalChannel, { name: string; mark: string; colo
 const ERROR_MESSAGES: Record<string, string> = {
   denied: "The connection was cancelled.",
   not_configured: "This channel is not configured yet. Ask an administrator to finish its developer app setup.",
-  not_found: "This workspace could not be found or you do not own it.",
+  not_found: "This workspace could not be found or you do not have permission to manage its channels.",
   missing_state: "The secure connection session expired. Please try connecting again.",
-  no_page: "No Facebook Page was available to connect. Make sure the account manages a Page and try again.",
+  no_page: "Meta returned no eligible Page for this authorization. Check your assigned Page access and select the client’s Page when reconnecting.",
+  META_DISCOVERY_PERMISSION_MISSING: "Meta did not grant Page list access. Reconnect and allow the requested Page permissions.",
+  META_DISCOVERY_INCOMPLETE: "Meta could not finish checking your assigned Pages. This does not mean you have no Pages. Check your asset assignment and reconnect.",
+  META_TOKEN_INVALID: "Your Meta authorization expired or is invalid. Reconnect Facebook.",
+  META_TOKEN_MISMATCH: "Meta returned authorization for a different app. Restart the connection and ask the administrator to check the Meta app configuration.",
+  META_PAGE_ACCESS_FAILED: "Meta could not verify your Page access. Check the Page assignment and reconnect.",
   connection_failed: "The account could not be connected. Check the channel permissions and try again.",
 };
 

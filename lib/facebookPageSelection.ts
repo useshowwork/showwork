@@ -1,3 +1,4 @@
+import type { MetaDiscoveryDiagnostics } from "@/lib/metaPageDiscovery";
 import {
   createCipheriv,
   createDecipheriv,
@@ -17,6 +18,7 @@ type FacebookPageSelectionPayload = {
   grantedPermissions: string[];
   userTokenExpiresAt: number | null;
   expiresAt: number;
+  diagnostics?: MetaDiscoveryDiagnostics;
 };
 
 const SELECTION_TTL_SECONDS = 10 * 60;
@@ -40,17 +42,20 @@ export function createFacebookPageSelection({
   pages,
   grantedPermissions,
   userTokenExpiresAt,
+  diagnostics,
 }: {
   calendarId: string;
   pages: FacebookPageOption[];
   grantedPermissions: string[];
   userTokenExpiresAt: number | null;
+  diagnostics?: MetaDiscoveryDiagnostics;
 }) {
   const payload: FacebookPageSelectionPayload = {
     calendarId,
     pages,
     grantedPermissions,
     userTokenExpiresAt,
+    diagnostics,
     expiresAt: Math.floor(Date.now() / 1000) + SELECTION_TTL_SECONDS,
   };
 

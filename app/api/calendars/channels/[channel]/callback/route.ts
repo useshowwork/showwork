@@ -1,3 +1,4 @@
+import { MetaDiscoveryError } from "@/lib/metaPageDiscovery";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
@@ -159,6 +160,7 @@ export async function GET(
           accessToken: page.access_token,
         })),
         grantedPermissions,
+        diagnostics: pages.diagnostics,
         userTokenExpiresAt:
           longLived.expires_in && Number.isFinite(longLived.expires_in)
             ? Date.now() + longLived.expires_in * 1000
@@ -270,10 +272,10 @@ export async function GET(
       `${settingsPath}&${channel}Connected=true`,
     );
   } catch (error) {
-    console.error(`${channel} OAuth callback failed:`, error);
+    console.error(`${channel} OAuth callback failed`, { code: error instanceof MetaDiscoveryError ? error.code : "OAUTH_FAILED" });
 
     return makeRedirect(
-      `${settingsPath}&${channel}Error=connection_failed`,
+      `${settingsPath}&${channel}Error=${error instanceof MetaDiscoveryError ? error.code : "connection_failed"}`,
     );
   }
 }
