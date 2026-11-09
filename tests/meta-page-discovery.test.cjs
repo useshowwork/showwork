@@ -14,7 +14,7 @@ function harness({token={},pages=[page()],direct={},relationship={},businesses=[
   if(/\/(owned_pages|client_pages)$/.test(path))return Response.json(businessPages[path]??{data:[]});
   if(path==='/me/accounts')return Response.json(typeof pages==='function'?pages(u.searchParams):{data:pages});
   const id=path.slice(1);
-  if(u.searchParams.get('fields').startsWith('instagram'))return Response.json(relationship[id]??{instagram_business_account:{id:'ig-'+id,username:'creator'}});
+  if(u.searchParams.get('fields').startsWith('instagram'))return Response.json(typeof relationship==='function'?relationship(id,init.headers.Authorization):relationship[id]??{instagram_business_account:{id:'ig-'+id,username:'creator'}});
   return Response.json(direct[id]??page(id));
  }}});
  return {...api,calls,run:()=>api.discoverMetaPages('secret-user-token',config)};
@@ -22,7 +22,7 @@ function harness({token={},pages=[page()],direct={},relationship={},businesses=[
 test('one authorized Page and Creator/Business relationship connects without Insights',async()=>{
  const h=harness(),result=await h.run();assert.equal(result[0].instagram_business_account.id,'ig-101');
  assert.equal(h.calls.find(c=>c.path==='/me/accounts').auth,'Bearer secret-user-token');
- assert.equal(h.calls.find(c=>c.path==='/101').auth,'Bearer page-token-101');
+ assert.equal(h.calls.find(c=>c.path==='/101').auth,'Bearer secret-user-token');
 });
 test('paginates multiple Pages and never follows provider-supplied URLs',async()=>{
  const h=harness({pages:params=>params.has('after')?{data:[page('102')]}:{data:[page()],paging:{next:'https://evil.test',cursors:{after:'cursor'}}}});
@@ -107,4 +107,51 @@ test('safe diagnostics identify the discovered Page without claiming its absent 
 test('safe Page diagnostics distinguish failed relationship reads from missing relationships',async()=>{
  const h=harness({fail:'/101'});
  await assert.rejects(h.run(),error=>error.diagnostics.pages[0].instagramRelationship==='CHECK_FAILED');
+});
+
+test('raw Page enumeration counts are distinct from selection-filtered counts',async()=>{
+ const h=harness({pages:[page('101'),page('102')],token:{granular_scopes:[{scope:'pages_show_list',target_ids:['103']}]}});
+ const result=await h.run();assert.equal(result.diagnostics.accountsReturned,2);assert.equal(result.diagnostics.accountsExcludedBySelection,2);assert.equal(result.diagnostics.sources.accounts,0);
+});
+test('direct delegated Page probe separates user and Page token relationship responses without returning credentials',async()=>{
+ const h=harness({token:{granular_scopes:[{scope:'pages_show_list',target_ids:['310133648860313']}]},relationship:(_id,auth)=>auth==='Bearer secret-user-token'?{instagram_business_account:{id:'17841474912514889',username:'useshowworkofficial'}}:{}});
+ const report=await h.inspectMetaPageAccess('secret-user-token',config,'381092961751993');
+ assert.equal(report.readOnly,true);assert.equal(report.pageListSelection,'NOT_SELECTED');assert.equal(report.pageTokenIssued,true);assert.equal(report.userTokenRelationship.status,'FOUND');assert.equal(report.pageTokenRelationship.status,'NOT_RETURNED');
+ assert.ok(!JSON.stringify(report).includes('secret-user-token'));assert.ok(!JSON.stringify(report).includes('page-token-'));
+ assert.equal(h.calls.length,4);assert.ok(!h.calls.some(call=>call.path==='/me/accounts'));
+});
+test('public Page identity alone does not prove delegated access',async()=>{
+ const h=harness({direct:{381092961751993:{id:'381092961751993',name:'Public Page'}},relationship:{381092961751993:{}}});
+ const report=await h.inspectMetaPageAccess('secret-user-token',config,'381092961751993');
+ assert.equal(report.pageTokenIssued,false);assert.equal(report.pageCheck,'NO_PAGE_TOKEN');assert.equal(report.pageTokenRelationship,undefined);
+});
+test('direct probe reports actual provider denial codes without raw error messages',async()=>{
+ const h=harness({fail:'/381092961751993'});const report=await h.inspectMetaPageAccess('secret-user-token',config,'381092961751993');
+ assert.equal(report.pageCheck,'ACCESS_CHECK_FAILED');assert.equal(report.error.providerCode,100);assert.ok(!JSON.stringify(report).includes('secret-user-token'));
+});
+test('direct Page probe rejects paths and URLs before any Graph request',async()=>{
+ for(const id of ['../me','https://evil.test','123?fields=access_token']) {
+  const h=harness();await assert.rejects(h.inspectMetaPageAccess('secret-user-token',config,id),e=>e.code==='META_PAGE_ID_INVALID');assert.equal(h.calls.length,0);
+ }
+});
+
+test('delegated user relationship connects even when Page token cannot see it',async()=>{
+ const h=harness({relationship:(id,auth)=>auth==='Bearer secret-user-token'?{instagram_business_account:{id:'delegated-ig'}}:{}});
+ const result=await h.run();assert.equal(result[0].instagram_business_account.id,'delegated-ig');
+ assert.equal(result[0].access_token,'page-token-101');
+ assert.equal(h.calls.filter(c=>c.path==='/101').length,1);
+});
+test('relationship from user Page enumeration is preserved without another lookup',async()=>{
+ const h=harness({pages:[{...page(),instagram_business_account:{id:'listed-ig'}}],relationship:{101:{}}});
+ const result=await h.run();assert.equal(result[0].instagram_business_account.id,'listed-ig');
+ assert.equal(h.calls.filter(c=>c.path==='/101').length,0);
+});
+test('Page-token fallback preserves connections when only Page token exposes relationship',async()=>{
+ const h=harness({relationship:(id,auth)=>auth==='Bearer page-token-101'?{instagram_business_account:{id:'owner-ig'}}:{}});
+ assert.equal((await h.run())[0].instagram_business_account.id,'owner-ig');
+});
+test('direct delegated lookup preserves user-token relationship and Page credential',async()=>{
+ const h=harness({pages:[],token:{granular_scopes:[{scope:'pages_show_list',target_ids:['101']}]},direct:{101:{...page(),instagram_business_account:{id:'direct-ig'}}}});
+ const result=await h.run();assert.equal(result[0].instagram_business_account.id,'direct-ig');assert.equal(result[0].access_token,'page-token-101');
+ assert.equal(h.calls.filter(c=>c.path==='/101').length,1);
 });

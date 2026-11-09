@@ -13,7 +13,7 @@ test('canonical callback uses real shared discovery, keeps Page tokens and recon
     if(u.pathname.endsWith('/debug_token'))return Response.json({data:{is_valid:true,type:'USER',app_id:'app',user_id:'user',scopes:['pages_show_list','pages_read_engagement','instagram_basic','instagram_content_publish'],granular_scopes:[{scope:'pages_show_list',target_ids:['123']}]}});
     if(u.pathname.endsWith('/me/accounts'))return Response.json({data:[]});
     if(u.pathname.endsWith('/123')&&u.searchParams.get('fields').includes('access_token'))return Response.json({id:'123',name:'Business',access_token:'verified-page-token'});
-    if(u.pathname.endsWith('/123')){assert.equal(init.headers.Authorization,'Bearer verified-page-token');return Response.json({instagram_business_account:{id:'ig',username:'creator'}});}
+    if(u.pathname.endsWith('/123')){assert.equal(init.headers.Authorization,'Bearer user-token');return Response.json({instagram_business_account:{id:'ig',username:'creator'}});}
     throw Error('Unexpected request');
    };
    const mocks={

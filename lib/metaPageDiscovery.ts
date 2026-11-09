@@ -19,6 +19,8 @@ export type MetaDiscoveryDiagnostics = {
   businessDiscovery: "NOT_GRANTED" | "CHECKED";
   pages?: { pageId: string; name: string; tasks: string[] | null; instagramRelationship: "FOUND" | "NOT_RETURNED" | "CHECK_FAILED" | "NOT_CHECKED"; instagramAccountId: string | null }[];
   pagesTruncated?: boolean;
+  accountsReturned?: number;
+  accountsExcludedBySelection?: number;
   sources: { accounts: number; granular: number; business: number };
   issues: { stage: "page_list" | "business_list" | "business_pages" | "page_token" | "instagram_link"; code: string; providerCode?: number; providerSubcode?: number }[];
 };
@@ -104,10 +106,14 @@ export async function discoverMetaPages(userToken: string, config: { appId: stri
   const pageGrants = token.granular_scopes ?? [];
   const listGrant = pageGrants.find(grant => grant.scope === "pages_show_list");
   const allowed = listGrant?.target_ids ? new Set(listGrant.target_ids) : null;
+  diagnostics.accountsReturned = 0;
+  diagnostics.accountsExcludedBySelection = 0;
   const pages = new Map<string, MetaPage>();
   const candidates = new Map<string, "granular" | "business">();
   try {
-    await list<MetaPage>("/me/accounts", "id,name,access_token,tasks", page => {
+    await list<MetaPage>("/me/accounts", config.instagram ? "id,name,access_token,tasks,instagram_business_account{id,username}" : "id,name,access_token,tasks", page => {
+      diagnostics.accountsReturned!++;
+      if (allowed && !allowed.has(page.id)) diagnostics.accountsExcludedBySelection!++;
       if (/^\d+$/.test(page.id) && (!allowed || allowed.has(page.id))) {
         if (page.access_token) { pages.set(page.id, page); diagnostics.sources.accounts++; }
         else candidates.set(page.id, "granular");
@@ -133,7 +139,7 @@ export async function discoverMetaPages(userToken: string, config: { appId: stri
   for (const [id, source] of candidates) {
     if (pages.has(id)) continue;
     try {
-      const page = await request<MetaPage>(`/${id}`, { fields: "id,name,access_token" });
+      const page = await request<MetaPage>(`/${id}`, { fields: config.instagram ? "id,name,access_token,instagram_business_account{id,username}" : "id,name,access_token" });
       if (page.id !== id || !page.access_token) throw new MetaDiscoveryError("META_PAGE_TOKEN_MISSING", "Meta did not issue a Page token for the authorizing user's assigned access.");
       pages.set(id, page); diagnostics.sources[source]++;
     } catch (error) { issue("page_token", error); }
@@ -141,10 +147,25 @@ export async function discoverMetaPages(userToken: string, config: { appId: stri
   const failedRelationships = new Set<string>();
   for (const [id, page] of pages) {
     if (!page.name || !page.access_token) { pages.delete(id); issue("page_token", new MetaDiscoveryError("META_PAGE_TOKEN_MISSING", "Meta returned an incomplete Page.")); continue; }
-    if (config.instagram) try {
-      const relationship = await get<Pick<MetaPage,"instagram_business_account">>(`/${page.id}`, page.access_token, {fields:"instagram_business_account{id,username}"});
-      page.instagram_business_account = relationship.instagram_business_account;
-    } catch (error) { failedRelationships.add(id); issue("instagram_link", error); }
+    if (config.instagram && !page.instagram_business_account?.id) {
+      // The authorizing user's token can expose delegated relationships that a
+      // Page token cannot. Preserve relationships already returned by user-token
+      // enumeration, and keep the Page token exclusively as the Page credential.
+      let lookupError: unknown;
+      for (const credential of [userToken, page.access_token]) {
+        try {
+          const relationship = await get<Pick<MetaPage,"instagram_business_account">>(`/${page.id}`, credential, {fields:"instagram_business_account{id,username}"});
+          if (relationship.instagram_business_account?.id) {
+            page.instagram_business_account = relationship.instagram_business_account;
+            break;
+          }
+        } catch (error) { lookupError = error; }
+      }
+      if (!page.instagram_business_account?.id && lookupError) {
+        failedRelationships.add(id);
+        issue("instagram_link", lookupError);
+      }
+    }
   }
   // Explicit safe projection: never spread provider Page objects (they contain tokens).
   diagnostics.pages = [...pages.values()].slice(0, 25).map(page => ({
@@ -163,5 +184,45 @@ export async function discoverMetaPages(userToken: string, config: { appId: stri
   }
   const result: MetaPageDiscoveryResult = [...pages.values()];
   Object.defineProperty(result, "diagnostics", {value: diagnostics});
+  return result;
+}
+
+/** Read-only support probe. A supplied ID is never added to discovery candidates
+ * or accepted as connection evidence. Meta must authorize each request itself.
+ * Only explicit safe projections leave this helper; credentials never do.
+ */
+export async function inspectMetaPageAccess(userToken: string, config: {appId: string; appSecret: string}, pageId: string) {
+  if (!/^\d{5,30}$/.test(pageId)) throw new MetaDiscoveryError("META_PAGE_ID_INVALID", "Enter the numeric Facebook Page ID, not a Business Portfolio or Instagram ID.");
+  const token = await validateMetaUserToken(userToken, config.appId, config.appSecret);
+  const pageGrant = token.granular_scopes?.find(grant => grant.scope === "pages_show_list");
+  const selection = pageGrant?.target_ids ? pageGrant.target_ids.includes(pageId) ? "SELECTED" : "NOT_SELECTED" : "UNSPECIFIED";
+  const result: {
+    readOnly: true; pageId: string; pageListSelection: string; pageName?: string;
+    pageTokenIssued: boolean; pageCheck: string;
+    userTokenRelationship?: {status: string; instagramAccountId?: string; username?: string; code?: string; providerCode?: number};
+    pageTokenRelationship?: {status: string; instagramAccountId?: string; username?: string; code?: string; providerCode?: number};
+    error?: {code:string; providerCode?:number; providerSubcode?:number};
+  } = {readOnly: true, pageId, pageListSelection: selection, pageTokenIssued: false, pageCheck: "NOT_CHECKED"};
+  function safeFailure(error: unknown) {
+    if (!(error instanceof MetaDiscoveryError)) throw error;
+    return {code:error.code,providerCode:error.providerCode,providerSubcode:error.providerSubcode};
+  }
+  let page: MetaPage;
+  try {
+    page = await get<MetaPage>(`/${pageId}`, userToken, {fields:"id,name,access_token"});
+    if (page.id !== pageId) { result.pageCheck = "IDENTITY_MISMATCH"; return result; }
+    result.pageTokenIssued = !!page.access_token;
+    result.pageCheck = page.access_token ? "PAGE_TOKEN_ISSUED" : "NO_PAGE_TOKEN";
+    if (typeof page.name === "string") result.pageName = page.name;
+  } catch (error) { result.pageCheck = "ACCESS_CHECK_FAILED"; result.error = safeFailure(error); return result; }
+  async function relationship(accessToken: string) {
+    try {
+      const response = await get<Pick<MetaPage,"instagram_business_account">>(`/${pageId}`,accessToken,{fields:"instagram_business_account{id,username}"});
+      const ig = response.instagram_business_account;
+      return ig?.id ? {status:"FOUND",instagramAccountId:ig.id,username:ig.username} : {status:"NOT_RETURNED"};
+    } catch (error) { return {status:"CHECK_FAILED",...safeFailure(error)}; }
+  }
+  result.userTokenRelationship = await relationship(userToken);
+  if (page.access_token) result.pageTokenRelationship = await relationship(page.access_token);
   return result;
 }

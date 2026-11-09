@@ -16,6 +16,7 @@ import {
 
 import {
   listManagedPages,
+  inspectInstagramPageAccess,
   listInstagramGrantedPermissions,
 } from "@/lib/instagram";
 
@@ -154,6 +155,14 @@ async function invoke(
     // ==========================================================
 
     const userAccessToken = session.pages[0].accessToken;
+
+    // Explicit read-only diagnostic using this browser's actor/workspace-bound
+    // OAuth session. This ID is never passed to account binding or discovery.
+    const checkPageId = request.nextUrl.searchParams.get("checkPageId");
+    if (request.method === "GET" && checkPageId !== null) {
+      if (!/^\d{5,30}$/.test(checkPageId)) return NextResponse.json({error:"Enter the numeric Facebook Page ID."},{status:400,headers:NO_STORE_HEADERS});
+      return NextResponse.json({pageAccessCheck:await inspectInstagramPageAccess(userAccessToken,checkPageId)}, {headers:NO_STORE_HEADERS});
+    }
 
     const grantedPermissions =
       await listInstagramGrantedPermissions(userAccessToken);

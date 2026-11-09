@@ -48,3 +48,19 @@ test('workspace connection authorization is re-read, so removal blocks reuse imm
  assert.equal(await hasCalendarPermission('member','client-a','channels.view'),false);
  assert.equal(await hasCalendarPermission('member','client-a','channels.manage'),false);
 });
+
+test('direct Page diagnostic requires workspace permission and the matching authorizing creator',async()=>{
+ for(const [allowed,actor,pageId,status]of [[false,'member','381092961751993',403],[true,'other','381092961751993',409],[true,'member','../me',400],[true,'member','381092961751993',200]]) {
+  let checks=0,binds=0;
+  const route=load('app/api/calendars/[id]/instagram/select-account/route.ts',{
+   '@/lib/publishing/applicationBoundary':{publishingIntegrationInstalled:()=>false},
+   '@/lib/auth':{getCurrentCreator:async()=>({id:actor})},
+   '@/lib/calendarPermissions':{hasCalendarPermission:async()=>allowed},
+   '@/lib/facebookPageSelection':{verifyFacebookPageSelection:()=>({calendarId:'client-a',pages:[{id:'member',accessToken:'secret-user-token'}]}),facebookPageSelectionCookieOptions:()=>({})},
+   '@/lib/instagram':{inspectInstagramPageAccess:async(token,id)=>{assert.equal(token,'secret-user-token');assert.equal(id,'381092961751993');checks++;return {readOnly:true,pageTokenIssued:false};}},
+   '@/lib/instagramConnection':{completeInstagramConnection:async()=>binds++},
+  });
+  const response=await route.GET(new NextRequest('https://test/api/calendars/client-a/instagram/select-account?'+new URLSearchParams({checkPageId:pageId})),{params:Promise.resolve({id:'client-a'})});
+  assert.equal(response.status,status);assert.equal(checks,status===200?1:0);assert.equal(binds,0);assert.equal(response.headers.get('cache-control'),'no-store');assert.ok(!(await response.text()).includes('secret-user-token'));
+ }
+});

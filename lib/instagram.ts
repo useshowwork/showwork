@@ -1,5 +1,5 @@
 import { metaBusinessManagementScopes } from "@/lib/metaOAuthScopes";
-import { discoverMetaPages, type MetaPageDiscoveryResult } from "@/lib/metaPageDiscovery";
+import { discoverMetaPages, inspectMetaPageAccess, type MetaPageDiscoveryResult } from "@/lib/metaPageDiscovery";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { publishingFetch as fetch } from "@/lib/publishing/executionContext";
 // ─────────────────────────────────────────────────────────────
@@ -574,4 +574,10 @@ export async function getMediaPermalink(
   } catch {
     return null;
   }
+}
+
+/** Uses only the caller's current OAuth user session; never saves a connection. */
+export async function inspectInstagramPageAccess(userAccessToken: string, pageId: string) {
+  const { APP_ID, APP_SECRET } = requireAppCredentials();
+  return inspectMetaPageAccess(userAccessToken, {appId: APP_ID, appSecret: APP_SECRET}, pageId);
 }
