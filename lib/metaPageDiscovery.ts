@@ -17,6 +17,8 @@ export type MetaDiscoveryDiagnostics = {
   facebookPagesFound: number;
   instagramAccountsFound: number;
   businessDiscovery: "NOT_GRANTED" | "CHECKED";
+  pages?: { pageId: string; name: string; tasks: string[] | null; instagramRelationship: "FOUND" | "NOT_RETURNED" | "CHECK_FAILED" | "NOT_CHECKED"; instagramAccountId: string | null }[];
+  pagesTruncated?: boolean;
   sources: { accounts: number; granular: number; business: number };
   issues: { stage: "page_list" | "business_list" | "business_pages" | "page_token" | "instagram_link"; code: string; providerCode?: number; providerSubcode?: number }[];
 };
@@ -136,13 +138,22 @@ export async function discoverMetaPages(userToken: string, config: { appId: stri
       pages.set(id, page); diagnostics.sources[source]++;
     } catch (error) { issue("page_token", error); }
   }
+  const failedRelationships = new Set<string>();
   for (const [id, page] of pages) {
     if (!page.name || !page.access_token) { pages.delete(id); issue("page_token", new MetaDiscoveryError("META_PAGE_TOKEN_MISSING", "Meta returned an incomplete Page.")); continue; }
     if (config.instagram) try {
       const relationship = await get<Pick<MetaPage,"instagram_business_account">>(`/${page.id}`, page.access_token, {fields:"instagram_business_account{id,username}"});
       page.instagram_business_account = relationship.instagram_business_account;
-    } catch (error) { issue("instagram_link", error); }
+    } catch (error) { failedRelationships.add(id); issue("instagram_link", error); }
   }
+  // Explicit safe projection: never spread provider Page objects (they contain tokens).
+  diagnostics.pages = [...pages.values()].slice(0, 25).map(page => ({
+    pageId: page.id, name: page.name,
+    tasks: Array.isArray(page.tasks) ? page.tasks.filter(task => typeof task === "string") : null,
+    instagramRelationship: !config.instagram ? "NOT_CHECKED" : failedRelationships.has(page.id) ? "CHECK_FAILED" : page.instagram_business_account?.id ? "FOUND" : "NOT_RETURNED",
+    instagramAccountId: page.instagram_business_account?.id ?? null,
+  }));
+  diagnostics.pagesTruncated = pages.size > 25;
   diagnostics.facebookPagesFound = pages.size;
   diagnostics.instagramAccountsFound = [...pages.values()].filter(page => page.instagram_business_account?.id).length;
   diagnostics.discoveryStatus = diagnostics.issues.length ? "DISCOVERY_INCOMPLETE" : config.instagram && diagnostics.instagramAccountsFound ? "ACCOUNTS_FOUND" : !pages.size ? "NO_FACEBOOK_PAGES" : config.instagram ? "NO_INSTAGRAM_RELATIONSHIP" : "ACCOUNTS_FOUND";

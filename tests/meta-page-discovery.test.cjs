@@ -94,3 +94,17 @@ test('failed business listing preserves working owner Page with a partial-discov
 test('missing permissions name the actual missing scopes without inferring Page ownership',async()=>{
  const h=harness({token:{scopes:['pages_show_list']}});await assert.rejects(h.run(),e=>e.code==='META_DISCOVERY_PERMISSION_MISSING'&&e.message.includes('instagram_basic')&&e.message.includes('pages_read_engagement'));
 });
+
+test('safe diagnostics identify the discovered Page without claiming its absent relationship is a broken link',async()=>{
+ const h=harness({pages:[],token:{granular_scopes:[{scope:'pages_show_list',target_ids:['101']}]},relationship:{101:{}}});
+ const result=await h.run();
+ assert.equal(result.diagnostics.discoveryStatus,'NO_INSTAGRAM_RELATIONSHIP');
+ assert.deepEqual(result.diagnostics.pages,[{pageId:'101',name:'Business',tasks:['MESSAGING'],instagramRelationship:'NOT_RETURNED',instagramAccountId:null}]);
+ assert.ok(!JSON.stringify(result.diagnostics).includes('page-token'));
+ assert.ok(!JSON.stringify(result.diagnostics).includes('secret-user-token'));
+ assert.equal(result.diagnostics.pagesTruncated,false);
+});
+test('safe Page diagnostics distinguish failed relationship reads from missing relationships',async()=>{
+ const h=harness({fail:'/101'});
+ await assert.rejects(h.run(),error=>error.diagnostics.pages[0].instagramRelationship==='CHECK_FAILED');
+});

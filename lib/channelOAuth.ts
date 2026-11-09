@@ -1,3 +1,4 @@
+import { metaBusinessManagementScopes } from "@/lib/metaOAuthScopes";
 import { discoverMetaPages } from "@/lib/metaPageDiscovery";
 import { linkedInMessagingConfigured } from "@/lib/linkedin/messagingAccess";
 import {publishingFetch as fetch} from '@/lib/publishing/executionContext';
@@ -66,7 +67,7 @@ export function buildChannelAuthorizationUrl({
   });
 
   if (channel === "facebook") {
-    params.set("scope", "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,pages_messaging,pages_manage_metadata");
+    params.set("scope", ["pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,pages_messaging,pages_manage_metadata", ...metaBusinessManagementScopes("facebook")].join(","));
     params.set("auth_type", "rerequest");
     return `https://www.facebook.com/${process.env.META_GRAPH_API_VERSION || "v26.0"}/dialog/oauth?${params}`;
   }

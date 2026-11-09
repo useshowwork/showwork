@@ -9,7 +9,7 @@ type Selection = {
   accounts: { accountId: string; pageId: string; name: string }[];
   expectedVersion: number;
   grantedPermissions?: string[];
-  diagnostics?: { discoveryStatus?: string; businessDiscovery?: string; issues?: {stage: string; code: string; providerCode?: number; providerSubcode?: number}[] };
+  diagnostics?: { discoveryStatus?: string; businessDiscovery?: string; pages?: {pageId: string; name: string; instagramRelationship: string}[]; pagesTruncated?: boolean; issues?: {stage: string; code: string; providerCode?: number; providerSubcode?: number}[] };
 };
 const capabilities = [
   { title: 'Account & profile', description: 'Access your Instagram professional profile and media.', scopes: ['instagram_basic'], icon: Camera },
@@ -69,8 +69,15 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
           <p className={styles.intro}>Select a Facebook Page and its linked Instagram professional account.</p>
           {!options && !error && <p role="status" className={styles.notice}><Loader2 size={18} className={styles.spinner} /> Loading your linked accounts…</p>}
           {options && options.accounts.length === 0 && <p className={styles.notice}>{options.diagnostics?.discoveryStatus === 'DISCOVERY_INCOMPLETE' ? 'Some account checks failed. Meta has not confirmed the complete list of Pages you can use.' : options.diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' ? 'Meta returned no eligible Pages for this authorization. Ask the client to check your Page assignment in Business Portfolio, then reconnect and select the Page and Instagram account.' : options.diagnostics?.discoveryStatus === 'PAGES_PERMISSION_MISSING' ? 'Page access was not granted. Restart authorization and allow access to your Facebook Page.' : 'No linked Instagram professional accounts found. Check your Page-to-Instagram connection and allow access to both assets when reconnecting.'}</p>}
+          {!!diagnostics?.pages?.length && (!options || options.accounts.length === 0) && <div className={styles.notice}>
+            <strong>Facebook Pages found</strong>
+            <p>Check that this is the Page linked to the Instagram account you selected.</p>
+            <ul>{diagnostics.pages.map(page => <li key={page.pageId}><strong>{page.name}</strong> · Page ID: {page.pageId}<br/>{page.instagramRelationship === 'NOT_RETURNED' ? 'Meta did not return a linked Instagram professional account.' : page.instagramRelationship === 'CHECK_FAILED' ? 'The Instagram link could not be checked.' : 'Linked Instagram account found.'}</li>)}</ul>
+            {diagnostics.pagesTruncated && <p>Showing the first 25 discovered Pages.</p>}
+          </div>}
           {!!diagnostics?.issues?.length && <details className={styles.notice}><summary>Connection check details</summary><p>Some accounts could not be checked. You can connect an available account or retry authorization.</p><ul>{diagnostics.issues.map((issue, index) => <li key={index}>{issue.stage.replaceAll('_', ' ')}: {issue.code}{issue.providerCode !== undefined ? ` (Meta ${issue.providerCode}${issue.providerSubcode !== undefined ? ` / ${issue.providerSubcode}` : ''})` : ''}</li>)}</ul></details>}
           {options?.accounts.length === 0 && <p className={styles.footnote}>You do not need to own the Page. Your Facebook profile needs the appropriate assigned access, and the Instagram account must be a linked professional account.</p>}
+          {options?.accounts.length === 0 && !diagnostics?.pages?.length && diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' && diagnostics?.businessDiscovery === 'NOT_GRANTED' && <p className={styles.footnote}>Business Portfolio discovery was not included in this authorization. If your assigned assets are correct, contact Showwork support to check the app’s Business access setup.</p>}
           <fieldset className={styles.accounts} disabled={busy}>
             <legend className="sr-only">Instagram accounts linked to Facebook Pages</legend>
             {options?.accounts.map(account => <label key={account.accountId} className={`${styles.account} ${selected === account.accountId ? styles.selected : ''}`}>

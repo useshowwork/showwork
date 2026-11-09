@@ -1,3 +1,4 @@
+import { metaBusinessManagementScopes } from "@/lib/metaOAuthScopes";
 import { discoverMetaPages, type MetaPageDiscoveryResult } from "@/lib/metaPageDiscovery";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { publishingFetch as fetch } from "@/lib/publishing/executionContext";
@@ -123,9 +124,10 @@ export function buildInstagramAuthUrl({
   const params = new URLSearchParams({
     client_id: APP_ID,
     redirect_uri: redirectUri,
-    scope: instagramInsightsEnabledForCreator(creatorId)
-      ? `${INSTAGRAM_BASE_OAUTH_SCOPES},instagram_manage_insights`
-      : INSTAGRAM_BASE_OAUTH_SCOPES,
+    scope: [INSTAGRAM_BASE_OAUTH_SCOPES,
+      ...(instagramInsightsEnabledForCreator(creatorId) ? ["instagram_manage_insights"] : []),
+      ...metaBusinessManagementScopes("instagram"),
+    ].join(","),
     auth_type: "rerequest",
     state,
     response_type: "code",
