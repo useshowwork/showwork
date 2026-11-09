@@ -12,7 +12,22 @@ export function findInboxSend(conversationId: string, operationKey: string) {
 /** A crashed/expired send is ambiguous, never a retryable failed send. */
 export async function reconcileStaleInboxSends(calendarId: string) {
   const cutoff = new Date(Date.now() - 2 * 60_000);
-  const stale = await db.socialInboxOutbound.findMany({ where: { conversation: { calendarId }, OR: [{ state: "SENDING", startedAt: { lt: cutoff } }, { state: "PENDING", createdAt: { lt: cutoff } }] }, take: 100 });
+  const convs = await db.socialLeadConversation.findMany({
+    where: { calendarId },
+    select: { id: true },
+  });
+  if (convs.length === 0) return;
+  const conversationIds = convs.map((c) => c.id);
+  const stale = await db.socialInboxOutbound.findMany({
+    where: {
+      conversationId: { in: conversationIds },
+      OR: [
+        { state: "SENDING", startedAt: { lt: cutoff } },
+        { state: "PENDING", createdAt: { lt: cutoff } },
+      ],
+    },
+    take: 100,
+  });
   for (const operation of stale) await db.$transaction(async tx => {
     const claimed = await tx.socialInboxOutbound.updateMany({ where: { id: operation.id, state: operation.state }, data: { state: operation.state === "PENDING" ? "CANCELLED" : "UNCONFIRMED" } });
     if (claimed.count) await tx.socialLeadMessage.updateMany({ where: { id: operation.messageId, status: "PENDING" }, data: { status: "FAILED", sendError: operation.state === "PENDING" ? "Reply cancelled before any provider send attempt. You can write a new reply." : UNCONFIRMED_REPLY } });
