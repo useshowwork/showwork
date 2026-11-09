@@ -51,3 +51,9 @@
 @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .page { padding: 28px 18px 48px; } .header { margin: 30px 0 26px; align-items: flex-start; } .brand { width: 48px; height: 48px; border-radius: 15px; } .card { padding: 24px; } }
 @media (max-width: 420px) { .header { gap: 12px; } .card { padding: 20px 16px; } .avatar { display: none; } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } .account { transition: none; } }
+
+.notice summary { cursor: pointer; font-weight: 600; }
+.notice label { display: block; margin: 12px 0 6px; font-size: 14px; }
+.notice input { width: 100%; min-width: 0; box-sizing: border-box; padding: 12px; border: 1px solid #8aa8d0; border-radius: 10px; background: transparent; color: inherit; font: inherit; }
+.notice button { margin-top: 10px; padding: 10px 16px; border: 0; border-radius: 10px; background: #1764ed; color: white; font: inherit; cursor: pointer; }
+.notice button:disabled { opacity: .5; cursor: default; }

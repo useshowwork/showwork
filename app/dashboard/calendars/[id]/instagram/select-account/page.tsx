@@ -25,6 +25,8 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
   const router = useRouter();
   const [options, setOptions] = useState<Selection | null>(null);
   const [selected, setSelected] = useState('');
+  const [pageId, setPageId] = useState('');
+  const [verifiedPageId, setVerifiedPageId] = useState('');
   const [error, setError] = useState('');
   const [failureDetails, setFailureDetails] = useState<Selection['diagnostics']>();
   const diagnostics = options?.diagnostics ?? failureDetails;
@@ -39,11 +41,23 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
       }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
     return () => controller.abort();
   }, [id]);
+  async function findPage() {
+    if (!/^\d{5,30}$/.test(pageId.trim()) || busy) return;
+    setBusy(true); setError('');
+    try {
+      const response = await fetch(`/api/calendars/${id}/instagram/select-account?pageId=${encodeURIComponent(pageId.trim())}`, {cache:'no-store'});
+      const body = await response.json();
+      if (!response.ok) throw Error(body.error || 'Could not verify Page access.');
+      setOptions(body); setVerifiedPageId(pageId.trim());
+      setSelected(body.accounts.length === 1 ? body.accounts[0].accountId : '');
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not verify Page access.'); }
+    finally { setBusy(false); }
+  }
   async function select() {
     if (!options || !selected || busy) return;
     setBusy(true); setError('');
     try {
-      const response = await calendarMutationFetch(`/api/calendars/${id}/instagram/select-account`, {
+      const response = await calendarMutationFetch(`/api/calendars/${id}/instagram/select-account${verifiedPageId ? `?pageId=${encodeURIComponent(verifiedPageId)}` : ''}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: selected, expectedVersion: options.expectedVersion }),
       });
@@ -78,6 +92,13 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
           {!!diagnostics?.issues?.length && <details className={styles.notice}><summary>Connection check details</summary><p>Some accounts could not be checked. You can connect an available account or retry authorization.</p><ul>{diagnostics.issues.map((issue, index) => <li key={index}>{issue.stage.replaceAll('_', ' ')}: {issue.code}{issue.providerCode !== undefined ? ` (Meta ${issue.providerCode}${issue.providerSubcode !== undefined ? ` / ${issue.providerSubcode}` : ''})` : ''}</li>)}</ul></details>}
           {options?.accounts.length === 0 && <p className={styles.footnote}>You do not need to own the Page. Your Facebook profile needs the appropriate assigned access, and the Instagram account must be a linked professional account.</p>}
           {options?.accounts.length === 0 && !diagnostics?.pages?.length && diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' && diagnostics?.businessDiscovery === 'NOT_GRANTED' && <p className={styles.footnote}>Business Portfolio discovery was not included in this authorization. If your assigned assets are correct, contact Showwork support to check the app’s Business access setup.</p>}
+          <details className={styles.notice}>
+            <summary>Missing your account? Find it by Facebook Page ID</summary>
+            <p>Meta sometimes omits assigned Pages. Enter your Page ID to verify access directly.</p>
+            <label htmlFor="instagram-page-id">Facebook Page ID</label>
+            <input id="instagram-page-id" inputMode="numeric" value={pageId} onChange={event => setPageId(event.target.value)} placeholder="Enter Page ID" disabled={busy} />
+            <button type="button" onClick={findPage} disabled={busy || !/^\d{5,30}$/.test(pageId.trim())}>Find account</button>
+          </details>
           <fieldset className={styles.accounts} disabled={busy}>
             <legend className="sr-only">Instagram accounts linked to Facebook Pages</legend>
             {options?.accounts.map(account => <label key={account.accountId} className={`${styles.account} ${selected === account.accountId ? styles.selected : ''}`}>

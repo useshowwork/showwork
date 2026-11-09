@@ -278,10 +278,10 @@ export async function exchangeForLongLivedToken(
 // ─────────────────────────────────────────────────────────────
 
 export async function listManagedPages(
-  userAccessToken: string
+  userAccessToken: string, pageId?: string
 ): Promise<MetaPageDiscoveryResult> {
   const { APP_ID, APP_SECRET } = requireAppCredentials();
-  return discoverMetaPages(userAccessToken, { appId: APP_ID, appSecret: APP_SECRET, instagram: true });
+  return discoverMetaPages(userAccessToken, { appId: APP_ID, appSecret: APP_SECRET, instagram: true, pageId });
 }
 
 export async function listInstagramGrantedPermissions(

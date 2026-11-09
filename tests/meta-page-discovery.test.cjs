@@ -155,3 +155,17 @@ test('direct delegated lookup preserves user-token relationship and Page credent
  const result=await h.run();assert.equal(result[0].instagram_business_account.id,'direct-ig');assert.equal(result[0].access_token,'page-token-101');
  assert.equal(h.calls.filter(c=>c.path==='/101').length,1);
 });
+
+test('manager Page ID recovers omitted delegated Page only after credential verification',async()=>{
+ const h=harness({pages:[]});
+ const result=await h.discoverMetaPages('secret-user-token',{...config,pageId:'381092961751993'});
+ assert.equal(result[0].id,'381092961751993');
+ assert.equal(result[0].access_token,'page-token-381092961751993');
+ assert.equal(result[0].instagram_business_account.id,'ig-381092961751993');
+});
+test('manager Page ID cannot bypass explicit asset exclusion or missing Page credentials',async()=>{
+ const excluded=harness({pages:[],token:{granular_scopes:[{scope:'pages_show_list',target_ids:[]}]}});
+ await assert.rejects(excluded.discoverMetaPages('secret-user-token',{...config,pageId:'381092961751993'}),e=>e.code==='META_PAGE_NOT_SELECTED');
+ const denied=harness({pages:[],direct:{381092961751993:{id:'381092961751993',name:'Public'}}});
+ await assert.rejects(denied.discoverMetaPages('secret-user-token',{...config,pageId:'381092961751993'}),e=>e.code==='META_DISCOVERY_INCOMPLETE');
+});

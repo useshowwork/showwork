@@ -194,7 +194,8 @@ async function invoke(
     // 7. DISCOVER FACEBOOK PAGES
     // ==========================================================
 
-    const allPages = await listManagedPages(userAccessToken);
+    const pageId = request.nextUrl.searchParams.get("pageId") ?? undefined;
+    const allPages = await listManagedPages(userAccessToken, pageId);
 
     // ==========================================================
     // 8. DISCOVER LINKED INSTAGRAM ACCOUNTS
