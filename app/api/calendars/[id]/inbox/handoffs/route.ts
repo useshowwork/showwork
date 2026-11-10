@@ -1,3 +1,4 @@
+import { visibleInboxConnection } from "@/lib/socialMessaging/visibility";
 import { databaseUnavailable, retryDatabaseRead } from "@/lib/databaseAvailability";
 import { NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
@@ -10,7 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!creator) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   if (!(await hasCalendarPermission(creator.id, id, "inbox.view"))) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  const count = await db.socialLeadConversation.count({ where: { calendarId: id, aiPausedAt: { not: null }, aiHandoffAcknowledgedAt: null } });
+  const count = await db.socialLeadConversation.count({ where: { calendarId: id, ...visibleInboxConnection, aiPausedAt: { not: null }, aiHandoffAcknowledgedAt: null } });
   return NextResponse.json({ count }, { headers: { "Cache-Control": "no-store, private" } });
   }); } catch(error) {
     if (!databaseUnavailable(error)) throw error;

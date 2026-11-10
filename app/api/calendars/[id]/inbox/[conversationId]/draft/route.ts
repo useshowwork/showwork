@@ -1,3 +1,4 @@
+import { visibleInboxConnection } from "@/lib/socialMessaging/visibility";
 import { maskSensitiveText } from "@/lib/socialMessaging/safety";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
 import { consumeCalendarAiGeneration } from "@/lib/contentWorkspaceUsage";
@@ -53,7 +54,7 @@ export async function POST(
   if (featureLock) return featureLock;
 
   const conversation = await db.socialLeadConversation.findFirst({
-    where: { id: conversationId, calendarId },
+    where: { id: conversationId, calendarId, ...visibleInboxConnection },
     include: {
       calendar: { select: { clientName: true, aiBusinessSummary: true } },
       messages: { orderBy: { platformCreatedAt: "desc" }, take: 20 },

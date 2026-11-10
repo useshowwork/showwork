@@ -92,7 +92,7 @@ const context=()=>({params:Promise.resolve({id:'workspace',conversationId:'threa
 const request=body=>new Request('https://test/api',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
 test('resume is permission checked, workspace scoped, invalidates drafts, and retires earlier pending messages',async()=>{
   const f=controlRoute();assert.equal((await f.api.PATCH(request({aiAction:'resume'}),context())).status,200);
-  assert.deepEqual(f.writes[0].where,{id:'thread',calendarId:'workspace'});assert.equal(f.writes[0].data.aiPausedAt,null);assert.deepEqual(f.writes[0].data.aiControlVersion,{increment:1});assert.ok(f.retired[0].data.autoReplyHandledAt);
+  assert.deepEqual(f.writes[0].where,{id:'thread',calendarId:'workspace',connection:{status:{in:['CONNECTED','NEEDS_REAUTH']}}});assert.equal(f.writes[0].data.aiPausedAt,null);assert.deepEqual(f.writes[0].data.aiControlVersion,{increment:1});assert.ok(f.retired[0].data.autoReplyHandledAt);
   const forbidden=controlRoute({allowed:false});assert.equal((await forbidden.api.PATCH(request({aiAction:'resume'}),context())).status,404);assert.equal(forbidden.writes.length,0);
 });
 test('invalid handoff actions and conversations from another workspace cannot mutate messages',async()=>{

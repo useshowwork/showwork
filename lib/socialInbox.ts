@@ -1,3 +1,4 @@
+import { visibleInboxConnection } from "@/lib/socialMessaging/visibility";
 import { reconcileStaleInboxSends } from "@/lib/socialMessaging/outbound";
 import { normalizeReplyProfile } from "@/lib/socialMessaging/replyProfile";
 import { tikTokMessagingAccess } from "@/lib/socialMessaging/tiktok";
@@ -23,9 +24,10 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
   if (platform && !SOCIAL_INBOX_PLATFORMS.includes(platform as SocialPlatform)) throw new Error("Choose a supported platform.");
   if (status && !SOCIAL_LEAD_STATUSES.includes(status as SocialLeadStatus)) throw new Error("Choose a valid lead status.");
 
-  const xConnections = await db.socialConnection.findMany({ where: { calendarId, platform: "X" }, select: { id: true, connectedAt: true } });
+  const xConnections = await db.socialConnection.findMany({ where: { calendarId, platform: "X", status: { not: "DISCONNECTED" } }, select: { id: true, connectedAt: true } });
   const where = {
     calendarId,
+    ...visibleInboxConnection,
     AND: [{ OR: [
       { platform: { not: "X" as const } },
       ...xConnections.map(connection => ({ platform: "X" as const, socialConnectionId: connection.id,
@@ -53,17 +55,17 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
         connection: { select: { id: true, accountName: true, username: true, status: true, accessToken: true, connectedAt: true, tikTokMessagingBusinessId: true } },
       },
     }),
-    db.socialLeadConversation.count({ where: { calendarId, leadStatus: { not: "NOT_A_LEAD" } } }),
-    db.socialLeadMessage.count({ where: { conversation: { calendarId } } }),
-    db.socialLeadConversation.aggregate({ where: { calendarId }, _sum: { unreadCount: true } }),
-    db.socialLeadMessage.count({ where: { conversation: { calendarId }, direction: "INBOUND", platformCreatedAt: { gte: monthStart } } }),
+    db.socialLeadConversation.count({ where: { calendarId, ...visibleInboxConnection, leadStatus: { not: "NOT_A_LEAD" } } }),
+    db.socialLeadMessage.count({ where: { conversation: { calendarId, ...visibleInboxConnection } } }),
+    db.socialLeadConversation.aggregate({ where: { calendarId, ...visibleInboxConnection }, _sum: { unreadCount: true } }),
+    db.socialLeadMessage.count({ where: { conversation: { calendarId, ...visibleInboxConnection }, direction: "INBOUND", platformCreatedAt: { gte: monthStart } } }),
     db.socialInboxSettings.findUnique({ where: { calendarId }, select: { clientAccessEnabled: true, aiAutoReplyEnabled: true, aiAutoReplyInstructions: true, aiReplyProfile: true } }),
     db.socialConnection.findMany({
       where: { calendarId, status: { not: "DISCONNECTED" } },
       select: { id: true, platform: true, platformAccountId: true, accountName: true, username: true, status: true, tokenScopes: true, accessTokenExpiresAt: true, whatsappBusinessAccountId: true, messagingWebhookSubscribedAt: true, messagingWebhookError: true, messagingLastSyncAt: true, messagingSyncError: true, tikTokMessagingBusinessId: true, tikTokMessagingScopes: true, tikTokMessagingConnectedAt: true },
       orderBy: { platform: "asc" },
     }),
-    db.socialLeadConversation.count({ where: { calendarId, aiPausedAt: { not: null }, aiHandoffAcknowledgedAt: null } }),
+    db.socialLeadConversation.count({ where: { calendarId, ...visibleInboxConnection, aiPausedAt: { not: null }, aiHandoffAcknowledgedAt: null } }),
   ]);
   const linkedConversationId = params.get("conversation");
   if (linkedConversationId && !conversations.some(conversation => conversation.id === linkedConversationId)) {

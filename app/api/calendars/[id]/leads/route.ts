@@ -1,3 +1,4 @@
+import { visibleChannelLead } from "@/lib/socialMessaging/visibility";
 import { calendarFeatureGate } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
 import type { CalendarLeadPipelineStatus, CalendarLeadTemperature } from "@prisma/client";
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const leads = await db.calendarLead.findMany({
       where: {
         calendarId,
+        AND: [visibleChannelLead],
         ...(status ? { status: status as CalendarLeadPipelineStatus } : {}),
         ...(temperature ? { temperature: temperature as CalendarLeadTemperature } : {}),
         ...(search ? { OR: [
@@ -56,7 +58,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         socialUserId: conversation?.participantPlatformId || null,
         socialPlatform: conversation?.platform || null,
       };
-    }) });
+    }) }, { headers: { "Cache-Control": "no-store, private" } });
   } catch (error) {
     console.error("Could not load calendar leads:", error);
     return NextResponse.json({ error: "Could not load leads." }, { status: 500 });

@@ -1,3 +1,4 @@
+import { visibleInboxConnection } from "@/lib/socialMessaging/visibility";
 import { calendarFeatureGate } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   if (!text || text.length > 2000) return NextResponse.json({ error: "Enter a reply of 1–2,000 characters." }, { status: 400 });
   const conversation = await db.socialLeadConversation.findFirst({
-    where: { id: conversationId, calendarId },
+    where: { id: conversationId, calendarId, ...visibleInboxConnection },
     include: { connection: true, calendar: { select: { instagramPageId: true } } },
   });
   if (!conversation) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });

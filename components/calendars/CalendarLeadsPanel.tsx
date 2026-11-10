@@ -1,4 +1,5 @@
 "use client";
+import { subscribeChannelChanges } from "@/lib/reporting/channelChanges";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import styles from "./LeadsStudio.module.css";
@@ -55,21 +56,31 @@ export default function CalendarLeadsPanel({ calendarId, canEdit, featureLocked 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Lead | null>(null);
   const [form, setForm] = useState<FormValues>(EMPTY);
+  const loadVersion = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const endpoint = `/api/calendars/${encodeURIComponent(calendarId)}/leads`;
 
   const load = useCallback(async (quiet = false) => {
+    const version = ++loadVersion.current;
     if (!quiet) setLoading(true);
     try {
       const response = await calendarMutationFetch(endpoint, { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not load leads.");
+      if (version !== loadVersion.current) return;
       setLeads(result.leads);
       if (!quiet) setError("");
-    } catch (err) { if (!quiet) setError(err instanceof Error ? err.message : "Could not load leads."); }
-    finally { if (!quiet) setLoading(false); }
+    } catch (err) { if (version === loadVersion.current && !quiet) setError(err instanceof Error ? err.message : "Could not load leads."); }
+    finally { if (version === loadVersion.current && !quiet) setLoading(false); }
   }, [endpoint]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const reset = () => { ++loadVersion.current; setLeads([]); setEditing(null); setModalOpen(false); void load(); };
+    const unsubscribe = subscribeChannelChanges(calendarId, reset);
+    const focus = () => { void load(true); };
+    window.addEventListener("focus", focus);
+    return () => { ++loadVersion.current; unsubscribe(); window.removeEventListener("focus", focus); };
+  }, [calendarId, load]);
 
   const visibleLeads = useMemo(() => leads.filter((lead) => {
     const searchMatch = !query.trim() || [lead.name, lead.username, lead.socialPlatform, lead.email, lead.phone, lead.company].some((value) => value?.toLowerCase().includes(query.trim().toLowerCase()));

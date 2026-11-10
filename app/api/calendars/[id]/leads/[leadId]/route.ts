@@ -1,3 +1,4 @@
+import { visibleChannelLead } from "@/lib/socialMessaging/visibility";
 import { calendarFeatureGate } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
 import type { CalendarLeadPipelineStatus, CalendarLeadTemperature } from "@prisma/client";
@@ -39,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (!Object.keys(data).length) return NextResponse.json({ error: "No lead changes were provided." }, { status: 400 });
   try {
-    const lead = await db.calendarLead.findFirst({ where: { id: leadId, calendarId }, select: { id: true, socialConversationId: true } });
+    const lead = await db.calendarLead.findFirst({ where: { id: leadId, calendarId, AND: [visibleChannelLead] }, select: { id: true, socialConversationId: true } });
     if (!lead) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
     const updated = await db.calendarLead.update({ where: { id: leadId }, data });
     if (lead.socialConversationId) {

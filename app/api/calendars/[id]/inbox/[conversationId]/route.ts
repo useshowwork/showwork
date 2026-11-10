@@ -1,3 +1,4 @@
+import { visibleInboxConnection } from "@/lib/socialMessaging/visibility";
 import { calendarFeatureGate } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
@@ -20,7 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const now = new Date();
     const updated = await db.$transaction(async tx => {
       const result = await tx.socialLeadConversation.updateMany({
-        where: { id: conversationId, calendarId },
+        where: { id: conversationId, calendarId, ...visibleInboxConnection },
         data: {
           aiPausedAt: resume ? null : now,
           aiHandoffReason: resume ? null : "A team member took over this conversation.",
@@ -39,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true });
   }
   if (body?.markRead === true) {
-    const updated = await db.socialLeadConversation.updateMany({ where: { id: conversationId, calendarId }, data: { unreadCount: 0 } });
+    const updated = await db.socialLeadConversation.updateMany({ where: { id: conversationId, calendarId, ...visibleInboxConnection }, data: { unreadCount: 0 } });
     if (!updated.count) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
     return NextResponse.json({ ok: true });
   }
@@ -47,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Choose a valid lead status." }, { status: 400 });
   }
   if (!(await hasCalendarPermission(creator.id, calendarId, "leads.manage"))) return NextResponse.json({ error: "You do not have permission to manage leads." }, { status: 403 });
-  const updated = await db.socialLeadConversation.updateMany({ where: { id: conversationId, calendarId }, data: { leadStatus: body.leadStatus as (typeof SOCIAL_LEAD_STATUSES)[number] } });
+  const updated = await db.socialLeadConversation.updateMany({ where: { id: conversationId, calendarId, ...visibleInboxConnection }, data: { leadStatus: body.leadStatus as (typeof SOCIAL_LEAD_STATUSES)[number] } });
   if (!updated.count) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   await db.calendarLead.updateMany({
     where: { calendarId, socialConversationId: conversationId },

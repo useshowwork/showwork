@@ -1,4 +1,5 @@
 "use client";
+import { subscribeChannelChanges } from "@/lib/reporting/channelChanges";
 import { formatInboxReply } from "@/lib/socialMessaging/replyFormatting";
 import { calendarMutationFetch, clearCheckedInboxReply } from "@/lib/publishing/clientRequests";
 
@@ -98,11 +99,18 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
       if (!response.ok) throw new Error(result.error || "Could not load the inbox.");
       if (controller.signal.aborted) return;
       setData(result);
+      setPinnedConversation(current => current?.connection?.id && result.accounts.some((account: {id: string}) => account.id === current.connection?.id) ? current : null);
       setSelectedId(current => current || result.conversations[0]?.id || "");
       if (!quiet) setError("");
     } catch (err) { if (!controller.signal.aborted && !quiet) setError(err instanceof Error ? err.message : "Could not load the inbox."); }
     finally { if (requestRef.current === controller) { requestRef.current = null; setLoading(false); } }
   }, [endpoint, platform, status, search, unreadOnly, attentionOnly, clientMode]);
+
+  useEffect(() => { if (!calendarId) return; return subscribeChannelChanges(calendarId, () => {
+    requestRef.current?.abort();
+    setData(null); setPinnedConversation(null); setSelectedId(""); setXChats({}); setDrafts({});
+    void load();
+  }); }, [calendarId, load]);
 
   const latestLoadRef = useRef(load);
   useEffect(() => { latestLoadRef.current = load; }, [load]);
@@ -132,7 +140,7 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
     .flatMap(([, state]) => state.conversations), [data?.accounts, xChats]);
   const conversations = useMemo(() => mergeInboxConversations(data?.conversations || [], attentionOnly ? [] : encryptedConversations,
     { platform, status, search, unreadOnly }), [data, encryptedConversations, platform, status, search, unreadOnly, attentionOnly]);
-  const selected = resolveSelectedInboxConversation([...conversations, ...encryptedConversations], selectedId, pinnedConversation);
+  const selected = resolveSelectedInboxConversation([...conversations, ...encryptedConversations], selectedId, pinnedConversation?.connection?.id && data?.accounts.some(account => account.id === pinnedConversation.connection?.id) ? pinnedConversation : null);
   useEffect(() => {
     const match = data?.conversations.find(item => item.id === selectedId);
     if (match && !match.encrypted) setPinnedConversation(match);
