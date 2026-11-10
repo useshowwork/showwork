@@ -106,6 +106,8 @@ export default function CreativeBriefEditor({
   onSaveReady,
   tabBarHost,
   aiControlsHost,
+  reviewStep,
+  onReviewStepChange,
   guided = false,
   readOnly = false,
 }: {
@@ -114,6 +116,8 @@ export default function CreativeBriefEditor({
   onUpdated: (post: any) => void;
   tabBarHost?: HTMLElement | null;
   aiControlsHost?: HTMLElement | null;
+  reviewStep?: string;
+  onReviewStepChange?: (step: string) => void;
   guided?: boolean;
   readOnly?: boolean;
   onStateChange?: (state: BriefEditorState) => void;
@@ -155,7 +159,9 @@ export default function CreativeBriefEditor({
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [instruction, setInstruction] = useState("");
-  const [tab, setTab] = useState("copy");
+  const [localTab, setLocalTab] = useState("copy");
+  const tab = reviewStep ?? localTab;
+  const setTab = (next: string) => { setLocalTab(next); onReviewStepChange?.(next); };
   const [aiField, setAiField] = useState<BriefField>("caption");
   const dirty =
     JSON.stringify(brief) !== JSON.stringify(editablePostBrief(post));
@@ -289,7 +295,7 @@ export default function CreativeBriefEditor({
       <div
         role="tablist"
         aria-label="Post editor sections"
-        className={styles.tabs}
+        className={`${styles.tabs} ${reviewStep !== undefined ? styles.reviewSteps : ""}`}
       >
         {tabs.map((item, index) => (
           <button

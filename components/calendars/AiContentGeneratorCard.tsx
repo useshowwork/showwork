@@ -1,4 +1,5 @@
 "use client";
+import { initialGenerationDates, generationFrequencyError } from "@/lib/content/generationSetup";
 import studioStyles from "./GenerateStudio.module.css";
 import PlatformBrandIcon from "./PlatformBrandIcon";
 import { WandSparkles, BookOpenText, Layers3, CalendarRange, ShieldCheck, Sparkles, Target, PenLine } from "lucide-react";
@@ -48,19 +49,14 @@ export default function AiContentGeneratorCard({
   hasBusinessSummary: boolean;
   performanceRecommendationsAccess?: boolean;
 }) {
-  const today = new Date();
-  const defaultStart = today.toISOString().slice(0, 10);
-  const defaultEnd = new Date(
-    today.getFullYear(),
-    today.getMonth() + 1,
-    today.getDate()
-  )
-    .toISOString()
-    .slice(0, 10);
+  const { start: defaultStart, end: defaultEnd } = initialGenerationDates();
 
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
-  const [postsPerWeek, setPostsPerWeek] = useState(3);
+  const [frequencyInput, setFrequencyInput] = useState("0");
+  const postsPerWeek = Number(frequencyInput);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const frequencyRef = useRef<HTMLInputElement>(null);
   const [campaignObjective,setCampaignObjective]=useState("");
   const [timeZone,setTimeZone]=useState("UTC");
   useEffect(()=>{setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC");},[]);
@@ -78,7 +74,13 @@ export default function AiContentGeneratorCard({
  const stepHeading = useRef<HTMLHeadingElement>(null);
  const wizardSteps = platforms.length > 1 ? ["platforms", "schedule", "options", "direction"] : ["platforms", "schedule", "direction"];
  const stepIndex = wizardSteps.indexOf(wizardStep);
- function moveStep(next: string) { setWizardStep(next); requestAnimationFrame(() => stepHeading.current?.focus()); }
+ function moveStep(next: string) {
+   if (wizardStep === "schedule" && next !== "platforms") {
+     const message = generationFrequencyError(frequencyInput);
+     if (message) { setScheduleError(message); frequencyRef.current?.focus(); return; }
+   }
+   setScheduleError(null);
+   setWizardStep(next); requestAnimationFrame(() => stepHeading.current?.focus()); }
  const stepTitles: Record<string,string> = {platforms:"Where do you want to post?",schedule:"When should your calendar run?",options:"How should your channels work together?",direction:"What should this calendar focus on?"};
  const advancedRef = useRef<HTMLDetailsElement>(null);
  useEffect(() => {
@@ -167,6 +169,8 @@ const togglePlatform = (platform: string) => {
 };
 
   const generate = async (resolution?: ClarificationResponse) => {
+    const frequencyError = generationFrequencyError(frequencyInput);
+    if (frequencyError) { moveStep("schedule"); setScheduleError(frequencyError); return; }
     if (platforms.length === 0) {
       setError("Choose at least one platform.");
       return;
@@ -333,9 +337,14 @@ const togglePlatform = (platform: string) => {
               </div>
 
               <div hidden={wizardStep !== "schedule"} className={studioStyles.scheduleRow}>
-                <label>Start date<input type="date" value={startDate} onChange={event => setStartDate(event.target.value)}/></label>
-                <label>End date<input type="date" value={endDate} onChange={event => setEndDate(event.target.value)}/></label>
-                <label>Posts per week<input type="number" min={1} max={14} value={postsPerWeek} onChange={event => setPostsPerWeek(Math.min(14,Math.max(1,Number(event.target.value)||1)))}/></label>
+                <label htmlFor="generation-start">Start date<input id="generation-start" type="date" value={startDate} onChange={event => setStartDate(event.target.value)}/></label>
+                <label htmlFor="generation-end">End date<input id="generation-end" type="date" min={startDate || undefined} value={endDate} onChange={event => setEndDate(event.target.value)}/></label>
+                <div className={studioStyles.frequencyField}>
+                  <label htmlFor="generation-frequency"><CalendarRange size={16} aria-hidden="true"/>Posting frequency <span>Required</span></label>
+                  <div className={studioStyles.frequencyInput}><input ref={frequencyRef} id="generation-frequency" type="number" inputMode="numeric" min={1} max={14} step={1} required value={frequencyInput} aria-invalid={Boolean(scheduleError)} aria-describedby="generation-frequency-help generation-frequency-error" onChange={event => { setFrequencyInput(event.target.value); setScheduleError(null); }}/><span>posts per week</span></div>
+                  <p id="generation-frequency-help">How many posts should appear each week? Choose 1–14.</p>
+                  <p id="generation-frequency-error" role="alert" className={studioStyles.frequencyError}>{scheduleError}</p>
+                </div>
               </div>
               <div hidden={wizardStep !== "direction"}><label className={studioStyles.goalField}>Content goal <span className="font-normal text-slate-400">Optional</span><select value={campaignObjective} onChange={e=>setCampaignObjective(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm"><option value="">Use my business knowledge</option>{["Brand Awareness","Engagement","Audience Education","Lead Generation","Product Adoption","Sales / Conversion","Custom Objective"].map(objective=><option key={objective}>{objective}</option>)}</select></label>
               {campaignObjective==="Custom Objective"&&<p className="mt-1 text-xs text-slate-500">Describe your goal in Creative direction.</p>}</div>

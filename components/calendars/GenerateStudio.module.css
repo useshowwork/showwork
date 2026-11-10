@@ -77,3 +77,21 @@
 }
 .savedDraftsButton:hover { background: #dfeaff; }
 .savedDraftsButton:focus-visible { outline: 2px solid #1765ed; outline-offset: 3px; }
+
+/* Date inputs must be allowed to shrink below their browser's intrinsic width. */
+.scheduleRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;max-width:100%;gap:14px;align-items:start}
+.scheduleRow>label{min-width:0;display:flex;flex-direction:column;grid-column:auto}
+.scheduleRow input{box-sizing:border-box;display:block;width:100%;min-width:0;max-width:100%;font-size:16px;height:46px;padding:10px}
+.scheduleRow input[type=date]{appearance:none;-webkit-appearance:none}
+.scheduleRow input[type=date]::-webkit-date-and-time-value{text-align:left;min-width:0}
+.frequencyField{grid-column:1/-1;min-width:0;padding:16px 18px;border:1px solid #b8d4ff;border-radius:14px;background:#f0f6ff;color:#155fc7}
+.frequencyField>label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;flex-wrap:wrap}
+.frequencyField>label>span{margin-left:auto;padding:3px 7px;border-radius:5px;background:#dfebff;font-size:10px}
+.frequencyInput{display:flex;align-items:center;gap:12px;margin-top:10px}
+.frequencyInput input{width:90px;flex:0 0 90px;background:#fff;border:1px solid #8eb7f5;font-size:18px;font-weight:600;color:#155fc7}
+.frequencyInput input:focus{outline:2px solid #1768e8;outline-offset:2px}
+.frequencyInput>span{font-size:13px;font-weight:500}
+.frequencyField>p{margin:8px 0 0;font-size:11px;line-height:1.6;color:#4f719d}
+.frequencyField>.frequencyError{color:#b42332;font-weight:500}
+.frequencyError:empty{display:none}
+@media(max-width:550px){.scheduleRow{grid-template-columns:minmax(0,1fr);gap:14px}.scheduleRow>label{grid-column:auto;font-size:12px;gap:7px}.scheduleRow input{padding:10px 12px;font-size:16px;height:46px}.frequencyField{padding:14px}.summary{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}.summary .compactCount{grid-column:1/-1;grid-row:1;min-width:0}.summary .generateButton{width:100%;min-width:0}.summary .wizardBack{grid-column:1;grid-row:2}.summary .generateButton{grid-column:2;grid-row:2}}

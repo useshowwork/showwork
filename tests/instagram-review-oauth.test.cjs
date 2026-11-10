@@ -28,6 +28,13 @@ test('approved global scope flag includes Insights without a reviewer allowlist'
   process.env.INSTAGRAM_REQUEST_INSIGHTS_SCOPE = 'true';
   assert.match(new URL(oauth().buildInstagramAuthUrl({redirectUri:'https://test/callback',state:'s'})).searchParams.get('scope'), /instagram_manage_insights/);
 });
+test('approved Insights is requested by default when the deployment flag is unset', () => {
+  delete process.env.INSTAGRAM_REQUEST_INSIGHTS_SCOPE;
+  const { buildInstagramAuthUrl, INSTAGRAM_OAUTH_SCOPES } = oauth();
+  assert.ok(INSTAGRAM_OAUTH_SCOPES.split(',').includes('instagram_manage_insights'));
+  const url = new URL(buildInstagramAuthUrl({redirectUri:'https://test/callback',state:'s'}));
+  assert.ok(url.searchParams.get('scope').split(',').includes('instagram_manage_insights'));
+});
 function picker({ actor = 'reviewer', allowed = true } = {}) {
   process.env.JWT_SECRET = 'test-selection-secret';
   const selections = load('lib/facebookPageSelection.ts');

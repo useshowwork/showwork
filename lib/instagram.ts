@@ -94,15 +94,15 @@ function requireAppCredentials(): {
 const INSTAGRAM_BASE_OAUTH_SCOPES =
   "instagram_basic,instagram_content_publish,instagram_manage_messages,pages_read_engagement,pages_show_list,pages_manage_metadata";
 
-// Enable globally only after Advanced Access approval. Before approval,
-// explicitly allowlist Showwork creators whose Facebook user has an app role.
+// Insights has Advanced Access approval. Request it by default on new authorizations.
+// An explicit false remains available for restricted deployments and review testing.
 export const INSTAGRAM_OAUTH_SCOPES =
-  process.env.INSTAGRAM_REQUEST_INSIGHTS_SCOPE === "true"
+  process.env.INSTAGRAM_REQUEST_INSIGHTS_SCOPE !== "false"
     ? `${INSTAGRAM_BASE_OAUTH_SCOPES},instagram_manage_insights`
     : INSTAGRAM_BASE_OAUTH_SCOPES;
 
 export function instagramInsightsEnabledForCreator(creatorId?: string): boolean {
-  return process.env.INSTAGRAM_REQUEST_INSIGHTS_SCOPE === "true" || !!creatorId &&
+  return process.env.INSTAGRAM_REQUEST_INSIGHTS_SCOPE !== "false" || !!creatorId &&
     (process.env.INSTAGRAM_INSIGHTS_REVIEW_CREATOR_IDS ?? "").split(",").map(id => id.trim()).filter(Boolean).includes(creatorId);
 }
 

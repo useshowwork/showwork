@@ -19,7 +19,7 @@ const React=require('react');
 test('closing or pressing Escape keeps saved drafts and sends no DELETE',()=>{
  let closed=0,requests=0;const originalFetch=global.fetch;global.fetch=async()=>requests++;
  try{
- const Component=load('components/calendars/AiDraftReviewModal.tsx',{react:{...React,useState:initial=>[typeof initial==='function'?initial():initial,()=>{}],useRef:value=>({current:value}),useCallback:fn=>fn,useEffect:()=>{}}}).default;
+ const Component=load('components/calendars/AiDraftReviewModal.tsx',{'next/navigation':{useRouter:()=>({push(){},refresh(){}})},react:{...React,useState:initial=>[typeof initial==='function'?initial():initial,()=>{}],useRef:value=>({current:value}),useCallback:fn=>fn,useEffect:()=>{}}}).default;
  const tree=Component({calendarId:'calendar',onClose:()=>closed++});
  tree.props.onCancel({preventDefault(){}});assert.equal(closed,1);assert.equal(requests,0);
  tree.props.onClick({target:1,currentTarget:1});assert.equal(closed,2);assert.equal(requests,0);
@@ -32,4 +32,23 @@ test('opening a legacy draft schedules no automatic AI generation',()=>{
  Editor({calendarId:'calendar',post:{id:'legacy',platform:'INSTAGRAM',caption:'Existing content'},onUpdated:()=>{}});
  for(const effect of effects)effect();assert.equal(requests,0);
  }finally{global.fetch=originalFetch;}
+});
+test('posts can be browsed directly without visiting strategy or creative direction',async()=>{
+ let stateIndex=0,selected='a';let writes=0;const navigation=[];
+ const rows=['a','b'].map(id=>({id,platform:'INSTAGRAM',postDate:'2026-11-11',postType:'Carousel',caption:'Copy '+id,hook:'Hook '+id,objective:'Goal',targetAudience:'Audience'}));
+ const Component=load('components/calendars/AiDraftReviewModal.tsx',{
+   react:{...React,useState:initial=>{const i=stateIndex++;return [i===0?'copy':i===1?rows:i===2?selected:typeof initial==='function'?initial():initial,next=>{if(i===2)selected=next;}];},useRef:value=>({current:value}),useCallback:fn=>fn,useEffect:()=>{}},
+   'next/navigation':{useRouter:()=>({push:path=>navigation.push(path),refresh(){}})},
+   '@/lib/publishing/clientRequests':{calendarMutationFetch:async()=>{writes++;return Response.json({ok:true});}},
+ });
+ const text=n=>typeof n==='string'?n:Array.isArray(n)?n.map(text).join(''):n?.props?text(n.props.children):'';
+ const find=(tree,label)=>{if(!tree||typeof tree!=='object')return null;if(tree.type==='button'&&text(tree.props.children).startsWith(label))return tree;for(const child of React.Children.toArray(tree.props?.children)){const result=find(child,label);if(result)return result;}return null;};
+ const render=()=>{stateIndex=0;return Component.default({calendarId:'calendar',onClose(){}});};
+ const originalWindow=global.window;global.window={dispatchEvent(){},confirm:()=>true};
+ try{
+   const next=find(render(),'Next post');assert.equal(next.props.disabled,false);assert.match(text(next),/Hook b/);next.props.onClick();assert.equal(selected,'b');assert.equal(writes,0);
+   find(render(),'Previous post').props.onClick();assert.equal(selected,'a');assert.equal(writes,0);
+   rows.splice(1);await find(render(),'Add post & open calendar').props.onClick();await new Promise(r=>setImmediate(r));
+   assert.equal(writes,1);assert.deepEqual(navigation,['/dashboard/calendars/calendar?view=content']);
+ }finally{global.window=originalWindow;}
 });

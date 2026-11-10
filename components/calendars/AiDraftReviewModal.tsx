@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -51,6 +52,13 @@ export default function AiDraftReviewModal({
   jobId?: string | null;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const openCalendar = () => {
+    onClose();
+    router.push(`/dashboard/calendars/${encodeURIComponent(calendarId)}?view=content`);
+    router.refresh();
+  };
+  const [reviewStep, setReviewStep] = useState("copy");
   const dialog = useRef<HTMLDialogElement>(null),
     content = useRef<HTMLDivElement>(null),
     removed = useRef(new Set<string>()),
@@ -67,6 +75,7 @@ export default function AiDraftReviewModal({
     [progress, setProgress] = useState({ completedCount: 0, totalCount: 0 }),
     [history, setHistory] = useState<Generation[]>([]),
     [historyLoading, setHistoryLoading] = useState(false);
+  useEffect(() => { setReviewStep("copy"); }, [selectedId]);
   const [editorState, setEditorState] = useState<BriefEditorState>({
     dirty: false,
     busy: false,
@@ -242,9 +251,9 @@ export default function AiDraftReviewModal({
           drafts?.find((row) => row.id !== selected.id)?.id ??
           null,
       );
-      setNotice(
-        "Post reviewed and added to your calendar. It has not been published.",
-      );
+      setNotice("Post reviewed and added to your calendar. It has not been published.");
+      setReviewStep("copy");
+      if (drafts?.length === 1 && !jobRunning) openCalendar();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -270,7 +279,7 @@ export default function AiDraftReviewModal({
     }
     if (
       !window.confirm(
-        `Accept all ${drafts.length} saved drafts and add them to your calendar? This does not publish them.`,
+        `Add all ${drafts.length} posts and open your Content Calendar? This does not publish them.`,
       )
     )
       return;
@@ -287,6 +296,7 @@ export default function AiDraftReviewModal({
       } else {
         setSelectedId(null);
         setNotice("All drafts accepted and added to your calendar. Nothing has been published.");
+        openCalendar();
       }
     } finally {
       setBusy(false);
@@ -398,13 +408,13 @@ export default function AiDraftReviewModal({
           <div className={styles.headerActions}>
             <button
               type="button"
-              className={styles.primary}
+              className={`${styles.primary} ${styles.addAllButton}`}
               disabled={locked || jobRunning || !remaining || editorState.dirty}
-              title={editorState.dirty ? "Save your changes before accepting all drafts" : "Add all saved drafts to your calendar"}
+              title={editorState.dirty ? "Save your changes before adding all posts" : "Add all posts and open Content Calendar. Nothing is published."}
               onClick={() => void reviewAll()}
             >
               <Check size={16} />
-              Accept all drafts
+              Add all posts to calendar
             </button>
             <button
               type="button"
@@ -503,6 +513,7 @@ export default function AiDraftReviewModal({
             </div>
           </aside>
           <div className={styles.reviewPane}>
+            <div className={styles.reviewStepHeading}>Explore this post <span>Click any section</span></div>
             <div className={styles.tabBarHost} ref={setTabBarHost} />
           <div className={styles.content} ref={content}>
             <div className={styles.editorWrap}>
@@ -560,6 +571,8 @@ export default function AiDraftReviewModal({
                     key={selected.id}
                     calendarId={calendarId}
                     tabBarHost={tabBarHost}
+                    reviewStep={reviewStep}
+                    onReviewStepChange={step => { setReviewStep(step); content.current?.scrollTo({top:0}); }}
                     post={selected}
                     onStateChange={onEditorState}
                     onSaveReady={onSaveReady}
@@ -643,7 +656,7 @@ export default function AiDraftReviewModal({
                           ? `${reviewed.length} posts added to your calendar. They have not been published.`
                           : "Your saved content stays in your workspace."}
                       </p>
-                      <button className={styles.primary} onClick={requestClose}>
+                      <button className={styles.primary} onClick={openCalendar}>
                         Return to calendar
                       </button>
                     </>
@@ -668,31 +681,16 @@ export default function AiDraftReviewModal({
                 : editorState.dirty
                   ? "Unsaved changes · save before continuing"
                   : selected && editorState.needsContext
-                    ? "Complete strategy before reviewing"
+                    ? "Strategy needs attention · you can browse other posts"
                     : "Saved drafts are kept when you close"}
           </span>
-          <div className={styles.actions}>
-            <button
-              className={styles.button}
-              disabled={locked || index <= 0}
-              onClick={() => choose(drafts![index - 1].id)}
-            >
-              <ArrowLeft size={15} />
-              Previous
+          <div className={`${styles.actions} ${styles.postNavigation}`}>
+            <button type="button" className={styles.button} disabled={locked || index <= 0} onClick={() => choose(drafts![index - 1].id)}><ArrowLeft size={15} aria-hidden="true"/>Previous post</button>
+            <button type="button" className={`${styles.button} ${styles.nextPost}`} disabled={locked || index < 0 || index >= remaining - 1} onClick={() => choose(drafts![index + 1].id)}>
+              <span><strong>Next post</strong><small>{drafts?.[index + 1] ? draftTitle(drafts[index + 1]) : "You’re on the last post"}</small></span><ArrowRight size={16} aria-hidden="true"/>
             </button>
-            <button
-              className={styles.primary}
-              disabled={
-                !selected ||
-                locked ||
-                (!editorState.dirty && editorState.needsContext)
-              }
-              onClick={() =>
-                editorState.dirty ? saveAction.current?.() : void markReviewed()
-              }
-            >
-              {editorState.dirty ? "Save changes" : "Mark reviewed & next"}
-              <ArrowRight size={15} />
+            <button type="button" className={`${styles.primary} ${styles.acceptPost}`} disabled={!selected || locked || (!editorState.dirty && editorState.needsContext)} onClick={() => editorState.dirty ? saveAction.current?.() : void markReviewed()}>
+              {editorState.dirty ? "Save changes" : remaining === 1 && !jobRunning ? "Add post & open calendar" : "Add post to calendar"}<Check size={15} aria-hidden="true"/>
             </button>
           </div>
         </footer>
