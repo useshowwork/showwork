@@ -101,7 +101,7 @@ export async function GET(
 
   const calendar = await db.socialCalendar.findUnique({
     where: { id: calendarId },
-    select: { id: true, managerId: true },
+    select: { id: true, managerId: true, instagramPageId: true, facebookPageId: true },
   });
 
   if (!calendar || !(await hasCalendarPermission(creator.id, calendar.id, "channels.manage"))) {
@@ -146,7 +146,8 @@ export async function GET(
         longLived.access_token,
       );
 
-      const pages = await getFacebookPages(longLived.access_token);
+      const pageHints = [calendar.instagramPageId, calendar.facebookPageId].filter((value): value is string => !!value);
+      const pages = await getFacebookPages(longLived.access_token, pageHints);
 
       if (pages.length === 0) {
         return makeRedirect(`${settingsPath}&facebookError=no_page`);

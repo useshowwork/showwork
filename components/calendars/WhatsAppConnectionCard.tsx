@@ -1,4 +1,5 @@
 "use client";
+import { notifyReportingChannelChange } from "@/lib/reporting/channelChanges";
 import channelStyles from "./ChannelsStudio.module.css";
 import ChannelCapabilities from "./ChannelCapabilities";
 import PlatformBrandIcon from "./PlatformBrandIcon";
@@ -63,6 +64,7 @@ export default function WhatsAppConnectionCard({ calendarId, isManager }: { cale
       if (!response.ok) throw new Error(data.error || "Could not disconnect WhatsApp.");
       setConnection(null); setConfirming(false); setEditing(false); setAccessToken("");
       setBusinessAccountId(""); setPhoneNumberId("");
+      notifyReportingChannelChange(calendarId);
       setNotice("WhatsApp disconnected. Existing conversations and leads are preserved.");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not disconnect WhatsApp."); }
     finally { setBusy(false); }

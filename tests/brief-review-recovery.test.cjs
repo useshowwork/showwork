@@ -30,3 +30,23 @@ test('sparse review cannot change slot metadata or inject unknown fields',()=>{
  const result=applyBriefReview(posts,{acceptable:true,revisions:[{id:'0',reason:'x',changes:[{field:'platform',value:'X'}]}]},streams);
  assert.equal(result[0].platform,'INSTAGRAM');assert.ok(result[0].brief.reviewWarnings.length);
 });
+
+test('guided post editor exposes caption first and keeps strategy and creative controls in closed disclosures',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const Editor=load('components/calendars/CreativeBriefEditor.tsx').default;
+ const html=renderToStaticMarkup(React.createElement(Editor,{calendarId:'c',post:{id:'p',platform:'INSTAGRAM',creativeBrief:brief},guided:true,onUpdated:()=>{}}));
+ assert.doesNotMatch(html,/role="tablist"|role="tabpanel"/);
+ assert.ok(html.indexOf('aria-label="Caption"')<html.indexOf('aria-label="Content title"'));
+ assert.match(html,/<details class="disclosure"><summary>.*?Strategy/);
+ assert.match(html,/<details class="disclosure"><summary>.*?Creative direction/);
+ assert.doesNotMatch(html,/<details open="" class="disclosure"/);
+ assert.match(html,/Existing copy/);
+});
+test('guided read-only post editor retains all brief content without AI or save actions',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const Editor=load('components/calendars/CreativeBriefEditor.tsx').default;
+ const html=renderToStaticMarkup(React.createElement(Editor,{calendarId:'c',post:{id:'p',platform:'INSTAGRAM',creativeBrief:brief},guided:true,readOnly:true,onUpdated:()=>{}}));
+ assert.match(html,/Existing copy/);assert.match(html,/Help studio leads clarify handoff responsibility/);
+ assert.doesNotMatch(html,/Improve with AI|Save changes/);
+ assert.match(html,/<textarea[^>]*disabled=""/);
+});

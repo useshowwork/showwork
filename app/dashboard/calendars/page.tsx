@@ -145,18 +145,18 @@ export default async function CalendarsPage({
         >
           <Link
             href="/dashboard"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-[#475467] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1768E8]"
+            className={styles.homeLink}
           >
             <ShowworkLogo width={96}/>
-            <span className="ml-2 border-l border-[#D0DCEB] pl-3 text-xs">All tools</span>
+            <span className={styles.allTools}>All tools</span>
           </Link>
-          <div className="flex items-center gap-1">
-            <HelpLink className="px-2 text-xs text-[#607fa5]"/>
+          <div className={styles.navActions}>
+            <HelpLink className={styles.helpLink}/>
             <DashboardTourButton />
             <Link
               href={BILLING_HREF}
               data-dashboard-tour="billing"
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-[#475467] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1768E8]"
+              className={styles.billingLink}
             >
               <CreditCard
                 aria-hidden="true"

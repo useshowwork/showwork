@@ -2,8 +2,7 @@ import { canUseCalendarFeature } from "@/lib/calendarPermissions";
 import type { SocialPlatform } from "@prisma/client";
 import { db } from "@/lib/db";
 import { publicUrlFor } from "@/lib/r2";
-import { getSocialReportingAdapter } from "@/lib/reporting/adapters";
-import { change, compareAccounts, applyLiveFacebookOverview } from "@/lib/reporting/comparison";
+import { change, compareAccounts } from "@/lib/reporting/comparison";
 import type { FacebookPageActivity } from "@/lib/reporting/types";
 
 export const REPORTING_PLATFORMS: SocialPlatform[] = ["INSTAGRAM", "TIKTOK", "FACEBOOK", "LINKEDIN", "X", "YOUTUBE"];
@@ -45,7 +44,7 @@ export async function getCalendarReportingData(
   }
   const platform = platforms.length ? { in: platforms } : null;
 
-  const [connections, posts, insights, facebookConnection] = await Promise.all([
+  const [storedConnections, posts, insights, facebookConnection, latestDisconnection] = await Promise.all([
     db.socialConnection.findMany({
       where: { calendarId, platform: platform || { in: REPORTING_PLATFORMS } },
       select: {
@@ -93,6 +92,7 @@ export async function getCalendarReportingData(
     db.publishedSocialPost.findMany({
       where: {
         calendarId,
+        connection: { status: { in: ["CONNECTED", "NEEDS_REAUTH"] } },
         ...(!includeSyncErrors ? { calendarPost: { internalReviewStatus: "APPROVED" as const, isAiDraft: false } } : {}),
         ...(platform ? { platform } : {}),
         publishedAt: { gte: start, lte: end },
@@ -119,7 +119,7 @@ export async function getCalendarReportingData(
             assets: { select: { fileKey: true, mediaType: true, displayOrder: true }, orderBy: { displayOrder: "asc" } },
           },
         },
-        connection: { select: { accountName: true, username: true } },
+        connection: { select: { id: true, status: true, accountName: true, username: true } },
       },
       orderBy: { publishedAt: "desc" },
     }),
@@ -136,15 +136,34 @@ export async function getCalendarReportingData(
       ? db.socialConnection.findFirst({
           where: { calendarId, platform: "FACEBOOK", status: { in: ["CONNECTED", "NEEDS_REAUTH"] } },
           orderBy: { connectedAt: "desc" },
+          select: { id: true, platformAccountId: true, accountName: true, lastSyncError: true },
         })
       : Promise.resolve(null),
+    db.socialConnection.findFirst({
+      where: { calendarId, disconnectedAt: { not: null } },
+      orderBy: { disconnectedAt: "desc" }, select: { disconnectedAt: true },
+    }),
   ]);
+
+  // Retain stored history for account recovery, but never include an explicitly
+  // disconnected account in live reporting (posts, charts or recommendations).
+  const connections = storedConnections.filter(connection => connection.status !== "DISCONNECTED");
+  const currentIds = new Set(connections.map(connection => connection.id));
+  const currentPlatforms = new Set(connections.map(connection => connection.platform));
+  const latestDisconnect = Math.max(latestDisconnection?.disconnectedAt?.getTime() ?? 0, ...storedConnections.map(connection => connection.disconnectedAt?.getTime() ?? 0));
+  const visibleInsights = insights.filter(insight => {
+    if (!connections.length || (insight.platform && !currentPlatforms.has(insight.platform))) return false;
+    // Legacy cross-channel analysis has no account provenance: invalidate it
+    // when a source is disconnected rather than showing an outdated mix.
+    if (insight.generatedAt.getTime() <= latestDisconnect) return false;
+    const provenance = insight.supportingData as { connectionIds?: unknown } | null;
+    return !Array.isArray(provenance?.connectionIds) || provenance.connectionIds.every(id => typeof id === "string" && currentIds.has(id));
+  });
 
   let facebookPageActivity: FacebookPageActivity | null = null;
   let facebookPageActivityError: string | null = null;
-  if (facebookConnection) {
-    // Internal fallback keeps the deliberately selected Page identity
-    // visible even when Meta temporarily refuses the live reporting call.
+  if (facebookConnection && currentIds.has(facebookConnection.id)) {
+    // Keep the selected Page identity alongside its saved observations.
     facebookPageActivity = {
       pageId: facebookConnection.platformAccountId,
       pageName: facebookConnection.accountName || "Facebook Page",
@@ -152,20 +171,15 @@ export async function getCalendarReportingData(
       posts: [],
       notices: [],
     };
-    const adapter = getSocialReportingAdapter("FACEBOOK");
-    if (!facebookConnection.accessToken) {
-      facebookPageActivityError = "Facebook Page connection needs renewal. Reconnect the selected Page to load Page activity.";
-    } else if (!(facebookConnection.tokenScopes ?? "").split(/[\s,]+/).includes("pages_read_engagement")) {
-      facebookPageActivityError = "Facebook reporting permission is missing. Reconnect this Page after granting pages_read_engagement.";
-    } else if (!adapter?.fetchPageActivity) {
-      facebookPageActivityError = "Facebook Page reporting is not available yet.";
-    } else {
-      try {
-        facebookPageActivity = await adapter.fetchPageActivity(facebookConnection, { start, end });
-      } catch (error) {
-        facebookPageActivityError = error instanceof Error ? error.message : "Could not load Facebook Page activity.";
-      }
-    }
+    // Report reads use persisted observations only. Provider IO belongs to sync jobs.
+    const saved = connections.find(connection => connection.id === facebookConnection.id);
+    const latest = saved?.accountMetricSnapshots[0];
+    facebookPageActivity.followers = latest?.followers ?? null;
+    facebookPageActivity.posts = (saved?.accountPosts ?? []).filter(post => post.publishedAt >= start).map(post => ({
+      id: post.platformPostId, message: post.caption, createdAt: post.publishedAt.toISOString(), permalink: post.permalink,
+      imageUrl: null, likes: post.likes, comments: post.comments, shares: post.shares, reach: post.reach, impressions: post.impressions,
+    }));
+    facebookPageActivityError = includeSyncErrors ? facebookConnection.lastSyncError : null;
   }
 
   const accountPosts = connections.flatMap((connection) => connection.accountPosts.filter(post => post.publishedAt >= start).map((post) => ({
@@ -190,41 +204,11 @@ export async function getCalendarReportingData(
     username: connection.username,
     source: "PLATFORM" as const,
   })));
-  if (facebookPageActivity) {
-    for (const post of facebookPageActivity.posts) {
-      if (!post.createdAt) continue;
-      const existingIndex = accountPosts.findIndex((item) => item.platform === "FACEBOOK" && item.platformPostId === post.id);
-      const enrichedPost = {
-        id: existingIndex >= 0 ? accountPosts[existingIndex].id : `FACEBOOK:${post.id}`,
-        connectionId: facebookConnection?.id ?? "",
-        platform: "FACEBOOK" as const,
-        platformPostId: post.id,
-        caption: post.message,
-        postType: "POST",
-        publishedAt: post.createdAt ?? new Date().toISOString(),
-        permalink: post.permalink,
-        views: null,
-        reach: post.reach,
-        impressions: post.impressions,
-        engagement: [post.likes, post.comments, post.shares].every((value) => value != null)
-          ? (post.likes ?? 0) + (post.comments ?? 0) + (post.shares ?? 0)
-          : null,
-        likes: post.likes,
-        comments: post.comments,
-        shares: post.shares,
-        saves: null,
-        metricsUpdatedAt: null,
-        accountName: facebookPageActivity.pageName,
-        username: null,
-        source: "PLATFORM" as const,
-      };
-      if (existingIndex >= 0) accountPosts[existingIndex] = { ...accountPosts[existingIndex], ...enrichedPost };
-      else accountPosts.push(enrichedPost);
-    }
-  }
   accountPosts.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 
-  const leadWhere = { calendarId, ...(platform ? { socialConversation: { platform } } : {}) };
+  const leadWhere = { calendarId, ...(platform ? { socialConversation: { platform } } : {}),
+    AND: [{ OR: [{ socialConversation: null }, { socialConversation: { connection: { status: { in: ["CONNECTED", "NEEDS_REAUTH"] as Array<"CONNECTED" | "NEEDS_REAUTH"> } } } }] }],
+  };
   const [leadTotal, newLeads, previousLeads, hotCount, customers, hottest] = includeSyncErrors && includeLeads ? await Promise.all([
     db.calendarLead.count({ where: { ...leadWhere, createdAt: { lte: end } } }),
     db.calendarLead.count({ where: { ...leadWhere, createdAt: { gte: start, lte: end } } }),
@@ -247,11 +231,8 @@ export async function getCalendarReportingData(
     }
     return { ...connection, accountPosts: [...merged.values()] };
   });
-  let compared = compareAccounts(comparisonAccounts, start, end, previousStart);
+  const compared = compareAccounts(comparisonAccounts, start, end, previousStart);
   const activeAccounts = connections.filter(connection => connection.status === "CONNECTED");
-  if (!facebookPageActivityError && facebookPageActivity && activeAccounts.length === 1 && activeAccounts[0].id === facebookConnection?.id) {
-    compared = applyLiveFacebookOverview(compared, facebookPageActivity, start, end);
-  }
   // Post media views are distinct from video views and unique Page reach.
   const activeIds = new Set(activeAccounts.map(connection => connection.id));
   const facebookPosts = accountPosts.filter(post => post.platform === "FACEBOOK" && activeIds.has(post.connectionId));
@@ -287,7 +268,7 @@ export async function getCalendarReportingData(
       ...(includeSyncErrors ? { lastSyncError: "lastSyncError" in connection ? connection.lastSyncError : null } : {}),
       accountMetricSnapshots: connection.accountMetricSnapshots.filter(snapshot => snapshot.snapshotDate >= start).slice(0, advancedAccess ? undefined : 1),
     })),
-    posts: posts.map((post) => ({
+    posts: posts.filter(post => post.connection && currentIds.has(post.connection.id)).map((post) => ({
       id: post.id,
       platform: post.platform,
       platformPostId: post.platformPostId,
@@ -310,7 +291,7 @@ export async function getCalendarReportingData(
       },
     })),
     accountPosts,
-    insights: insights.map((insight) => includeSyncErrors
+    insights: visibleInsights.map((insight) => includeSyncErrors
       ? insight
       : {
           id: insight.id,

@@ -1,4 +1,6 @@
 import { Prisma, type SocialConnection } from "@prisma/client";
+import { canAccessCalendarById } from "@/lib/calendarPermissions";
+import { SYNC_REPORTING_PLATFORMS } from "./capabilities";
 import { db } from "@/lib/db";
 import { getSocialReportingAdapter } from "@/lib/reporting/adapters";
 import { utcSnapshotDate } from "@/lib/socialReporting";
@@ -95,17 +97,6 @@ async function syncConnection(initialConnection: SocialConnection & {
       await db.socialAccountMetricSnapshot.updateMany({
         where: { socialConnectionId: connection.id },
         data: { reach: null, impressions: null, views: null, engagement: null, additionalMetrics: Prisma.JsonNull },
-      });
-    }
-
-    const facebookPageLikes = accountMetrics.additionalMetrics?.pageLikes;
-    if (connection.platform === "FACEBOOK" && typeof facebookPageLikes === "number" && facebookPageLikes < 100) {
-      // Meta does not provide Page Insights below this eligibility threshold.
-      // Remove previous empty/zero Insight readings so the report does not
-      // keep presenting them as valid history after the limitation is known.
-      await db.socialAccountMetricSnapshot.updateMany({
-        where: { socialConnectionId: connection.id },
-        data: { reach: null, impressions: null, views: null, engagement: null },
       });
     }
 
@@ -219,7 +210,7 @@ async function syncConnection(initialConnection: SocialConnection & {
 /** Sync each account independently so one provider failure never blocks others. */
 async function syncConnections(calendarId?: string) {
   const connections = await db.socialConnection.findMany({
-    where: { platform: { not: "WHATSAPP" }, status: { in: ["CONNECTED", "NEEDS_REAUTH"] }, ...(calendarId ? { calendarId } : {}) },
+    where: { platform: { in: [...SYNC_REPORTING_PLATFORMS] }, status: { in: ["CONNECTED", "NEEDS_REAUTH"] }, ...(calendarId ? { calendarId } : {}) },
     include: {
       publishedPosts: {
         where: { status: "PUBLISHED" },
@@ -234,7 +225,7 @@ async function syncConnections(calendarId?: string) {
       results.push({ connectionId: connection.id, status: "NEEDS_REAUTH" as const });
       continue;
     }
-    results.push(await syncConnection(connection));
+    if (await canAccessCalendarById(connection.calendarId)) results.push(await syncConnection(connection));
   }
   return { total: connections.length, results };
 }
@@ -245,4 +236,18 @@ export async function syncConnectedSocialReporting() {
 
 export async function syncCalendarSocialReporting(calendarId: string) {
   return syncConnections(calendarId);
+}
+
+/** Queue entrypoint rechecks access and connection state immediately before provider IO. */
+export async function syncReportingConnection(connectionId: string) {
+  const connection = await db.socialConnection.findUnique({
+    where: { id: connectionId },
+    include: { publishedPosts: { where: { status: "PUBLISHED" },
+      select: { id: true, platformPostId: true, providerReference: true, publishedAt: true },
+      orderBy: { publishedAt: "desc" }, take: 100 } },
+  });
+  if (!connection || connection.status !== "CONNECTED" || !getSocialReportingAdapter(connection.platform) || !(await canAccessCalendarById(connection.calendarId))) {
+    return { status: "SKIPPED" as const };
+  }
+  return syncConnection(connection);
 }

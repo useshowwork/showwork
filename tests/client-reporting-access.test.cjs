@@ -6,6 +6,7 @@ const ts = require('typescript');
 function reportingRoute({ token = 'valid', active = true, exists = true, lookupError = null, reportError = null } = {}) {
   const calls = [];
   const mocks = {
+    "@/lib/reporting/jobs": { enqueueReportingSync: async () => ({ queued: false }), runNextReportingJob: async () => {} },
     "@/lib/complimentaryAccess": require("./helpers/billing-fixtures.cjs").withBillingDependencies({})["@/lib/complimentaryAccess"],
     'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     '@/lib/db': { db: { socialCalendar: { findUnique: async () => { if (lookupError) throw lookupError; return exists ? { id: 'calendar', manager: {}, reportingPermission: { enabled: false } } : null; } } } },

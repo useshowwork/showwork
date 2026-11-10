@@ -6,6 +6,7 @@ import {
   invokePublishingEntrypoint,
 } from "@/lib/publishing/applicationBoundary";
 
+import { db } from "@/lib/db";
 import { getCurrentCreator } from "@/lib/auth";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 
@@ -195,7 +196,11 @@ async function invoke(
     // ==========================================================
 
     const pageId = request.nextUrl.searchParams.get("pageId") ?? undefined;
-    const allPages = await listManagedPages(userAccessToken, pageId);
+    // Only reuse IDs from this authorized workspace, never another client's
+    // credentials. Meta must issue a fresh Page token for the current person.
+    const workspace = await db.socialCalendar.findUnique({where:{id},select:{instagramPageId:true,facebookPageId:true}});
+    const pageHints = [workspace?.instagramPageId, workspace?.facebookPageId].filter((value): value is string => !!value);
+    const allPages = await listManagedPages(userAccessToken, pageId, pageHints);
 
     // ==========================================================
     // 8. DISCOVER LINKED INSTAGRAM ACCOUNTS

@@ -70,7 +70,7 @@ export async function validateMetaUserToken(userToken: string, appId: string, ap
  * Page access: every additional candidate needs a Page token issued to this user.
  * No permission is added to OAuth by this discovery service.
  */
-export async function discoverMetaPages(userToken: string, config: { appId: string; appSecret: string; instagram?: boolean; pageId?: string }): Promise<MetaPageDiscoveryResult> {
+export async function discoverMetaPages(userToken: string, config: { appId: string; appSecret: string; instagram?: boolean; pageId?: string; pageHints?: string[] }): Promise<MetaPageDiscoveryResult> {
   const token = await validateMetaUserToken(userToken, config.appId, config.appSecret);
   const required = ["pages_show_list", ...(config.instagram ? ["pages_read_engagement", "instagram_basic"] : [])];
   const missing = required.filter(scope => !token.scopes?.includes(scope));
@@ -112,6 +112,9 @@ export async function discoverMetaPages(userToken: string, config: { appId: stri
   const candidates = new Map<string, "granular" | "business">();
   // A manager-supplied ID is a hint, never evidence of access. It must pass
   // the same user-token Page credential and relationship checks below.
+  for (const hint of (config.pageHints ?? []).slice(0, 2)) {
+    if (/^\d{5,30}$/.test(hint) && (!allowed || allowed.has(hint))) candidates.set(hint, "granular");
+  }
   if (config.pageId) {
     if (!/^\d{5,30}$/.test(config.pageId)) throw new MetaDiscoveryError("META_PAGE_ID_INVALID", "Enter the numeric Facebook Page ID.");
     if (allowed && !allowed.has(config.pageId)) throw new MetaDiscoveryError("META_PAGE_NOT_SELECTED", "Allow this Facebook Page during authorization before connecting it.");

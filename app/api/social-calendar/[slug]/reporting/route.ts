@@ -1,5 +1,6 @@
+import { enqueueReportingSync, runNextReportingJob } from "@/lib/reporting/jobs";
 import { complimentaryAccessSelect } from "@/lib/complimentaryAccess";
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyViewerToken } from "@/lib/auth";
 import { getCalendarReportingData, reportingPeriod } from "@/lib/reporting/data";
@@ -8,6 +9,8 @@ import { canAccessCalendar } from "@/lib/calendarPermissions";
 function cookieNameFor(calendarId: string) {
   return `calendar_viewer_${calendarId}`;
 }
+
+export const maxDuration = 300;
 
 export async function GET(
   req: NextRequest,
@@ -50,7 +53,15 @@ export async function GET(
     if (!canAccessCalendar(calendar.manager)) {
       return NextResponse.json({ error: "This workspace isn’t active." }, { status: 403 });
     }
-    return NextResponse.json(await getCalendarReportingData(calendar.id, req.nextUrl.searchParams, false));
+    const report = await getCalendarReportingData(calendar.id, req.nextUrl.searchParams, false);
+    let updating = false;
+    let updateUnavailable = false;
+    try {
+      const update = await enqueueReportingSync(calendar.id);
+      updating = update.queued;
+      if (updating) after(async () => { await runNextReportingJob(calendar.id).catch(() => console.warn("REPORTING_DRAIN_DEFERRED")); });
+    } catch { updateUnavailable = true; }
+    return NextResponse.json({ ...report, updating, updateUnavailable }, { headers: { "Cache-Control": "no-store, private" } });
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? error.code : null;
     if (["P1001", "P1002", "P1008", "P1017", "P2024"].includes(String(code))) {

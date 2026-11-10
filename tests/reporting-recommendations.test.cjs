@@ -70,11 +70,14 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 const response = data => ({ ok: true, json: async () => data });
 function browser(blocked = false) {
-  const original = { window: global.window, fetch: global.fetch, CustomEvent: global.CustomEvent };
+  const original = { window: global.window, fetch: global.fetch, CustomEvent: global.CustomEvent, document: global.document, requestAnimationFrame: global.requestAnimationFrame };
   const events = new EventTarget(), storage = new Map(), timers = [];
   global.CustomEvent = class extends Event { constructor(name, options) { super(name); this.detail = options?.detail; } };
+  global.requestAnimationFrame = fn => fn();
+  global.document = { visibilityState: "visible" };
   global.window = Object.assign(events, {
     sessionStorage: { getItem: key => { if (blocked) throw Error('blocked'); return storage.get(key) ?? null; }, setItem: (key, value) => { if (blocked) throw Error('blocked'); storage.set(key, value); }, removeItem: key => { if (blocked) throw Error('blocked'); storage.delete(key); } },
+    setInterval: fn => { timers.push(fn); return timers.length; }, clearInterval: () => {},
     setTimeout: fn => { timers.push(fn); return timers.length; }, clearTimeout: () => {},
   });
   return { timers, restore() { Object.assign(global, original); } };
@@ -154,7 +157,7 @@ test('apply all uses only filtered, nonempty recommendations; single apply prese
     assert.match(single, /Improve experiment/);
     assert.match(single, /improve evidence end/);
     assert.ok(single.length > 1200);
-    button(render(), 'Refresh').props.onClick();
+    button(render(), 'Update now').props.onClick();
     await tick(); h.unmount();
   } finally { b.restore(); }
 });
@@ -167,16 +170,11 @@ test('filter changes hide stale actions immediately and late requests cannot rep
     const render = () => h.render(Panel, panelProps);
     render(); h.flush();
     requests[0].resolve(response(report([insight('old', 'TREND', 'Old experiment')]))); await tick();
-    button(render(), 'Facebook').props.onClick();
-    render(); h.flush();
-    assert.equal(requests.length, 1, 'staging a platform must not fetch a new report');
-    assert.ok(button(render(), 'Apply all recommendations'), 'current report stays visible before Apply');
-    assert.equal(button(render(), 'Apply platforms').props.disabled, false);
-    button(render(), 'Apply platforms').props.onClick();
+    find(render(), node=>node.type==='input' && node.props.value==='FACEBOOK')[0].props.onChange();
     assert.equal(button(render(), 'Apply all recommendations'), undefined);
-    h.flush();
-    button(render(), 'LinkedIn').props.onClick();
-    button(render(), 'Apply platforms').props.onClick();
+    render(); h.flush();
+    assert.equal(requests.length,2,'channel selection immediately fetches the report');
+    find(render(), node=>node.type==='input' && node.props.value==='LINKEDIN')[0].props.onChange();
     render(); h.flush();
     requests[2].resolve(response(report([insight('current', 'TREND', 'Current experiment')]))); await tick();
     requests[1].resolve(response(report([insight('late', 'TREND', 'Late old experiment')]))); await tick();
@@ -194,20 +192,17 @@ test('analysis completion and delayed sync refresh the latest selected filters',
     const render = () => h.render(Panel, panelProps);
     render(); h.flush(); await tick();
     const analyzing = button(render(), 'Refresh AI analysis').props.onClick();
-    button(render(), 'Facebook').props.onClick();
-    button(render(), 'Apply platforms').props.onClick();
+    find(render(), node=>node.type==='input' && node.props.value==='FACEBOOK')[0].props.onChange();
     render(); h.flush(); await tick();
     assert.equal(button(render(), 'Apply all recommendations').props.disabled, true);
     analysis.resolve(response({ generated: 1 })); await analyzing; await tick();
     assert.match(urls.at(-1), /platform=FACEBOOK/);
-    assert.equal(button(render(), 'Sync now').props.disabled, false);
-    button(render(), 'Sync now').props.onClick(); await tick();
-    button(render(), 'All platforms').props.onClick();
-    button(render(), 'LinkedIn').props.onClick();
-    button(render(), 'Apply platforms').props.onClick();
+    assert.equal(button(render(), 'Update now').props.disabled, false);
+    button(render(), 'Update now').props.onClick(); await tick();
+    find(render(), node=>node.type==='input' && node.props.value==='LINKEDIN')[0].props.onChange();
     render(); h.flush(); await tick();
     b.timers.at(-1)(); await tick();
-    assert.match(urls.at(-1), /platform=LINKEDIN/);
+    assert.match(urls.at(-1), /platform=FACEBOOK%2CLINKEDIN/);
     h.unmount();
   } finally { b.restore(); }
 });
@@ -233,7 +228,9 @@ test('applying filtered recommendations twice populates the mounted generator an
     const creativeDirection = find(renderCard(), n => n.type === 'textarea')[0].props.value;
     assert.match(creativeDirection, /Latest experiment/);
     assert.doesNotMatch(creativeDirection, /First experiment/);
-    button(renderCard(), 'Create content').props.onClick(); await tick();
+    button(renderCard(), 'Next').props.onClick();
+    button(renderCard(), 'Next').props.onClick();
+    button(renderCard(), 'Generate calendar').props.onClick(); await tick();
     assert.equal(sent.customInstructions, creativeDirection);
     assert.equal(find(renderCard(), n => n.props.role === 'status').length, 1);
     ph.unmount(); gh.unmount();
@@ -246,14 +243,43 @@ test('locked recommendations stay visible but cannot be applied', async () => {
     global.fetch = async () => response(report([insight('saved', 'TREND', 'Saved recommendation')]));
     const render = () => h.render(Panel, { ...panelProps, canApplyRecommendations: false, recommendationsAccess: false });
     render(); h.flush(); await tick();
-    assert.match(text(render()), /Saved recommendation/);
-    assert.match(text(render()), /Upgrade to Studio to view and use AI recommendations/);
-    assert.equal(find(render(), n => n.props['aria-hidden'] === true && n.props.className?.includes('blur-sm')).length, 1);
-    assert.equal(find(render(), n => n.type === 'a' && text(n) === 'Upgrade to Studio')[0].props.href, '/dashboard/billing?product=content-workspace#content-workspace-plans');
+    assert.doesNotMatch(text(render()), /Saved recommendation/);
+    assert.match(text(render()), /AI recommendations are available from Studio/);
+    assert.equal(find(render(), n => n.props['aria-hidden'] === true && n.props.className?.includes('blur-sm')).length, 0);
+    assert.equal(find(render(), n => n.type === 'a' && text(n).includes('Explore Studio'))[0].props.href, '/dashboard/billing?product=content-workspace#content-workspace-plans');
     assert.equal(button(render(), 'Apply all recommendations').props.disabled, true);
     button(render(), 'Apply all recommendations').props.onClick();
-    button(render(), 'Create content from this insight').props.onClick();
+    assert.equal(button(render(), 'Create content from this insight'), undefined);
     assert.equal(handoff.consumeReportingRecommendation('a'), null);
     h.unmount();
   } finally { b.restore(); }
+});
+test('channel dropdown supports one, two and three selections, removal and all-channel reset', async () => {
+  const b=browser();
+  try {
+    const h=hooks(),handoff=load('lib/reporting/recommendationHandoff.ts'),Panel=panel(h,handoff),urls=[];
+    global.fetch=async url=>{urls.push(url);return response(report([]));};
+    const render=()=>h.render(Panel,panelProps);
+    render();h.flush();await tick();
+    const toggle=async key=>{find(render(),node=>node.type==='input' && node.props.value===key)[0].props.onChange();render();h.flush();await tick();};
+    await toggle('INSTAGRAM');assert.match(urls.at(-1),/platform=INSTAGRAM/);
+    await toggle('FACEBOOK');assert.match(urls.at(-1),/platform=FACEBOOK%2CINSTAGRAM/);
+    await toggle('LINKEDIN');assert.match(urls.at(-1),/platform=FACEBOOK%2CINSTAGRAM%2CLINKEDIN/);
+    assert.match(text(render()),/3 channels/);
+    await toggle('FACEBOOK');assert.match(urls.at(-1),/platform=INSTAGRAM%2CLINKEDIN/);
+    await toggle('ALL');assert.doesNotMatch(urls.at(-1),/platform=/);
+    assert.equal(find(render(),node=>node.type==='input' && node.props.value==='ALL')[0].props.checked,true);
+    h.unmount();
+  } finally {b.restore();}
+});
+test('a channel-change event removes cached analytics before reloading current connections',async()=>{
+ const b=browser();
+ try {
+  const h=hooks(),Panel=panel(h,load('lib/reporting/recommendationHandoff.ts'));
+  let request=0;const next=deferred();global.fetch=async()=>++request===1?response(report([insight('old','TREND','Old experiment')])):next.promise;
+  const render=()=>h.render(Panel,panelProps);render();h.flush();await tick();assert.ok(button(render(),'Apply all recommendations'));
+  window.dispatchEvent(new CustomEvent('showwork-reporting-channels-changed',{detail:{calendarId:'different'}}));assert.equal(request,1);
+  window.dispatchEvent(new CustomEvent('showwork-reporting-channels-changed',{detail:{calendarId:'a'}}));assert.equal(button(render(),'Apply all recommendations'),undefined);
+  next.resolve(response(report([])));await tick();assert.equal(button(render(),'Apply all recommendations'),undefined);h.unmount();
+ }finally{b.restore();}
 });

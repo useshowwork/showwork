@@ -11,9 +11,8 @@ import dashboardStyles from "./ReportingDashboard.module.css";
 
 import { queueReportingRecommendation } from "@/lib/reporting/recommendationHandoff";
 import UiSymbol from "@/components/ui/UiSymbol";
-import IconText from "@/components/ui/IconText";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, CalendarDays, Check, Clock3, Eye, Flame, Minus, Target, RefreshCw, Sparkles, Users, ChartNoAxesCombined } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3,  Eye, Flame, Minus, Target, RefreshCw, Sparkles, Users, ChartNoAxesCombined, CircleAlert, ChevronDown } from "lucide-react";
 
 type Metrics = {
   reach?: number | null;
@@ -29,6 +28,8 @@ type Metrics = {
 type Change = { value: number | null; delta: number | null; percent: number | null; basis: string; note?: string };
 export type Report = {
   advancedAccess?: boolean;
+  updating?: boolean;
+  updateUnavailable?: boolean;
   comparisonPeriod: { start: string; end: string };
   performance: Record<string, Change>;
   leads: { total: number; acquired: Change; hotCount: number; customers: number; hottest: Array<{ id: string; name: string; company: string | null; username: string | null; status: string; source: string; updatedAt: string; socialConversation: { platform: string; participantName: string | null; participantUsername: string | null } | null }> } | null;
@@ -79,7 +80,7 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   const [from, setFrom] = useState(() => dateInput(new Date(Date.now() - 29 * 86400000)));
   const [to, setTo] = useState(() => dateInput(new Date()));
   const [platform, setPlatform] = useState("");
-  const [pendingPlatforms, setPendingPlatforms] = useState("");
+  const [datePreset, setDatePreset] = useState("30");
   const queryKey = JSON.stringify([calendarId, clientSlug, from, to, platform]);
   const [loadedReport, setLoadedReport] = useState<{ key: string; data: Report } | null>(null);
   // A filter change immediately invalidates old actions, before the fetch effect runs.
@@ -91,12 +92,26 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   const [syncNotice, setSyncNotice] = useState("");
   const [reportSection, setReportSection] = useState("performance");
   const [postsExpanded, setPostsExpanded] = useState(false);
+  const channelDropdown = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (channelDropdown.current && !channelDropdown.current.contains(event.target as Node)) channelDropdown.current.open = false;
+    };
+    window.addEventListener("pointerdown", dismiss);
+    return () => window.removeEventListener("pointerdown", dismiss);
+  }, []);
+  function toggleChannel(key: string) {
+    setPlatform(current => {
+      const selected = current ? current.split(",") : [];
+      return (selected.includes(key) ? selected.filter(value => value !== key) : [...selected, key]).sort().join(",");
+    });
+  }
 
   const requestVersion = useRef(0);
   const load = useCallback(async () => {
     const version = ++requestVersion.current;
     if (!from || !to || from > to) { setError("Choose a valid reporting date range."); setLoadedReport(null); setLoading(false); return; }
-    setLoading(true); setError(""); setLoadedReport(null); setPostsExpanded(false);
+    setLoading(true); setError("");
     try {
       const query = new URLSearchParams({ from, to });
       if (platform) query.set("platform", platform);
@@ -109,7 +124,6 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   }, [calendarId, clientSlug, from, to, platform, queryKey]);
 
   const latestLoad = useRef(load);
-  const syncTimer = useRef<number | null>(null);
   const mounted = useRef(false);
   useEffect(() => {
     latestLoad.current = load;
@@ -120,56 +134,55 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
     mounted.current = true;
     return () => {
       mounted.current = false;
-      if (syncTimer.current) window.clearTimeout(syncTimer.current);
     };
   }, []);
 
+  useEffect(() => {
+    const invalidate = () => { ++requestVersion.current; setLoadedReport(null); void latestLoad.current(); };
+    const onChange = (event: Event) => {
+      if ((event as CustomEvent<{ calendarId: string }>).detail?.calendarId === calendarId) invalidate();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== "showwork-reporting-channel-change" || !event.newValue) return;
+      try { if (JSON.parse(event.newValue).calendarId === calendarId) invalidate(); } catch { /* Ignore unrelated/malformed storage. */ }
+    };
+    const onFocus = () => { void latestLoad.current(); };
+    window.addEventListener("showwork-reporting-channels-changed", onChange);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("showwork-reporting-channels-changed", onChange);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [calendarId, clientSlug]);
+
+  const syncInFlight = useRef(false);
   async function syncReportingNow() {
-    setSyncing(true); setError(""); setSyncNotice("");
+    if (syncInFlight.current) return;
+    syncInFlight.current = true;
+    setSyncing(true); setSyncNotice("");
     try {
       const response = await calendarMutationFetch(`/api/calendars/${encodeURIComponent(calendarId)}/reporting/sync`, { method: "POST" });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not start reporting sync.");
-      if (!mounted.current) return;
-      setSyncNotice("Syncing account insights and post metrics. This report will update automatically when finished.");
-      const queuedAt = typeof data.queuedAt === "string" ? data.queuedAt : new Date().toISOString();
-      const deadline = Date.now() + 5 * 60_000;
-      const poll = async () => {
-        if (!mounted.current) return;
-        try {
-          const statusResponse = await calendarMutationFetch(`/api/calendars/${encodeURIComponent(calendarId)}/reporting/sync?since=${encodeURIComponent(queuedAt)}`, { cache: "no-store" });
-          const status = await statusResponse.json();
-          if (!mounted.current) return;
-          if (!statusResponse.ok) throw new Error(status.error || "Could not check sync progress.");
-          if (status.completed) {
-            await latestLoad.current();
-            if (!mounted.current) return;
-            setSyncNotice(status.failed ? "Sync finished with account errors. Review the account status below." : "Sync complete. Your report now includes the latest available metrics.");
-            setSyncing(false);
-            return;
-          }
-          if (Date.now() >= deadline) {
-            await latestLoad.current();
-            if (!mounted.current) return;
-            setSyncNotice("Sync is taking longer than expected. Some data may still be updating; check account status before retrying.");
-            setSyncing(false);
-            return;
-          }
-          syncTimer.current = window.setTimeout(() => { void poll(); }, 3000);
-        } catch (err) {
-          if (!mounted.current) return;
-          setError(err instanceof Error ? err.message : "Could not check sync progress.");
-          setSyncing(false);
-        }
-      };
-      if (syncTimer.current) window.clearTimeout(syncTimer.current);
-      syncTimer.current = window.setTimeout(() => { void poll(); }, 3000);
-    } catch (err) {
-      if (mounted.current) { setError(err instanceof Error ? err.message : "Could not start reporting sync."); setSyncing(false); }
-    }
+      if (!response.ok) throw new Error(data.error || "Could not start the update.");
+      if (mounted.current) {
+        setSyncNotice(data.queued ? "Updating your results in the background. You can keep exploring." : data.eligible ? "Your results are up to date. Updates run automatically." : "Connect a supported channel to start collecting results.");
+        await latestLoad.current();
+      }
+    } catch (err) { if (mounted.current) setSyncNotice(err instanceof Error ? err.message : "Could not start the update."); }
+    finally { syncInFlight.current = false; if (mounted.current) setSyncing(false); }
   }
 
-  const connected = report?.connections.filter(c => c.status === "CONNECTED").length ?? 0;
+  // Reload saved data while jobs run; never issue AI requests or hide existing results.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void latestLoad.current();
+    }, report?.updating ? 5000 : 60_000);
+    return () => window.clearInterval(timer);
+  }, [calendarId, clientSlug, report?.updating]);
+
+  const connected = report?.connections.filter(c => c.status === "CONNECTED" && c.platform !== "YOUTUBE").length ?? 0;
   const [insightFilter, setInsightFilter] = useState("ALL");
   const shownInsights = report?.insights.filter(i => insightFilter === "ALL" || (insightFilter === "ACTION" ? Boolean(i.recommendation?.trim()) : i.type === insightFilter)) ?? [];
 
@@ -221,10 +234,16 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
     { title: "Total leads", metric: { value: report?.leads?.total ?? null, delta: report?.leads?.acquired.value ?? null, percent: null, basis: "new leads in selected period" }, icon: Target, tint: "bg-rose-50 text-rose-700" },
     { title: "New leads", metric: report?.leads?.acquired ?? unavailable, icon: Flame, tint: "bg-orange-50 text-orange-700" },
   ];
-  const updatedAt = [
-    ...report?.connections.filter(connection => connection.status === "CONNECTED").map(connection => connection.lastSyncAt).filter((value): value is string => !!value) ?? [],
-    ...(report?.facebookPageActivity?.latestMetrics?.asOf ? [report.facebookPageActivity.latestMetrics.asOf] : []),
-  ].sort().at(-1);
+  const activeConnections = report?.connections.filter(connection => connection.status === "CONNECTED" && connection.platform !== "YOUTUBE") ?? [];
+  // The report is only as fresh as its oldest active channel, not the newest one.
+  const updatedAt = activeConnections.length && activeConnections.every(connection => connection.lastSyncAt)
+    ? activeConnections.map(connection => connection.lastSyncAt!).sort()[0] : null;
+  const hasObservations = activeConnections.some(connection => connection.lastSyncAt);
+  const primaryCards = [cards[0], cards[1], cards[3], !clientSlug && canViewLeads && report?.leads ? cards.at(-1)! : cards[2]];
+  const topPosts = [...(report?.accountPosts ?? [])].filter(post => post.engagement != null).sort((a, b) => (b.engagement ?? 0) - (a.engagement ?? 0)).slice(0, 3);
+  const nextRecommendation = report?.insights.find(insight => insight.recommendation?.trim());
+  const needsAttention = report?.connections.filter(connection => connection.status === "NEEDS_REAUTH" || (connection.status === "CONNECTED" && connection.lastSyncError)) ?? [];
+  const openChannels = () => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "channels" } }));
   const reachDays = new Map<string, number>();
   for (const connection of report?.connections ?? []) {
     if (connection.status !== "CONNECTED") continue;
@@ -244,57 +263,69 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   }
   const navigateToLeads = () => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "leads" } }));
 
-  return <section aria-busy={loading} className={dashboardStyles.dashboard} aria-label="Social reporting">
-    <header className={dashboardStyles.hero}>
-      <div className={dashboardStyles.heroTop}>
-        <div><p className={dashboardStyles.reportEyebrow}><ChartNoAxesCombined size={15}/> Analytics & reporting</p><h1>Your impact.<br/><span>A clearer perspective.</span></h1><p className={dashboardStyles.heroCopy}>Find the signal in your performance. Understand what connects, and decide what deserves your next move.</p></div>
-        <div className={dashboardStyles.reportingStamp}><span><CalendarDays size={14}/> Reporting window</span><strong>{from} <span>—</span> {to}</strong><span><Check size={13}/>{report ? `${connected} connected ${connected === 1 ? "account" : "accounts"}` : "Loading account data…"}</span></div>
-      </div>
-      <div className={dashboardStyles.reportControls}>
-        <label>From<input aria-label="Start date" type="date" value={from} max={to} onChange={e => setFrom(e.target.value)}/></label>
-        <label>To<input aria-label="End date" type="date" value={to} min={from} max={dateInput(new Date())} onChange={e => setTo(e.target.value)}/></label>
-        <fieldset className={dashboardStyles.platformChoices}>
-          <legend>Platforms</legend>
-          <div>
-            <button type="button" aria-pressed={!pendingPlatforms} onClick={() => setPendingPlatforms("")}>All platforms</button>
-            {Object.entries(label).map(([key, value]) => {
-              const selected = pendingPlatforms.split(",").includes(key);
-              return <button key={key} type="button" aria-pressed={selected} onClick={() => setPendingPlatforms(current => {
-                const values = current ? current.split(",") : [];
-                return (values.includes(key) ? values.filter(item => item !== key) : [...values, key]).sort().join(",");
-              })}><PlatformBrandIcon platform={key} size={16}/>{value}</button>;
-            })}
+  return <section aria-busy={loading && !report} className={dashboardStyles.dashboard} aria-label="Social reporting">
+    <header className={dashboardStyles.simpleHeader}>
+      <div><p className={dashboardStyles.reportEyebrow}><ChartNoAxesCombined size={15} aria-hidden="true"/> Analytics & reporting</p><h1>See what’s working.</h1>
+        <div className={dashboardStyles.statusLine}><div className={dashboardStyles.freshness} role="status" aria-live="polite"><RefreshCw size={13} className={report?.updating || syncing ? "animate-spin" : ""} aria-hidden="true"/>
+          {report?.updating || syncing ? "Updating your results…" : updatedAt ? `All channels updated as of ${new Date(updatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : connected ? "Collecting your first results" : report ? "Connect a channel to get started" : "Loading your results…"}
+        </div>
+        {(report?.updateUnavailable || needsAttention.length > 0) && <details className={dashboardStyles.statusDropdown} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
+          <summary><CircleAlert size={14} aria-hidden="true"/>Updates need attention<ChevronDown size={13} aria-hidden="true"/></summary>
+          <div className={dashboardStyles.statusPopover}>
+            {report?.updateUnavailable && <p><strong>Automatic updates unavailable</strong>Saved results remain available. Please try again later.</p>}
+            {needsAttention.map(connection => <p key={connection.id}><strong>{label[connection.platform] || connection.platform}</strong>{connection.status === "NEEDS_REAUTH" ? "Reconnect to resume updates." : "Some metrics could not be updated. Check this channel’s access and availability."}</p>)}
+            {!clientSlug && needsAttention.length > 0 && <button type="button" onClick={openChannels}>Check channels <ArrowUpRight size={14} aria-hidden="true"/></button>}
           </div>
-          <footer className={dashboardStyles.platformFooter}>
-            <p aria-live="polite">{pendingPlatforms !== platform ? "Selection changed · Apply to update your report" : `Showing ${platform ? platform.split(",").map(key => label[key] || key).join(" + ") : "all platforms"}`}</p>
-            <button type="button" className={dashboardStyles.applyPlatforms} disabled={pendingPlatforms === platform} onClick={() => setPlatform(pendingPlatforms)}>Apply platforms</button>
-          </footer>
-        </fieldset>
-        <div className={dashboardStyles.controlActions}>
-          <button type="button" onClick={() => { setFrom(dateInput(new Date(Date.now() - 29 * 86400000))); setTo(dateInput(new Date())); setPlatform(""); setPendingPlatforms(""); setInsightFilter("ALL"); setPostsExpanded(false); }} className={dashboardStyles.resetControl}>Reset</button>
-          <button type="button" onClick={() => void load()} disabled={loading} className={dashboardStyles.refreshControl}><RefreshCw size={14} className={loading ? "animate-spin" : ""}/>{loading ? "Updating" : "Refresh"}</button>
-          {isManager && !clientSlug && <button type="button" onClick={() => void syncReportingNow()} disabled={syncing || !report?.connections.some(connection => ["INSTAGRAM","TIKTOK","FACEBOOK"].includes(connection.platform) && connection.status === "CONNECTED")} className={dashboardStyles.syncControl}><RefreshCw size={14} className={syncing ? "animate-spin" : ""}/>{syncing ? "Starting sync…" : "Sync data"}</button>}
+        </details>}
         </div>
       </div>
-    </header>
-
-    <nav aria-label="Report sections" className={dashboardStyles.reportNav}>{[["performance", "Performance"], ...(!clientSlug && canViewLeads ? [["lead-opportunities", "Lead opportunities"]] : []), ["ai-insights", clientSlug ? "AI recommendations" : "AI action studio"], ["channel-detail", "Channels & content"]].map(([id, name]) => <a key={id} href={`#${id}`} onClick={() => setReportSection(id)} aria-current={reportSection === id ? "location" : undefined} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">{name}</a>)}<div className="ml-auto flex gap-1">{[7, 30, 90].map(days => <button key={days} type="button" aria-pressed={to === dateInput(new Date()) && from === dateInput(new Date(Date.now() - (days - 1) * 86400000))} onClick={() => { setTo(dateInput(new Date())); setFrom(dateInput(new Date(Date.now() - (days - 1) * 86400000))); }} className="rounded-full px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-white">{days}D</button>)}</div></nav>
-
-    {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-    {(!advancedAccess || report?.advancedAccess === false) && <WorkspaceFeatureNotice compact feature="advancedAnalytics" />}
-    {loading && !report ? <div className="rounded-2xl border border-[#DFE6EF] bg-white p-8 text-center text-sm text-[#667085]">Loading performance data…</div> : report && <>
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><h4 id="performance" className="scroll-mt-6 text-lg font-semibold tracking-tight text-[#101828]">Your performance, in perspective</h4><p className="mt-1 text-xs text-[#667085]">Previous period: {report.comparisonPeriod.start.slice(0, 10)} — {report.comparisonPeriod.end.slice(0, 10)}. Each card identifies its comparison basis.</p></div><span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#667085]"><Clock3 className="h-3.5 w-3.5" />Updated {updatedAt ? new Date(updatedAt).toLocaleString() : "—"}</span></div>
-      <div className={dashboardStyles.metricGrid}>{cards.filter(card => (!clientSlug && canViewLeads) || !["Total leads", "New leads"].includes(card.title)).map(({ title, metric, icon: Icon, tint }) => <div key={title} className={dashboardStyles.metricCard} data-unavailable={metric.value == null}><div className="flex items-start justify-between"><p className="text-[10px] font-bold uppercase tracking-[.09em] text-[#667085]">{title}</p><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tint}`}><Icon className="h-4 w-4" /></span></div><p className="mt-3 text-2xl font-semibold tracking-[-.04em] text-[#101828] sm:text-[28px]">{number(metric.value)}</p><p className="mt-1 text-[10px] leading-4 text-slate-500">{metric.basis}</p><div className="mt-3 min-h-[48px]"><Trend metric={metric} followers={title === "Followers" || title === "Current followers"} /></div></div>)}</div>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-slate-200 bg-white px-5 py-4"><div><p className="text-xs font-semibold text-slate-800">Content published this period</p><p className="mt-1 text-[10px] text-slate-400">Current lifetime post counters · up to 500 stored posts per account across both periods</p></div>{[["Posts", report.accountPosts.length], ...(["views", "likes", "engagement"] as const).map(key => { const values = report.accountPosts.map(post => post[key]).filter((value): value is number => value != null); return [key === "engagement" ? "Engagements" : key === "views" ? "Views" : "Likes", values.length ? values.reduce((a, b) => a + b, 0) : null] as const; })].map(([name, value]) => <div key={name}><p className="text-lg font-semibold tracking-tight text-slate-800">{number(value as number | null)}</p><p className="text-[10px] text-slate-500">{name}</p></div>)}</div>
-      <details className={dashboardStyles.methodology}><summary>How to read this report</summary><p className="text-[11px] leading-5 text-slate-500">Trends use available observations; missing days can affect period comparisons. Instagram views and interactions use the latest rolling total, without summing repeated totals. Native post fallbacks show current lifetime counters for content published in the period. Daily reach can include the same people on multiple days.</p></details>
-      <ReportingVisuals timeline={timeline} posts={report.accountPosts} />
-      <div>
-        {!clientSlug && canViewLeads && <section id="lead-opportunities" className="scroll-mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-label="Top five hottest leads"><div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6"><div><p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-orange-600"><Flame className="h-3.5 w-3.5" /> Opportunity radar</p><h4 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">Your 5 hottest leads</h4><p className="mt-1 text-xs text-slate-500">Hot leads acquired in this period, most recently updated first.</p></div><button type="button" onClick={navigateToLeads} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800">Open leads <ArrowUpRight className="h-3.5 w-3.5" /></button></div><div className="mx-5 mb-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center"><div><p className="text-lg font-semibold text-slate-900">{number(report.leads?.acquired.value)}</p><p className="text-[10px] text-slate-500">New this period</p></div><div><p className="text-lg font-semibold text-orange-600">{number(report.leads?.hotCount)}</p><p className="text-[10px] text-slate-500">Hot & open now</p></div><div><p className="text-lg font-semibold text-emerald-700">{number(report.leads?.customers)}</p><p className="text-[10px] text-slate-500">Now customers</p></div></div>{report.leads?.hottest.length ? <div className="overflow-x-auto"><table className="w-full text-left text-xs"><caption className="sr-only">Top five hot open leads created in the selected period, ordered by most recent update</caption><thead className="border-y border-slate-100 bg-slate-50/70 text-[10px] uppercase tracking-wide text-slate-500"><tr><th scope="col" className="px-5 py-3">Lead</th><th scope="col" className="px-3 py-3">Source</th><th scope="col" className="px-3 py-3">Stage</th><th scope="col" className="px-5 py-3">Activity</th></tr></thead><tbody className="divide-y divide-slate-100">{report.leads.hottest.map((lead, index) => <tr key={lead.id} className="transition hover:bg-orange-50/40"><td className="px-5 py-3"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 font-bold text-orange-600">{index + 1}</span><div><p className="font-semibold text-slate-900">{lead.socialConversation?.participantName || lead.name}</p><p className="mt-0.5 text-[10px] text-slate-500">{lead.company || lead.username || lead.socialConversation?.participantUsername || "Hot lead"}</p></div></div></td><td className="px-3 py-3 text-slate-500">{lead.socialConversation ? label[lead.socialConversation.platform] || lead.socialConversation.platform : lead.source === "IMPORT" ? "Import" : "Manual"}</td><td className="px-3 py-3"><span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-semibold capitalize text-indigo-700">{lead.status.toLowerCase()}</span></td><td className="whitespace-nowrap px-5 py-3 text-slate-500">{new Date(lead.updatedAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <div className="mx-5 mb-5 rounded-xl border border-dashed border-orange-200 bg-orange-50/40 p-5 text-center"><Flame className="mx-auto h-6 w-6 text-orange-400" /><p className="mt-2 text-sm font-semibold text-slate-700">No hot open leads in this period</p><p className="mt-1 text-xs leading-5 text-slate-500">Qualify leads as Hot in your lead pipeline to surface your next opportunities here.</p></div>}<p className="px-5 pb-5 pt-3 text-[10px] leading-4 text-slate-400">Stages reflect current qualification. Customers and lost leads are excluded from the shortlist.{platform && " Platform filtering includes leads linked to the selected social channels."}</p></section>}
+      <div className={dashboardStyles.simpleFilters}>
+        <label>Period<select value={datePreset} onChange={event => {
+          const value = event.target.value; setDatePreset(value);
+          if (value !== "custom") { setTo(dateInput(new Date())); setFrom(dateInput(new Date(Date.now() - (Number(value) - 1) * 86400000))); }
+        }}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="custom">Custom dates</option></select></label>
+        <div className={dashboardStyles.channelFilter}><span>Channels</span>
+          <details ref={channelDropdown} className={dashboardStyles.channelDropdown} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
+            <summary><span>{!platform ? "All channels" : platform.split(",").length === 1 ? label[platform] : `${platform.split(",").length} channels`}</span><ChevronDown size={16} aria-hidden="true"/></summary>
+            <div className={dashboardStyles.channelOptions}>
+              <fieldset><legend className="sr-only">Choose channels to compare</legend>
+                <label><input type="checkbox" value="ALL" checked={!platform} onChange={() => setPlatform("")}/><span>All channels</span></label>
+                {Object.entries(label).filter(([key]) => key !== "YOUTUBE").map(([key, name]) => <label key={key}><input type="checkbox" value={key} checked={platform.split(",").includes(key)} onChange={() => toggleChannel(key)}/><PlatformBrandIcon platform={key} size={17}/><span>{name}</span></label>)}
+              </fieldset>
+              <button type="button" onClick={() => { if (channelDropdown.current) { channelDropdown.current.open = false; channelDropdown.current.querySelector("summary")?.focus(); } }}>Done</button>
+            </div>
+          </details>
+        </div>
+        {isManager && !clientSlug && <button type="button" className={dashboardStyles.updateButton} onClick={() => void syncReportingNow()} disabled={syncing || report?.updating || !activeConnections.length}><RefreshCw size={14} aria-hidden="true"/>{syncing || report?.updating ? "Updating" : "Update now"}</button>}
       </div>
-      <ReportingInsights insights={shownInsights} total={report.insights.length} filter={insightFilter} onFilter={setInsightFilter} analyzing={analyzing} loading={loading} canAnalyze={canAnalyze} canApply={canApply} access={recommendationsAccess} client={Boolean(clientSlug)} onAnalyze={() => void analyzePerformance()} onApplyAll={applyAllRecommendations} onApply={applyRecommendation} />
-      {report.facebookPageActivity && <details className={dashboardStyles.facebookDetail}><summary>Facebook Page activity <span>Live detail from Meta</span></summary><section className="rounded-2xl border border-blue-200 bg-white p-4 shadow-[0_2px_8px_rgba(16,24,40,.025)] sm:p-5" aria-label="Facebook Page activity"><div className="flex flex-col gap-3 border-b border-[#EEF1F5] pb-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold text-[#101828]">Facebook Page activity</h4><span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700">Connected</span></div><p className="mt-2 text-sm font-semibold text-[#344054]">{report.facebookPageActivity.pageName}</p><p className="mt-1 text-[11px] text-[#667085]">Page ID: <span className="font-mono">{report.facebookPageActivity.pageId}</span>{report.facebookPageActivity.followers != null && <> · {number(report.facebookPageActivity.followers)} followers</>}</p></div><p className="text-[10px] text-[#667085]">Live Page data from Meta · {from} — {to}</p></div>{report.facebookPageActivityError && <p role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">{report.facebookPageActivityError}</p>}{report.facebookPageActivity.notices.map(notice => <p key={notice} className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">{notice}</p>)}<div className="mt-4"><h5 className="text-xs font-semibold text-[#344054]">Recent Page posts</h5>{report.facebookPageActivity.posts.length ? <div className="mt-3 divide-y divide-[#EEF1F5]">{report.facebookPageActivity.posts.map(post => <article key={post.id} className="flex gap-3 py-3">{post.imageUrl ? <img src={post.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-[#EEF1F5] object-cover" /> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[10px] font-bold text-blue-700">FB</div>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-x-2"><span className="text-[10px] font-bold text-[#101828]">Facebook</span>{post.createdAt && <span className="text-[10px] text-[#667085]">{new Date(post.createdAt).toLocaleDateString()}</span>}{post.permalink && <a href={post.permalink} target="_blank" rel="noreferrer" className="text-[10px] font-semibold text-[#1768E8]"><>{"View on Facebook "}<UiSymbol name="upRight" /></></a>}</div><p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-[#475467]"><IconText text={post.message || "Facebook Page post"} /></p><div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#667085]">{post.likes != null && <span>Likes {number(post.likes)}</span>}{post.comments != null && <span>Comments {number(post.comments)}</span>}{post.shares != null && <span>Shares {number(post.shares)}</span>}{post.reach != null && <span>Reach {number(post.reach)}</span>}{post.impressions != null && <span>Impressions {number(post.impressions)}</span>}</div></div></article>)}</div> : !report.facebookPageActivityError && <p className="mt-3 rounded-xl bg-[#F8FAFC] p-4 text-xs leading-5 text-[#667085]">No Page posts were returned for this date range.</p>}</div></section></details>}
-      <ReportingChannels report={report} isManager={isManager && !clientSlug} syncing={syncing} syncNotice={syncNotice} onSync={() => void syncReportingNow()} expanded={postsExpanded} onToggle={() => setPostsExpanded(value => !value)} />
+      {datePreset === "custom" && <div className={dashboardStyles.customDates}><label>From<input type="date" value={from} max={to} onChange={event => setFrom(event.target.value)}/></label><label>To<input type="date" value={to} min={from} max={dateInput(new Date())} onChange={event => setTo(event.target.value)}/></label></div>}
+    </header>
+    {error && <div role="alert" className={dashboardStyles.attention}>{error}<button type="button" onClick={() => void load()}>Try again</button></div>}
+    {syncNotice && <p role="status" className={dashboardStyles.infoNotice}>{syncNotice}</p>}
 
+    {(!advancedAccess || report?.advancedAccess === false) && <WorkspaceFeatureNotice compact feature="advancedAnalytics" />}
+    <nav className={dashboardStyles.simpleTabs} aria-label="Analytics sections" role="tablist">{[["performance", "Overview"], ["channel-detail", "Posts"], ["ai-insights", "Recommendations"]].map(([id, title], index, tabs) => <button type="button" key={id} id={`analytics-tab-${id}`} role="tab" aria-selected={reportSection === id} aria-controls={`analytics-panel-${id}`} tabIndex={reportSection === id ? 0 : -1} onClick={() => setReportSection(id)} onKeyDown={event => {
+      const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
+      if (next != null) { event.preventDefault(); setReportSection(tabs[next][0]); document.getElementById(`analytics-tab-${tabs[next][0]}`)?.focus(); }
+    }}>{title}</button>)}</nav>
+    {loading && !report ? <div className={dashboardStyles.empty}>Loading your results…</div> : report && <>
+      {!connected && !hasObservations && <div className={dashboardStyles.firstResults}><BarChart3 size={26} aria-hidden="true"/><h2>Your results start here</h2><p>Connect your social channels. We’ll collect the available metrics automatically.</p>{!clientSlug && <button type="button" onClick={openChannels}>Connect channels <ArrowUpRight size={15}/></button>}</div>}
+      {connected > 0 && !hasObservations && <div className={dashboardStyles.firstResults} role="status"><RefreshCw size={24} aria-hidden="true"/><h2>{report.updating ? "Preparing your analytics" : "Your first results are on their way"}</h2><p>Available results will appear automatically. Some metrics need additional channel permissions.</p></div>}
+      <div id="analytics-panel-performance" role="tabpanel" aria-labelledby="analytics-tab-performance" hidden={reportSection !== "performance"} className={dashboardStyles.tabPanel}>
+        <div className={dashboardStyles.metricGrid}>{primaryCards.map(({ title, metric, icon: Icon, tint }) => <article key={title} className={dashboardStyles.metricCard} data-unavailable={metric.value == null}><div className="flex items-start justify-between gap-2"><p className="text-xs font-semibold text-slate-600">{title}</p><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tint}`}><Icon className="h-4 w-4" aria-hidden="true"/></span></div><p className="mt-3 text-3xl font-semibold tracking-tight">{number(metric.value)}</p><p className="mt-1 text-xs leading-5 text-slate-500">{metric.basis}</p><div className="mt-3"><Trend metric={metric} followers={title.includes("followers") || title === "Followers"}/></div></article>)}</div>
+        <ReportingVisuals timeline={timeline} posts={report.accountPosts} compact />
+        <div className={dashboardStyles.overviewBottom}>
+          <section className={dashboardStyles.topPosts}><div><h2>Top posts</h2><button type="button" onClick={() => setReportSection("channel-detail")}>View all <ArrowUpRight size={14}/></button></div><p>Ranked by available lifetime engagements.</p>{topPosts.length ? topPosts.map(post => <article key={post.id}><PlatformBrandIcon platform={post.platform} size={21}/><div><p>{post.caption || post.postType || "Published post"}</p><span>{new Date(post.publishedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · {number(post.engagement)} engagements</span></div>{post.permalink && <a href={post.permalink} target="_blank" rel="noopener noreferrer" aria-label={`Open ${label[post.platform] || post.platform} post`}><ArrowUpRight size={17}/></a>}</article>) : <p className={dashboardStyles.empty}>No post metrics for this period yet.</p>}</section>
+          <section className={dashboardStyles.recommendedAction}><Sparkles size={21} aria-hidden="true"/><h2>Your next step</h2>{nextRecommendation && recommendationsAccess ? <><h3>{nextRecommendation.title}</h3><p>{nextRecommendation.recommendation}</p><button type="button" onClick={() => setReportSection("ai-insights")}>Explore recommendations <ArrowUpRight size={14}/></button></> : <><p>{clientSlug ? "Your team’s recommendations will appear here." : "Turn your results into a clear plan for your next posts."}</p><button type="button" onClick={() => setReportSection("ai-insights")}>View recommendations <ArrowUpRight size={14}/></button></>}</section>
+        </div>
+        <details className={dashboardStyles.supportingDetail}><summary>Channel status & data availability</summary><div className={dashboardStyles.statusList}>{report.connections.map(connection => <div key={connection.id}><PlatformBrandIcon platform={connection.platform} size={18}/><strong>{label[connection.platform] || connection.platform}</strong><span>{connection.status === "NEEDS_REAUTH" ? "Reconnect required" : connection.status !== "CONNECTED" ? "Disconnected" : connection.platform === "YOUTUBE" ? "Reporting not available yet" : connection.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString() : "Waiting for first update"}</span>{!clientSlug && (connection.status === "NEEDS_REAUTH" || connection.lastSyncError) && <button type="button" onClick={openChannels}>Check access</button>}</div>)}</div></details>
+        {!clientSlug && canViewLeads && report.leads && <details className={dashboardStyles.supportingDetail}><summary>Lead opportunities · {number(report.leads.acquired.value)} new this period</summary>
+        {!clientSlug && canViewLeads && report.leads && <section id="lead-opportunities" className="scroll-mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-label="Top five hottest leads"><div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6"><div><p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-orange-600"><Flame className="h-3.5 w-3.5" /> Opportunity radar</p><h4 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">Your 5 hottest leads</h4><p className="mt-1 text-xs text-slate-500">Hot leads acquired in this period, most recently updated first.</p></div><button type="button" onClick={navigateToLeads} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800">Open leads <ArrowUpRight className="h-3.5 w-3.5" /></button></div><div className="mx-5 mb-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center"><div><p className="text-lg font-semibold text-slate-900">{number(report.leads?.acquired.value)}</p><p className="text-[10px] text-slate-500">New this period</p></div><div><p className="text-lg font-semibold text-orange-600">{number(report.leads?.hotCount)}</p><p className="text-[10px] text-slate-500">Hot & open now</p></div><div><p className="text-lg font-semibold text-emerald-700">{number(report.leads?.customers)}</p><p className="text-[10px] text-slate-500">Now customers</p></div></div>{report.leads?.hottest.length ? <div className="overflow-x-auto"><table className="w-full text-left text-xs"><caption className="sr-only">Top five hot open leads created in the selected period, ordered by most recent update</caption><thead className="border-y border-slate-100 bg-slate-50/70 text-[10px] uppercase tracking-wide text-slate-500"><tr><th scope="col" className="px-5 py-3">Lead</th><th scope="col" className="px-3 py-3">Source</th><th scope="col" className="px-3 py-3">Stage</th><th scope="col" className="px-5 py-3">Activity</th></tr></thead><tbody className="divide-y divide-slate-100">{report.leads.hottest.map((lead, index) => <tr key={lead.id} className="transition hover:bg-orange-50/40"><td className="px-5 py-3"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 font-bold text-orange-600">{index + 1}</span><div><p className="font-semibold text-slate-900">{lead.socialConversation?.participantName || lead.name}</p><p className="mt-0.5 text-[10px] text-slate-500">{lead.company || lead.username || lead.socialConversation?.participantUsername || "Hot lead"}</p></div></div></td><td className="px-3 py-3 text-slate-500">{lead.socialConversation ? label[lead.socialConversation.platform] || lead.socialConversation.platform : lead.source === "IMPORT" ? "Import" : "Manual"}</td><td className="px-3 py-3"><span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-semibold capitalize text-indigo-700">{lead.status.toLowerCase()}</span></td><td className="whitespace-nowrap px-5 py-3 text-slate-500">{new Date(lead.updatedAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <div className="mx-5 mb-5 rounded-xl border border-dashed border-orange-200 bg-orange-50/40 p-5 text-center"><Flame className="mx-auto h-6 w-6 text-orange-400" /><p className="mt-2 text-sm font-semibold text-slate-700">No hot open leads in this period</p><p className="mt-1 text-xs leading-5 text-slate-500">Qualify leads as Hot in your lead pipeline to surface your next opportunities here.</p></div>}<p className="px-5 pb-5 pt-3 text-[10px] leading-4 text-slate-400">Stages reflect current qualification. Customers and lost leads are excluded from the shortlist.{platform && " Platform filtering includes leads linked to the selected social channels."}</p></section>}
+        </details>}
+        <details className={dashboardStyles.supportingDetail}><summary>How these numbers are calculated</summary><p>Comparisons use {report.comparisonPeriod.start.slice(0, 10)}–{report.comparisonPeriod.end.slice(0, 10)}. Missing observations remain gaps, never zeroes. Post counters are current lifetime totals for posts published in this period. Daily reach may count the same person on different days. Metrics depend on channel access and availability.</p></details>
+      </div>
+      <div id="analytics-panel-channel-detail" role="tabpanel" aria-labelledby="analytics-tab-channel-detail" hidden={reportSection !== "channel-detail"}><ReportingChannels report={report} expanded={postsExpanded} onToggle={() => setPostsExpanded(value => !value)} /></div>
+      <div id="analytics-panel-ai-insights" role="tabpanel" aria-labelledby="analytics-tab-ai-insights" hidden={reportSection !== "ai-insights"}><ReportingInsights insights={shownInsights} total={report.insights.length} filter={insightFilter} onFilter={setInsightFilter} analyzing={analyzing} loading={loading} canAnalyze={canAnalyze && hasObservations} canApply={canApply} access={recommendationsAccess} client={Boolean(clientSlug)} onAnalyze={() => void analyzePerformance()} onApplyAll={applyAllRecommendations} onApply={applyRecommendation}/></div>
     </>}
   </section>;
 }

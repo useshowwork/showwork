@@ -152,9 +152,9 @@ export async function exchangeChannelCode({
   }), "X");
 }
 
-export async function getFacebookPages(userAccessToken: string) {
+export async function getFacebookPages(userAccessToken: string, pageHints?: string[]) {
   const { clientId, clientSecret } = credentials("facebook");
-  return discoverMetaPages(userAccessToken, { appId: clientId, appSecret: clientSecret });
+  return discoverMetaPages(userAccessToken, { appId: clientId, appSecret: clientSecret, pageHints });
 }
 
 export async function getFacebookGrantedPermissions(userAccessToken: string) {

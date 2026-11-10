@@ -52,3 +52,29 @@
 .create > [data-dashboard-tour-slot="create"]:empty { display: none; }
 .createForm [data-onboarding="plan"] > button { background: linear-gradient(145deg, #fff, #edf4ff); border-color: #c6d7ee; border-radius: 14px; }
 .createForm [data-onboarding="plan"] > button:hover { border-color: #3478ec; background: #e5efff; }
+
+/* Keep dashboard navigation readable without squeezing links into each other. */
+.homeLink { display: inline-flex; align-items: center; gap: 16px; min-height: 44px; flex-shrink: 0; padding: 0 8px; border-radius: 10px; color: #475467; font-size: 13px; font-weight: 500; }
+.allTools { border-left: 1px solid #cbd8eb; padding-left: 16px; white-space: nowrap; font-size: 12px; }
+.navActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.navActions > * { flex-shrink: 0; white-space: nowrap; }
+.helpLink { padding: 0 8px; color: #607fa5; font-size: 12px; }
+.billingLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 10px; border-radius: 10px; color: #475467; font-size: 13px; font-weight: 500; }
+.homeLink:hover, .billingLink:hover, .helpLink:hover { background: #ffffffb3; }
+@media (max-width: 700px) {
+  .nav { flex-direction: column; align-items: stretch; gap: 8px; padding-bottom: 12px; }
+  .homeLink { justify-content: space-between; padding: 0 4px; }
+  .allTools { border: 1px solid #cbd8eb; border-radius: 8px; padding: 8px 12px; background: #ffffff80; }
+  .navActions { justify-content: space-between; gap: 4px; padding-top: 8px; border-top: 1px solid #d3deed; }
+  .navActions > button { padding: 0 8px; font-size: 12px; }
+  .navActions > button > span { display: inline; }
+  .helpLink { gap: 5px; padding: 0 4px; font-size: 11px; }
+  .helpLink > svg { flex-shrink: 0; }
+  .billingLink { padding: 4px; font-size: 12px; }
+  .billingLink > svg { display: none; }
+}
+@media (max-width: 359px) {
+  .navActions > button { padding: 0 4px; }
+  .navActions > button > svg { display: none; }
+  .helpLink > svg { display: none; }
+}

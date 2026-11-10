@@ -1991,6 +1991,7 @@ model SocialConnection {
   status                       SocialConnectionStatus        @default(CONNECTED)
   connectedAt                  DateTime                      @default(now())
   disconnectedAt               DateTime?
+  lastReportingCheckAt         DateTime?
   lastSyncAttemptAt            DateTime?
   lastSyncAt                   DateTime?
   lastSyncError                String?                       @db.Text
@@ -2009,12 +2010,14 @@ model SocialConnection {
   updatedAt                    DateTime                      @updatedAt
   publishedPosts               PublishedSocialPost[]
   accountPosts                 SocialAccountPost[]
+  reportingSyncJob             ReportingSyncJob?
   accountMetricSnapshots       SocialAccountMetricSnapshot[]
   leadConversations            SocialLeadConversation[]
 
   @@unique([calendarId, platform, platformAccountId])
   @@index([calendarId, platform, status])
   @@index([platform, status])
+  @@index([status, lastReportingCheckAt])
 }
 
 // A platform DM thread is a lead by default. The provider conversation id
@@ -3009,4 +3012,22 @@ model SocialInboxOutbound {
   updatedAt         DateTime @updatedAt
   @@index([conversationId, state])
   @@index([state, startedAt])
+}
+
+// One reusable durable job per connection; credentials stay on SocialConnection.
+model ReportingSyncJob {
+  id            String           @id @default(uuid())
+  connection    SocialConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connectionId  String           @unique
+  calendarId    String
+  status        String           @default("PENDING")
+  attempts      Int              @default(0)
+  nextAttemptAt DateTime         @default(now())
+  leaseUntil    DateTime?
+  leaseToken    String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([calendarId])
 }

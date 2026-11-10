@@ -35,6 +35,7 @@ function picker({ actor = 'reviewer', allowed = true } = {}) {
   const calls = [];
   const route = load('app/api/calendars/[id]/instagram/select-account/route.ts', {
     '@/lib/publishing/applicationBoundary': { publishingIntegrationInstalled:()=>false },
+    '@/lib/db':{db:{socialCalendar:{findUnique:async()=>null}}},
     '@/lib/auth': { getCurrentCreator:async()=>({id:actor}) },
     '@/lib/calendarPermissions': { hasCalendarPermission:async()=>allowed },
     '@/lib/instagram': { listInstagramGrantedPermissions:async()=>['instagram_manage_insights'], listManagedPages:async()=>[{id:'page',name:'Business Page',access_token:'secret-page-token',tasks:['MESSAGING'],instagram_business_account:{id:'ig',username:'review'}}] },

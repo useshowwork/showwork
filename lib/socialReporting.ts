@@ -16,13 +16,13 @@ export type SocialConnectionInput = {
 };
 
 /** Upserts a server-side normalized account row while preserving legacy callers. */
-export function upsertSocialConnection(input: SocialConnectionInput, database: typeof db = db) {
+export async function upsertSocialConnection(input: SocialConnectionInput, database: typeof db = db) {
   const { calendarId, platform, platformAccountId, ...values } = input;
   const definedValues = Object.fromEntries(
     Object.entries(values).filter(([, value]) => value !== undefined),
   );
 
-  return database.$transaction(async (tx) => {
+  const connection = await database.$transaction(async (tx) => {
   /* canonical-integration-boundary */ if (publishingIntegrationInstalled()) { await assertLegacyPublishingAllowed("lib/socialReporting.ts#database.$transaction:callback@24"); } /* end-canonical-integration-boundary */
 
     await tx.socialConnection.updateMany({
@@ -58,6 +58,13 @@ export function upsertSocialConnection(input: SocialConnectionInput, database: t
       },
     });
   });
+  if (database === db && input.accessToken) {
+    try {
+      const { enqueueReportingSync } = await import("@/lib/reporting/jobs");
+      await enqueueReportingSync(calendarId, "connected");
+    } catch { console.warn("REPORTING_INITIAL_UPDATE_DEFERRED"); }
+  }
+  return connection;
 }
 
 export function markSocialConnectionDisconnected(calendarId: string, platform: SocialPlatform) {

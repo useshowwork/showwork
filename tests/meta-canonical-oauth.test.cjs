@@ -6,14 +6,14 @@ test('canonical callback uses real shared discovery, keeps Page tokens and recon
  const old={INSTAGRAM_APP_ID:process.env.INSTAGRAM_APP_ID,INSTAGRAM_APP_SECRET:process.env.INSTAGRAM_APP_SECRET};
  process.env.INSTAGRAM_APP_ID='app';process.env.INSTAGRAM_APP_SECRET='secret';
  try {
-  for(const existing of [undefined,{providerAccountId:'ig'}]) {
+  for(const existing of [undefined,{providerAccountId:'ig'},{providerAccountId:'ig',savedPage:true}]) {
    const binds=[],http=[],queries=[];
    const fetch=async(url,init)=>{
     const u=new URL(url);http.push(u.pathname);
-    if(u.pathname.endsWith('/debug_token'))return Response.json({data:{is_valid:true,type:'USER',app_id:'app',user_id:'user',scopes:['pages_show_list','pages_read_engagement','instagram_basic','instagram_content_publish'],granular_scopes:[{scope:'pages_show_list',target_ids:['123']}]}});
+    if(u.pathname.endsWith('/debug_token'))return Response.json({data:{is_valid:true,type:'USER',app_id:'app',user_id:'user',scopes:['pages_show_list','pages_read_engagement','instagram_basic','instagram_content_publish'],granular_scopes:existing?.savedPage?[]:[{scope:'pages_show_list',target_ids:['123']}]}});
     if(u.pathname.endsWith('/me/accounts'))return Response.json({data:[]});
-    if(u.pathname.endsWith('/123')&&u.searchParams.get('fields').includes('access_token'))return Response.json({id:'123',name:'Business',access_token:'verified-page-token'});
-    if(u.pathname.endsWith('/123')){assert.equal(init.headers.Authorization,'Bearer user-token');return Response.json({instagram_business_account:{id:'ig',username:'creator'}});}
+    if((u.pathname.endsWith('/123')||u.pathname.endsWith('/381092961751993'))&&u.searchParams.get('fields').includes('access_token'))return Response.json({id:existing?.savedPage?'381092961751993':'123',name:'Business',access_token:'verified-page-token'});
+    if(u.pathname.endsWith('/123')||u.pathname.endsWith('/381092961751993')){assert.equal(init.headers.Authorization,'Bearer user-token');return Response.json({instagram_business_account:{id:'ig',username:'creator'}});}
     throw Error('Unexpected request');
    };
    const mocks={
@@ -24,14 +24,14 @@ test('canonical callback uses real shared discovery, keeps Page tokens and recon
    };
    const {createCanonicalShowworkOAuth}=load('lib/publishing/showworkOAuth.ts',mocks);
    const invoke=createCanonicalShowworkOAuth({
-    database:{transaction:async fn=>fn({query:async(sql,args)=>{queries.push(sql);return {rows:sql.startsWith('SELECT v.')&&existing?[existing]:[]};}})},
+    database:{transaction:async fn=>fn({query:async(sql,args)=>{queries.push(sql);return {rows:sql.includes('FROM "SocialCalendar"')&&existing?.savedPage?[{instagramPageId:'381092961751993'}]:sql.startsWith('SELECT v.')&&existing?[existing]:[]};}})},
     policy:{},authenticate:async()=>({id:'owner'}),fetch,
     actions:{bindVerifiedAccount:async value=>binds.push(value)},
     services:{instagramExchange:async()=>({access_token:'short'}),instagramLong:async()=>({access_token:'user-token',expires_in:3600}),instagramPermissions:async()=>['instagram_basic','instagram_content_publish'],instagramUsername:async(id,token)=>{assert.equal(id,'ig');assert.equal(token,'verified-page-token');return 'creator';}},
    });
    const request=new NextRequest('https://showwork.test/api/calendars/instagram/callback?code=new-code&state=signed');
    const response=await invoke('app/api/calendars/instagram/callback/route.ts#GET@27',[request]);
-   assert.equal(response.status,307);assert.equal(binds.length,1);assert.equal(binds[0].evidence.instagramPageId,'123');assert.equal(binds[0].evidence.accessToken,'verified-page-token');assert.ok(!binds[0].evidence.tokenScopes.includes('insights'));assert.ok(http.some(path=>path.endsWith('/debug_token')));
+   assert.equal(response.status,307);assert.equal(binds.length,1);assert.equal(binds[0].evidence.instagramPageId,existing?.savedPage?'381092961751993':'123');assert.equal(binds[0].evidence.accessToken,'verified-page-token');assert.ok(!binds[0].evidence.tokenScopes.includes('insights'));assert.ok(http.some(path=>path.endsWith('/debug_token')));
   }
  } finally {for(const [key,value] of Object.entries(old))if(value===undefined)delete process.env[key];else process.env[key]=value;}
 });
@@ -53,4 +53,28 @@ test('canonical picker retains safe discovery diagnostics and never returns sele
    if(id==='workspace-a')assert.deepEqual(JSON.parse(text).diagnostics,diagnostics);
   }
  } finally {if(old===undefined)delete process.env.JWT_SECRET;else process.env.JWT_SECRET=old;}
+});
+
+test('canonical Facebook callback uses current workspace Instagram Page as a verified discovery hint',async()=>{
+ const saved=process.env.JWT_SECRET;process.env.JWT_SECRET='test-facebook-selection-secret';
+ try {
+ const calls=[],permissions=[];
+ const {createCanonicalShowworkOAuth}=load('lib/publishing/showworkOAuth.ts',{
+  '../channelOAuthState':{verifyChannelOAuthState:()=> 'workspace',channelOAuthCookieOptions:()=>({path:'/'})},
+  '../url':{appUrl:()=> 'https://showwork.test'},
+  './validationAdapters':{createPublishingValidationAdapters:()=>({lockForPolicyChange:async()=>{},validateWorkspacePermission:async(tx,value)=>permissions.push(value)})},
+ });
+ const invoke=createCanonicalShowworkOAuth({database:{transaction:async fn=>fn({query:async(sql,args)=>{
+  if(sql.includes('FROM "SocialCalendar"')){assert.deepEqual(args,['workspace']);return {rows:[{instagramPageId:'381092961751993',facebookPageId:null}]};}
+  return {rows:[]};
+ }})},policy:{},authenticate:async()=>({id:'invited-manager'}),actions:{},services:{
+  exchange:async()=>({access_token:'short'}),facebookLong:async()=>({access_token:'fresh-facebook-user'}),
+  facebookPages:async(...args)=>{calls.push(args);return [{id:'381092961751993',name:'Useshowwork',access_token:'fresh-facebook-page'}];},
+  facebookPermissions:async()=>['pages_show_list'],
+ }});
+ const response=await invoke('app/api/calendars/channels/[channel]/callback/route.ts',[new NextRequest('https://showwork.test/api/calendars/channels/facebook/callback?code=code&state=state'),{params:Promise.resolve({channel:'facebook'})}]);
+ assert.equal(response.status,307);assert.match(response.headers.get('location'),/workspace\/facebook\/select-page/);
+ assert.deepEqual(calls,[['fresh-facebook-user',['381092961751993']]]);
+ assert.ok(permissions.some(p=>p.actor==='invited-manager'&&p.calendarId==='workspace'&&p.permission==='channels.manage'));
+ }finally{if(saved===undefined)delete process.env.JWT_SECRET;else process.env.JWT_SECRET=saved;}
 });

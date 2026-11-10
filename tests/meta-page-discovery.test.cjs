@@ -169,3 +169,25 @@ test('manager Page ID cannot bypass explicit asset exclusion or missing Page cre
  const denied=harness({pages:[],direct:{381092961751993:{id:'381092961751993',name:'Public'}}});
  await assert.rejects(denied.discoverMetaPages('secret-user-token',{...config,pageId:'381092961751993'}),e=>e.code==='META_DISCOVERY_INCOMPLETE');
 });
+
+test('saved workspace Page is discovered automatically when Meta listing and granular IDs are empty',async()=>{
+ const h=harness({pages:[]});
+ const result=await h.discoverMetaPages('secret-user-token',{...config,pageHints:['381092961751993']});
+ assert.equal(result[0].id,'381092961751993');
+ assert.equal(result[0].instagram_business_account.id,'ig-381092961751993');
+ assert.ok(h.calls.some(c=>c.path==='/381092961751993'&&c.auth==='Bearer secret-user-token'));
+});
+test('saved Page hints do not override explicit selection or authorize public Pages',async()=>{
+ const excluded=harness({pages:[],token:{granular_scopes:[{scope:'pages_show_list',target_ids:[]}]}});
+ assert.deepEqual(await excluded.discoverMetaPages('secret-user-token',{...config,pageHints:['381092961751993']}),[]);
+ const denied=harness({pages:[],direct:{381092961751993:{id:'381092961751993',name:'Public'}}});
+ await assert.rejects(denied.discoverMetaPages('secret-user-token',{...config,pageHints:['381092961751993']}),e=>e.code==='META_DISCOVERY_INCOMPLETE');
+});
+
+test('Facebook recovers Instagram-linked workspace Page with a fresh Facebook user token',async()=>{
+ const h=harness({pages:[]});
+ const result=await h.discoverMetaPages('secret-user-token',{...config,instagram:false,pageHints:['381092961751993']});
+ assert.equal(result[0].id,'381092961751993');
+ assert.equal(result[0].access_token,'page-token-381092961751993');
+ assert.ok(h.calls.filter(c=>c.path==='/381092961751993').every(c=>!c.params.get('fields').includes('instagram')));
+});

@@ -25,6 +25,7 @@ test('Instagram selection ticket cannot be used in another workspace or after me
   let discoveries=0,binds=0;
   const route=load('app/api/calendars/[id]/instagram/select-account/route.ts',{
    '@/lib/publishing/applicationBoundary':{publishingIntegrationInstalled:()=>false},
+   '@/lib/db':{db:{socialCalendar:{findUnique:async()=>null}}},
    '@/lib/auth':{getCurrentCreator:async()=>({id:'member'})},
    '@/lib/calendarPermissions':{hasCalendarPermission:async()=>allowed},
    '@/lib/facebookPageSelection':{verifyFacebookPageSelection:()=>({calendarId:'client-a',pages:[{id:'member',accessToken:'secret'}]}),facebookPageSelectionCookieOptions:()=>({})},
@@ -54,6 +55,7 @@ test('direct Page diagnostic requires workspace permission and the matching auth
   let checks=0,binds=0;
   const route=load('app/api/calendars/[id]/instagram/select-account/route.ts',{
    '@/lib/publishing/applicationBoundary':{publishingIntegrationInstalled:()=>false},
+   '@/lib/db':{db:{socialCalendar:{findUnique:async()=>null}}},
    '@/lib/auth':{getCurrentCreator:async()=>({id:actor})},
    '@/lib/calendarPermissions':{hasCalendarPermission:async()=>allowed},
    '@/lib/facebookPageSelection':{verifyFacebookPageSelection:()=>({calendarId:'client-a',pages:[{id:'member',accessToken:'secret-user-token'}]}),facebookPageSelectionCookieOptions:()=>({})},
@@ -63,4 +65,22 @@ test('direct Page diagnostic requires workspace permission and the matching auth
   const response=await route.GET(new NextRequest('https://test/api/calendars/client-a/instagram/select-account?'+new URLSearchParams({checkPageId:pageId})),{params:Promise.resolve({id:'client-a'})});
   assert.equal(response.status,status);assert.equal(checks,status===200?1:0);assert.equal(binds,0);assert.equal(response.headers.get('cache-control'),'no-store');assert.ok(!(await response.text()).includes('secret-user-token'));
  }
+});
+
+test('Instagram discovery automatically uses only the authorized workspace saved Page IDs',async()=>{
+ const checks=[],discoveries=[];
+ const route=load('app/api/calendars/[id]/instagram/select-account/route.ts',{
+  '@/lib/publishing/applicationBoundary':{publishingIntegrationInstalled:()=>false},
+  '@/lib/auth':{getCurrentCreator:async()=>({id:'member'})},
+  '@/lib/calendarPermissions':{hasCalendarPermission:async()=>true},
+  '@/lib/db':{db:{socialCalendar:{findUnique:async query=>{checks.push(query);return {instagramPageId:'381092961751993',facebookPageId:null};}}}},
+  '@/lib/facebookPageSelection':{verifyFacebookPageSelection:()=>({calendarId:'client-a',pages:[{id:'member',accessToken:'current-user-token'}]}),facebookPageSelectionCookieOptions:()=>({})},
+  '@/lib/instagram':{listInstagramGrantedPermissions:async()=>[],listManagedPages:async(...args)=>{discoveries.push(args);return []; }},
+  '@/lib/instagramConnection':{completeInstagramConnection:async()=>{throw Error('GET must not bind');}},
+ });
+ const response=await route.GET(new NextRequest('https://test/api/calendars/client-a/instagram/select-account'),{params:Promise.resolve({id:'client-a'})});
+ assert.equal(response.status,200);
+ assert.deepEqual(checks,[{where:{id:'client-a'},select:{instagramPageId:true,facebookPageId:true}}]);
+ assert.deepEqual(discoveries,[['current-user-token',undefined,['381092961751993']]]);
+ assert.ok(!JSON.stringify(await response.json()).includes('current-user-token'));
 });

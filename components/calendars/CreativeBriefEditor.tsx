@@ -105,16 +105,29 @@ export default function CreativeBriefEditor({
   onStateChange,
   onSaveReady,
   tabBarHost,
+  aiControlsHost,
+  guided = false,
   readOnly = false,
 }: {
   calendarId: string;
   post: BriefEditorPost;
   onUpdated: (post: any) => void;
   tabBarHost?: HTMLElement | null;
+  aiControlsHost?: HTMLElement | null;
+  guided?: boolean;
   readOnly?: boolean;
   onStateChange?: (state: BriefEditorState) => void;
   onSaveReady?: (save: (() => void) | null) => void;
 }) {
+  const aiMenuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!aiControlsHost) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !aiMenuRef.current?.contains(event.target) && aiMenuRef.current) aiMenuRef.current.open = false;
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [aiControlsHost]);
   const [brief, setBrief] = useState(() => editablePostBrief(post));
   const incomingBrief = editablePostBrief(post);
   const previousServerBrief = useRef(incomingBrief);
@@ -318,53 +331,7 @@ export default function CreativeBriefEditor({
         ))}
       </div>
   );
-  return (
-    <div className="min-w-0 space-y-5">
-      {tabBarHost ? createPortal(tabBar, tabBarHost) : tabBar}
-      {!!brief.reviewWarnings?.length && (
-        <div
-          role="status"
-          className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"
-        >
-          <p className="font-semibold">Needs editorial review</p>
-          {brief.reviewWarnings.map((warning, index) => (
-            <p key={index}>{warning}</p>
-          ))}
-        </div>
-      )}
-      {error && (
-        <p
-          role="alert"
-          className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
-        >
-          {error}
-        </p>
-      )}
-      {missingContext && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-800">
-          This draft needs its hook, objective or audience.{" "}
-          <button
-            type="button"
-            className="font-semibold underline"
-            onClick={() => setTab("strategy")}
-          >
-            Complete strategy
-          </button>
-          {!readOnly && hasContent && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void run("brief", true, undefined, true)}
-              className="mt-2 flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 font-semibold disabled:opacity-40"
-            >
-              <Sparkles size={14} />
-              {busy
-                ? "Completing strategy…"
-                : "Complete missing fields with AI"}
-            </button>
-          )}
-        </div>
-      )}
+  const aiControls = (<>
       {!readOnly && (
         <div className="flex flex-wrap items-center gap-2">
           <Sparkles size={15} className="text-blue-500" />
@@ -401,22 +368,78 @@ export default function CreativeBriefEditor({
           </details>
         </div>
       )}
+  </>);
+  return (
+    <div className={`min-w-0 space-y-5 ${guided ? styles.guided : ""}`}>
+      {aiControlsHost && !readOnly && createPortal(<details ref={aiMenuRef} className={styles.headerAi} onKeyDown={event => { if(event.key === "Escape") { event.stopPropagation(); if(aiMenuRef.current) aiMenuRef.current.open = false; aiMenuRef.current?.querySelector("summary")?.focus(); } }}><summary aria-label="Edit with AI"><Sparkles size={16} aria-hidden="true"/><span>Edit with AI</span></summary><div className={styles.headerAiPanel}><strong>What would you like to improve?</strong>{aiControls}{dirty && <p>Save your changes before using AI.</p>}{missingContext && <p>Complete the post’s strategy to use these tools.</p>}</div></details>, aiControlsHost)}
+      {!guided && (tabBarHost ? createPortal(tabBar, tabBarHost) : tabBar)}
+      {!!brief.reviewWarnings?.length && (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"
+        >
+          <p className="font-semibold">Needs editorial review</p>
+          {brief.reviewWarnings.map((warning, index) => (
+            <p key={index}>{warning}</p>
+          ))}
+        </div>
+      )}
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
+      {missingContext && !guided && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-800">
+          This draft needs its hook, objective or audience.{" "}
+          <button
+            type="button"
+            className="font-semibold underline"
+            onClick={() => setTab("strategy")}
+          >
+            Complete strategy
+          </button>
+          {!readOnly && hasContent && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void run("brief", true, undefined, true)}
+              className="mt-2 flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 font-semibold disabled:opacity-40"
+            >
+              <Sparkles size={14} />
+              {busy
+                ? "Completing strategy…"
+                : "Complete missing fields with AI"}
+            </button>
+          )}
+        </div>
+      )}
+      {!guided && !aiControlsHost && aiControls}
       <section
         id={`${post.id}-editor-panel`}
-        role="tabpanel"
-        aria-labelledby={`${post.id}-tab-${tab}`}
+        role={guided ? undefined : "tabpanel"}
+        aria-labelledby={guided ? undefined : `${post.id}-tab-${tab}`}
         className="space-y-5"
       >
-        {tab === "copy" && (
+        {(guided || tab === "copy") && (
           <>
-            {field("title", 1)}
-            {field("caption", 4)}
-            {field("suggestedCta", 1)}
-            {field("hashtags", 1)}
+            {guided ? <>
+              {field("caption", 4)}
+              <details className={styles.disclosure}><summary>Post title, call to action &amp; hashtags <span>+</span></summary><div className="space-y-4">{field("title", 1)}{field("suggestedCta", 1)}{field("hashtags", 1)}</div></details>
+              {!readOnly && !aiControlsHost && <details className={styles.disclosure}><summary><span className="inline-flex items-center gap-2"><Sparkles size={15}/>Improve with AI</span><span>+</span></summary><div>{aiControls}</div></details>}
+            </> : <>{field("title", 1)}{field("caption", 4)}{field("suggestedCta", 1)}{field("hashtags", 1)}</>}
           </>
         )}
-        {tab === "strategy" && (
-          <>
+        {(guided || tab === "strategy") && (
+          <details open={guided ? undefined : true} className={guided ? styles.disclosure : undefined}>
+            {!guided && <summary hidden>Strategy</summary>}
+            {guided && <summary><span className="inline-flex items-center gap-2"><Target size={16}/>Strategy {missingContext && <small>Needs attention</small>}</span><span>+</span></summary>}
+            <div className="space-y-4">
+            {guided && missingContext && <p className="text-xs text-amber-700">Add the hook, objective and audience before team review.</p>}
+            {guided && missingContext && !readOnly && hasContent && <button type="button" disabled={busy || dirty} onClick={() => void run("brief", true, undefined, true)} className="min-h-11 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-600 disabled:opacity-40">{busy ? "Completing…" : "Complete missing fields with AI"}</button>}
             <p className="text-xs text-slate-500">
               The thinking behind this post.
             </p>
@@ -439,10 +462,14 @@ export default function CreativeBriefEditor({
                 ).map((name) => field(name))}
               </div>
             </details>
-          </>
+            </div>
+          </details>
         )}
-        {tab === "creative" && (
-          <>
+        {(guided || tab === "creative") && (
+          <details open={guided ? undefined : true} className={guided ? styles.disclosure : undefined}>
+            {!guided && <summary hidden>Creative direction</summary>}
+            {guided && <summary><span className="inline-flex items-center gap-2"><Palette size={16}/>Creative direction</span><span>+</span></summary>}
+            <div className="space-y-4">
             <label className="block text-xs font-semibold text-slate-600">
               Format
               <select
@@ -538,7 +565,8 @@ export default function CreativeBriefEditor({
                 ))}
               </div>
             </details>
-          </>
+            </div>
+          </details>
         )}
       </section>
       {!readOnly && (

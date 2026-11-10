@@ -1,0 +1,16 @@
+[Unit]
+Description=Showwork reporting queue processor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=showwork
+# Secret and destination are stored in a root-owned, showwork-readable curl config.
+ExecStart=/usr/bin/curl --silent --show-error --fail --max-time 280 --config /etc/showwork/reporting-curl.conf
+TimeoutStartSec=290
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077

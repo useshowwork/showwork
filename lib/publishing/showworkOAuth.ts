@@ -80,7 +80,9 @@ export function createCanonicalShowworkOAuth(deps:{database:OwnershipDatabase;ac
      const tokens=await bounded(()=>services.tiktokExchange(code,tikTokRedirectUri(),verifier));if(!tokens.scope.split(/[\s,]+/).includes('video.publish'))throw Error('TIKTOK_PERMISSION_REQUIRED');const name=await bounded(()=>services.tiktokName(tokens.access_token));
      await deps.actions.bindVerifiedAccount({operationId,actor:creator.id,calendarId,platform:'TIKTOK',evidence:{platform:'TIKTOK',providerAccountId:tokens.open_id,connectionId:policyHash({calendarId,platform:'TIKTOK',id:tokens.open_id}).slice(0,40),accessToken:tokens.access_token,refreshToken:tokens.refresh_token,expiresAt:expires(tokens.expires_in),refreshTokenExpiresAt:expires(tokens.refresh_expires_in)??undefined,tokenScopes:tokens.scope,accountName:name,username:name}});
     }else{
-     const short=await bounded(()=>services.instagramExchange(code,appUrl()+'/api/calendars/instagram/callback')),tokens=await bounded(()=>services.instagramLong(short.access_token)),pages=await bounded(()=>services.instagramPages(tokens.access_token)),permissions=await bounded(()=>services.instagramPermissions(tokens.access_token));
+     const workspace=await deps.database.transaction(async tx=>(await tx.query(`SELECT "instagramPageId","facebookPageId" FROM "SocialCalendar" WHERE id=$1`,[calendarId])).rows[0]);
+     const pageHints=[workspace?.instagramPageId,workspace?.facebookPageId].filter((value):value is string=>typeof value==='string'&&!!value);
+     const short=await bounded(()=>services.instagramExchange(code,appUrl()+'/api/calendars/instagram/callback')),tokens=await bounded(()=>services.instagramLong(short.access_token)),pages=await bounded(()=>services.instagramPages(tokens.access_token,undefined,pageHints)),permissions=await bounded(()=>services.instagramPermissions(tokens.access_token));
      const candidates=pages.filter(p=>p.instagram_business_account),existing=await deps.database.transaction(async tx=>(await tx.query(`SELECT v."providerAccountId" FROM "PublishingAccountBinding" b JOIN "PublishingAccountVersion" v ON v."bindingId"=b.id AND v.version=b."currentVersion" WHERE b."calendarId"=$1 AND b.platform='INSTAGRAM'`,[calendarId])).rows[0]);
      const selected=existing?candidates.find(p=>p.instagram_business_account!.id===existing.providerAccountId):candidates.length===1?candidates[0]:undefined;
      if(!selected){
@@ -121,7 +123,9 @@ export function createCanonicalShowworkOAuth(deps:{database:OwnershipDatabase;ac
   const tokens=await bounded(()=>services.exchange({channel,code,redirectUri:appUrl()+`/api/calendars/channels/${channel}/callback`,codeVerifier:channel==='x'?request.cookies.get(xPkceCookieName())?.value:undefined}));
   if(!tokens.access_token)throw Error('OAUTH_TOKEN_REQUIRED');
   if(channel==='facebook'){
-   const long=await bounded(()=>services.facebookLong(tokens.access_token)),pages=await bounded(()=>services.facebookPages(long.access_token)),permissions=await bounded(()=>services.facebookPermissions(long.access_token));
+   const workspace=await deps.database.transaction(async tx=>(await tx.query(`SELECT "instagramPageId","facebookPageId" FROM "SocialCalendar" WHERE id=$1`,[calendarId])).rows[0]);
+   const pageHints=[workspace?.instagramPageId,workspace?.facebookPageId].filter((value):value is string=>typeof value==='string'&&!!value);
+   const long=await bounded(()=>services.facebookLong(tokens.access_token)),pages=await bounded(()=>services.facebookPages(long.access_token,pageHints)),permissions=await bounded(()=>services.facebookPermissions(long.access_token));
    if(!pages.length)throw new MetaDiscoveryError('META_NO_ACCESSIBLE_PAGES','Meta returned no eligible Facebook Pages for this authorization. Check the authorizing profile’s assigned Page access and selected assets, then reconnect.',pages.diagnostics);
    const selection=createFacebookPageSelection({calendarId,pages:pages.map(p=>({id:p.id,name:p.name,accessToken:p.access_token})),grantedPermissions:permissions,diagnostics:pages.diagnostics,userTokenExpiresAt:expires(long.expires_in)?.getTime()??null});
    const response=clear(NextResponse.redirect(appUrl()+`/dashboard/calendars/${calendarId}/facebook/select-page`));response.cookies.set(selection.cookieName,selection.value,facebookPageSelectionCookieOptions(selection.maxAge));return response;

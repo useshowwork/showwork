@@ -148,7 +148,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           title: insight.title,
           description: insight.description,
           recommendation: insight.recommendation,
-          supportingData: { evidence: insight.evidence } as Prisma.InputJsonValue,
+          supportingData: { evidence: insight.evidence, connectionIds: report.connections.map(connection => connection.id) } as Prisma.InputJsonValue,
         })),
       });
     });

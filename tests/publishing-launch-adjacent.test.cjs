@@ -40,7 +40,7 @@ test('late reporting success or failure cannot reconnect a disconnected account'
  for(const fail of [false,true]){
   const stored={id:'connection',calendarId:'calendar',platform:'X',platformAccountId:'provider',status:'CONNECTED',accessToken:'synthetic',connectedAt:new Date(0),publishedPosts:[]};
   const db={socialConnection:{findMany:async()=>[{...stored}],update:async({data})=>Object.assign(stored,data),updateMany:async({where,data})=>{assert.equal(where.status,'CONNECTED');assert.equal(where.accessToken,'synthetic');assert.equal(where.connectedAt.getTime(),0);if(stored.status!==where.status)return {count:0};Object.assign(stored,data);return {count:1};}},socialAccountMetricSnapshot:{findFirst:async()=>null,upsert:async()=>{}},socialPostMetricSnapshot:{upsert:async()=>{}},$transaction:async p=>Promise.all(p)};
-  const reporting=load('lib/reporting/sync.ts',{'@/lib/db':{db},'@/lib/reporting/adapters':{getSocialReportingAdapter:()=>({fetchAccountMetrics:async()=>{stored.status='DISCONNECTED';if(fail)throw Error('permission is missing');return {followers:1};},fetchPostMetrics:async()=>new Map()})},'@/lib/socialReporting':{utcSnapshotDate:()=>new Date(0)}});
+  const reporting=load('lib/reporting/sync.ts',{'@/lib/calendarPermissions':{canAccessCalendarById:async()=>true},'@/lib/db':{db},'@/lib/reporting/adapters':{getSocialReportingAdapter:()=>({fetchAccountMetrics:async()=>{stored.status='DISCONNECTED';if(fail)throw Error('permission is missing');return {followers:1};},fetchPostMetrics:async()=>new Map()})},'@/lib/socialReporting':{utcSnapshotDate:()=>new Date(0)}});
   await reporting.syncCalendarSocialReporting('calendar');assert.equal(stored.status,'DISCONNECTED');
  }
 });

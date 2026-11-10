@@ -23,7 +23,7 @@ test('unavailable and observed-zero metrics remain distinct without invalid SVG 
   const missing = render({ timeline: [], posts: [] });
   const zero = render({ timeline: [['2026-10-01', 0]], posts: [{ likes: 0, comments: 0, shares: 0, saves: 0 }] });
   assert.ok(missing.includes('No recorded interactions available'));
-  assert.ok(missing.includes('Your audience story starts with a sync.'));
+  assert.ok(missing.includes('No daily reach observations yet.'));
   assert.ok(zero.includes('Likes 0, Comments 0, Shares 0, Saves 0'));
   for (const html of [missing, zero]) assert.ok(!html.includes('NaN') && !html.includes('Infinity'));
 });

@@ -1,4 +1,5 @@
 "use client";
+import { notifyReportingChannelChange } from "@/lib/reporting/channelChanges";
 import channelStyles from "./ChannelsStudio.module.css";
 import ChannelCapabilities from "./ChannelCapabilities";
 import PlatformBrandIcon from "./PlatformBrandIcon";
@@ -77,6 +78,7 @@ export default function AdditionalChannelCard({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? `Could not disconnect ${meta.name}.`);
+      notifyReportingChannelChange(calendarId);
       setConnectedAccount(null);
       setConnectedDate(null);
       setConfirming(false);

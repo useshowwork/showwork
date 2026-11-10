@@ -1,4 +1,5 @@
 "use client";
+import { notifyReportingChannelChange } from "@/lib/reporting/channelChanges";
 import channelStyles from "./ChannelsStudio.module.css";
 import ChannelCapabilities from "./ChannelCapabilities";
 import PlatformBrandIcon from "./PlatformBrandIcon";
@@ -73,6 +74,7 @@ export default function TikTokConnectionCard({
     try {
       const res = await calendarMutationFetch(`/api/calendars/${calendarId}/tiktok/disconnect`, { method: "POST" });
       if (res.ok) {
+        notifyReportingChannelChange(calendarId);
         router.refresh();
         setConfirming(false);
       } else {
