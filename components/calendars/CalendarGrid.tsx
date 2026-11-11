@@ -1,10 +1,16 @@
 "use client";
+import MobileDrawer from "@/components/navigation/MobileDrawer";
+function CalendarFilterPanel({ mobile, open, onClose, children, label = "Filters & search" }: { mobile: boolean; open: boolean; onClose: () => void; children: ReactNode; label?: string }) {
+  return mobile ? <MobileDrawer breakpoint="md" placement="bottom" open={open} onClose={onClose} label={label} panelClassName={contentStyles.mobileSheet}>{children}</MobileDrawer> : <>{children}</>;
+}
+
+import type { ReactNode } from "react";
 import contentStyles from "./ContentPlanner.module.css";
 import { calendarWeek, moveCalendarPeriod } from "@/lib/calendarView";
 import CreativeBriefEditor, { type BriefEditorState } from "./CreativeBriefEditor";
 import reviewStyles from "./PostReviewFlow.module.css";
 import type { CreativeBrief, CreativeDevelopment } from "@/lib/content/brief";
-import { FilePenLine, ShieldCheck, Users, MessageSquare, Send, X, Plus, CalendarDays, Layers3, Sparkles } from "lucide-react";
+import { FilePenLine, ShieldCheck, Users, MessageSquare, Send, X, Plus, CalendarDays, Layers3, Sparkles, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { calendarWorkflow, matchesCalendarStage, type CalendarStageFilter } from "@/lib/calendarWorkflow";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import { mergeSavedCalendarPosts } from "@/lib/calendarPostCollection";
@@ -5242,6 +5248,7 @@ export default function CalendarGrid({
   // calendar, Instagram preview and TikTok preview without creating
   // a second control layer in the parent page.
   const [filterOpen, setFilterOpen] = useState(false);
+  const [toolbarOptionsOpen, setToolbarOptionsOpen] = useState(false);
   const [stageFilter, setStageFilter] = useState<CalendarStageFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState<Platform | "ALL">("ALL");
@@ -5493,9 +5500,10 @@ export default function CalendarGrid({
         </div>
 
         <div className={contentStyles.calendarActions}>
-          <AutoPublishToggle compact calendarId={calendarId} canManage={isOwner || (permissions ? permissions.includes("publishing.manage") : userRole === "EDIT_CALENDAR")} />
-          {(permissions ? permissions.includes("ai.generate") : userRole === "EDIT_CALENDAR") && <button type="button" className={contentStyles.aiShortcut} onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "generate" } }))}><Sparkles size={15}/><span>Generate with AI</span><small>~2 min</small></button>}
+          {(permissions ? permissions.includes("ai.generate") : userRole === "EDIT_CALENDAR") && <button type="button" className={contentStyles.aiShortcut} onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "generate" } }))}><Sparkles size={15}/><span>Generate calendar</span><small>~2 min</small></button>}
           <label className={contentStyles.previewControl}><span className="sr-only">Preview</span><select aria-label="Preview calendar or social channel" value={viewMode} onChange={event => { setViewMode(event.target.value as typeof viewMode); setPlatformFilter("ALL"); }}>{([['calendar','Calendar'],['instagram','Instagram'],['tiktok','TikTok'],['linkedin','LinkedIn'],['facebook','Facebook'],['x','X']] as const).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <div className={contentStyles.calendarOptions}><button type="button" className={contentStyles.optionsTrigger} onClick={() => setToolbarOptionsOpen(true)} aria-haspopup="dialog" aria-expanded={toolbarOptionsOpen}><SlidersHorizontal size={15}/>Options<ChevronDown size={14}/></button><CalendarFilterPanel mobile={isMobileLayout} open={toolbarOptionsOpen} onClose={() => setToolbarOptionsOpen(false)} label="Calendar options"><div className={contentStyles.calendarOptionsBody}><p className={contentStyles.optionsIntro}>Manage publishing, import content and choose your appearance.</p>
+          <AutoPublishToggle compact calendarId={calendarId} canManage={isOwner || (permissions ? permissions.includes("publishing.manage") : userRole === "EDIT_CALENDAR")} />
           {userRole === "EDIT_CALENDAR" && <ImportCalendar calendarId={calendarId} theme={theme} onImported={(importedPosts, firstDate) => {
             setPosts(importedPosts.map(normalize));
             clearFilters();
@@ -5505,7 +5513,8 @@ export default function CalendarGrid({
               setViewMode("calendar");
             }
           }} />}
-          <ThemeToggle theme={theme} onToggle={toggleTheme}/>
+          <div className={contentStyles.appearanceOption}><span>Appearance<small>{theme === "dark" ? "Dark mode" : "Light mode"}</small></span><ThemeToggle theme={theme} onToggle={toggleTheme}/></div>
+          <button type="button" className={contentStyles.optionsDone} onClick={() => setToolbarOptionsOpen(false)}>Done</button></div></CalendarFilterPanel></div>
           {viewMode === "calendar" && (
             <>
               <button
@@ -5554,11 +5563,14 @@ export default function CalendarGrid({
         </div>
       </div>
 
+      <button type="button" className={contentStyles.mobileFilterToggle} onClick={() => setFilterOpen(open => !open)} aria-expanded={filterOpen} aria-controls="calendar-filter-controls"><SlidersHorizontal size={15}/> Filters & search {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}</button>
       {/* =====================================================
           SMART FILTER / SEARCH BAR
           ===================================================== */}
+      <CalendarFilterPanel mobile={isMobileLayout} open={filterOpen} onClose={() => setFilterOpen(false)}>
       <div
-        className={contentStyles.filterBar}
+        id="calendar-filter-controls"
+        className={`${contentStyles.filterBar} ${filterOpen ? contentStyles.mobileFiltersOpen : ""}`}
         style={{
           background:
             theme === "dark"
@@ -5571,6 +5583,7 @@ export default function CalendarGrid({
               : "0 12px 40px rgba(0,0,0,0.045)",
         }}
       >
+        <div className={contentStyles.mobileFilterSheetHeading}><strong>Find your content</strong><button type="button" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button></div>
         <div className={contentStyles.mobileFilterRow}>
           <div
             className="
@@ -5678,7 +5691,7 @@ export default function CalendarGrid({
             </>
           )}
 
-          <button
+          {!isMobileLayout && <button
             type="button"
             aria-label="Filters"
             onClick={() => setFilterOpen((open) => !open)}
@@ -5721,18 +5734,15 @@ export default function CalendarGrid({
                 {activeFilterCount}
               </span>
             )}
-          </button>
+          </button>}
         </div>
 
         {filterOpen && (
           <div
-            className="border-t px-3 pb-3 pt-3 sm:px-4 sm:pb-4"
+            className={`${contentStyles.filterFields} border-t px-3 pb-3 pt-3 sm:px-4 sm:pb-4`}
             style={{ borderColor: t.cardBorder }}
           >
-            <div className="
-              grid grid-cols-1 gap-2
-              sm:grid-cols-2 lg:grid-cols-4
-            ">
+            <div className={`${contentStyles.filterFieldsGrid} grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4`}>
               {[
                 {
                   label: "Platform",
@@ -5888,8 +5898,10 @@ export default function CalendarGrid({
             </div>
           </div>
         )}
+        <div className={contentStyles.mobileFilterFooter}><button type="button" onClick={clearFilters}>Clear filters</button><button type="button" onClick={() => setFilterOpen(false)}>Show results</button></div>
       </div>
 
+      </CalendarFilterPanel>
       {filtersActive && (
         <div className="
           mb-4 flex flex-wrap items-center gap-2
@@ -5993,6 +6005,7 @@ export default function CalendarGrid({
           DESKTOP / TABLET CALENDAR
           ===================================================== */}
 
+          <label className={contentStyles.mobilePeriodSelect}><span className="sr-only">Calendar view</span><select value={calendarPeriod} onChange={event => changeCalendarPeriod(event.target.value as "day" | "week" | "month")}><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select></label>
           <div className={contentStyles.periodSelector} role="group" aria-label="Calendar view">
             {(["day", "week", "month"] as const).map(period => <button key={period} type="button" aria-pressed={calendarPeriod === period} onClick={() => changeCalendarPeriod(period)}>{period === "day" ? "Day" : period === "week" ? "Week" : "Month"}</button>)}
           </div>

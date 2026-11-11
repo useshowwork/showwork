@@ -1,7 +1,7 @@
 "use client";
 
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
-import { CircleHelp, MoreHorizontal, Sparkles, ArrowLeft, LayoutDashboard, CalendarRange, UsersRound, ChartNoAxesCombined, MessagesSquare, ContactRound, PanelsTopLeft, Cable, BrainCircuit, BookOpenText, WandSparkles, SendHorizontal, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
+import { CircleHelp, Menu, Sparkles, ArrowLeft, LayoutDashboard, CalendarRange, UsersRound, ChartNoAxesCombined, MessagesSquare, ContactRound, PanelsTopLeft, Cable, BrainCircuit, BookOpenText, WandSparkles, SendHorizontal, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
 import menuStyles from "./WorkspaceMenu.module.css";
 import headerStyles from "./WorkspaceHeader.module.css";
 import Link from "next/link";
@@ -267,10 +267,8 @@ export default function CalendarWorkspaceShell({
   };
 
   const aiSections = (["knowledge", "generate", "research"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
-  const primaryMobile = (["content", "inbox", "analytics"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
+  const primaryMobile = (["content", "generate", "inbox"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
   const moreSections = visibleSections.filter(section => !["content", "inbox", "analytics", "knowledge", "research", "generate"].includes(section.id)).sort((a, b) => Number(a.id === "overview") - Number(b.id === "overview"));
-  const aiActive = aiSections.some(section => section.id === active.id);
-  const moreActive = moreSections.some(section => section.id === active.id);
   const openSheet = (sheet: "more" | "ai") => { setMobileSheet(sheet); setMobileOpen(true); };
   const sidebar = <>
     <nav className={menuStyles.navigation} aria-label="Workspace sections">
@@ -296,6 +294,7 @@ export default function CalendarWorkspaceShell({
       {calendarId && <WorkspaceUploadTray workspaceId={calendarId} />}
       <header className={headerStyles.header}>
         <div className={headerStyles.inner}>
+          <button type="button" className={menuStyles.headerMenu} onClick={() => openSheet("more")} aria-label="Open workspace menu" aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog"><Menu size={21}/></button>
           <Link href="/dashboard/calendars" aria-label="Back to workspaces" title="All workspaces" className={headerStyles.back}><ArrowLeft size={16}/><span>All workspaces</span></Link>
           <span className={headerStyles.divider} aria-hidden="true"/>
           <div className={headerStyles.identity}><span className={headerStyles.monogram} aria-hidden="true">{clientName.slice(0, 2).toUpperCase()}</span><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>Marketing workspace</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
@@ -307,20 +306,17 @@ export default function CalendarWorkspaceShell({
           {settings}
         </div>
       </header>
-      <MobileDrawer motion="fade" placement="bottom" open={mobileOpen} onClose={() => { setMobileOpen(false); if (tourId && window.innerWidth < 1024) window.dispatchEvent(new Event("showwork-workspace-tour-dismiss")); }} label={mobileSheet === "ai" ? "AI Studio" : "Your workspace"} panelClassName={menuStyles.mobilePanel} className="bg-white text-slate-800">
-        {tourId ? sidebar : <div className={menuStyles.sheetBody}>
+      <MobileDrawer motion="slide" placement={mobileSheet === "more" ? "left" : "bottom"} open={mobileOpen} onClose={() => { setMobileOpen(false); if (tourId && window.innerWidth < 1024) window.dispatchEvent(new Event("showwork-workspace-tour-dismiss")); }} label={mobileSheet === "ai" ? "AI Studio" : "Showwork navigation"} heading={mobileSheet === "more" ? <ShowworkLogo tone="white" width={120} /> : undefined} panelClassName={mobileSheet === "more" ? menuStyles.navigationDrawer : menuStyles.mobilePanel} className={mobileSheet === "more" ? "bg-[#123568] text-white" : "bg-white text-slate-800"}>
+        {tourId || mobileSheet === "more" ? <><div className={menuStyles.drawerBrand}><p>{clientName}</p></div>{sidebar}<Link href="/dashboard/calendars" className={menuStyles.helpLink}><ArrowLeft size={16}/>All workspaces</Link></> : <div className={menuStyles.sheetBody}>
           {mobileSheet === "ai" && <p className={menuStyles.sheetIntro}>Build your knowledge, explore ideas and create content.</p>}
           <nav aria-label={mobileSheet === "ai" ? "AI Studio tools" : "More workspace sections"} className={menuStyles.sheetGrid}>
             {(mobileSheet === "ai" ? aiSections : moreSections).map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} data-section={item.id} className={menuStyles.sheetItem}><span className={menuStyles.iconWell}><SectionIcon name={item.id} className="h-5 w-5"/></span><span className={menuStyles.sheetLabel}>{item.label}</span><ChevronRight size={14} className={menuStyles.sheetChevron} aria-hidden="true"/>{item.id === active.id && <span className={menuStyles.sheetActive}>You’re here</span>}</button>)}
           </nav>
-          {mobileSheet === "more" && <div className={menuStyles.sheetLinks}><a href="/help/workspace" target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-600"><CircleHelp size={16}/>Help & guides<span className="sr-only"> (opens in a new tab)</span></a><Link href="/dashboard/calendars" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-600"><ArrowLeft size={16}/> All workspaces</Link>{clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-between rounded-xl px-3 text-sm text-slate-600">Preview client page <ArrowUpRight/></a>}{publishAction}</div>}
         </div>}
       </MobileDrawer>
       <nav aria-label="Mobile workspace navigation" data-workspace-bottom-nav hidden={keyboardOpen} className={`${menuStyles.bottomNav} lg:hidden`}>
-        {primaryMobile.filter(item => item.id === "content").map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === "content" ? "Calendar" : item.id === "analytics" ? "Analytics" : item.label}</button>)}
-        {!!aiSections.length && <button onClick={() => openSheet("ai")} aria-current={aiActive ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "ai"} aria-haspopup="dialog" className={menuStyles.dockItem}><Sparkles size={20}/>AI Studio</button>}
-        {primaryMobile.filter(item => item.id !== "content").map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === "content" ? "Calendar" : item.id === "analytics" ? "Analytics" : item.label}</button>)}
-        <button onClick={() => openSheet("more")} aria-current={moreActive ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog" className={menuStyles.dockItem}><MoreHorizontal size={20}/>More</button>
+        {primaryMobile.map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/><span>{item.id === "content" ? "Calendar" : item.id === "generate" ? "Generate calendar" : "Inbox"}</span></button>)}
+        <button onClick={() => openSheet("more")} aria-current={!primaryMobile.some(item => item.id === active.id) ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog" className={menuStyles.dockItem}><Menu size={20}/>Menu</button>
       </nav>
 
       <div className={`${menuStyles.desktopLayout} mx-auto grid max-w-[1800px] ${sidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[224px_minmax(0,1fr)]"}`}>

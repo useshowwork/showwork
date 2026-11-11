@@ -31,6 +31,7 @@ export default function MobileDrawer({
   onClose,
   children,
   label,
+  heading,
   className = "bg-white text-slate-900",
   panelClassName = "",
   breakpoint = "lg",
@@ -41,6 +42,7 @@ export default function MobileDrawer({
   onClose: () => void;
   children: ReactNode;
   label: string;
+  heading?: ReactNode;
   className?: string;
   panelClassName?: string;
   breakpoint?: "md" | "lg";
@@ -119,7 +121,7 @@ export default function MobileDrawer({
       >
         {placement === "bottom" && <div aria-hidden="true" className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-slate-200" />}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-current/10 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
-          <span className="text-sm font-semibold">{label}</span>
+          <span className="text-sm font-semibold">{heading ?? label}</span>
           <button
             autoFocus
             type="button"

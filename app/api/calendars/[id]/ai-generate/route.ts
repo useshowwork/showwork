@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const calendarId = (await context.params).id;
   if (!await hasCalendarPermission(setupCreator.id, calendarId, "ai.generate")) return NextResponse.json({ error: "You cannot generate content in this workspace." }, { status: 403 });
   const setup = await getWorkspaceSetup(calendarId);
-  if (setup && !canGenerateDuringSetup(setup)) return NextResponse.json({ code: "WORKSPACE_SETUP_REQUIRED", error: "Choose your publishing preference, add business knowledge, set your brand voice, and connect a channel before generating your first content." }, { status: 409 });
+  if (setup && !canGenerateDuringSetup(setup)) return NextResponse.json({ code: "WORKSPACE_SETUP_REQUIRED", error: "Add business knowledge and set your brand voice before generating your first content. You can connect channels later." }, { status: 409 });
 
   /* canonical-integration-boundary */ if (publishingIntegrationInstalled()) { return await invokePublishingEntrypoint<never>("app/api/calendars/[id]/ai-generate/route.ts#POST@21",[req, context]); } /* end-canonical-integration-boundary */
   const creator = await getCurrentCreator();

@@ -9,16 +9,16 @@ test('setup follows actual prerequisites, including an explicit manual publishin
  assert.equal(workspaceSetupStep(manual),1);
  assert.equal(workspaceSetupStep({...manual,hasKnowledge:true}),2);
  assert.equal(workspaceSetupStep({...manual,hasKnowledge:true,hasBrandVoice:true}),3);
- assert.equal(workspaceSetupStep({...manual,hasKnowledge:true,hasBrandVoice:true,hasChannels:true}),4);
- assert.equal(workspaceSetupStep({...manual,hasKnowledge:true,hasBrandVoice:true,hasChannels:true,hasContent:true}),5);
- assert.equal(workspaceSetupStep({...manual,hasKnowledge:true,hasBrandVoice:true,hasChannels:true,hasContent:true,complete:true}),6);
+ assert.equal(workspaceSetupStep({...manual,hasKnowledge:true,hasBrandVoice:true,hasChannels:true}),3);
+ assert.equal(workspaceSetupStep({...manual,hasKnowledge:true,hasBrandVoice:true,hasChannels:true,hasContent:true}),4);
+ assert.equal(workspaceSetupStep({...manual,hasKnowledge:true,hasBrandVoice:true,hasChannels:true,hasContent:true,complete:true}),5);
 });
-test('generation remains unavailable until publishing, knowledge and channels are ready',()=>{
- for(const missing of ['publishingChosen','hasKnowledge','hasBrandVoice','hasChannels']){
- const ready={...fresh,publishingChosen:true,hasKnowledge:true,hasBrandVoice:true,hasChannels:true};
- assert.equal(canGenerateDuringSetup({...ready,[missing]:false}),false);
- }
- assert.equal(canGenerateDuringSetup({...fresh,publishingChosen:true,hasKnowledge:true,hasBrandVoice:true,hasChannels:true}),true);
+test('generation needs knowledge and brand voice, not channels or publishing preference',()=>{
+ const ready={...fresh,hasKnowledge:true,hasBrandVoice:true};
+ assert.equal(canGenerateDuringSetup(ready),true);
+ for(const missing of ['hasKnowledge','hasBrandVoice']) assert.equal(canGenerateDuringSetup({...ready,[missing]:false}),false);
+ assert.equal(workspaceSetupStep({...ready,publishingChosen:true}),3);
+ assert.equal(workspaceSetupStep({...ready,publishingChosen:true,hasContent:true}),4);
 });
 test('existing and completed workspaces retain their normal generation workflow',()=>{
  assert.equal(canGenerateDuringSetup({...fresh,enabled:false}),true);

@@ -21,9 +21,9 @@ test('setup rejects unauthorized changes and invalid origins',async()=>{
 test('manual publishing is an explicit saved choice, not an unfinished step',async()=>{
  const h=harness();assert.equal((await h.api.PATCH(h.request({action:'publishing',autoPublishEnabled:false}),h.context)).status,200);assert.equal(h.writes[0].data.autoPublishEnabled,false);assert.ok(h.writes[0].data.publishingPreferenceSetAt instanceof Date);
 });
-test('cannot finish setup before knowledge, channels and content are ready',async()=>{
+test('cannot finish setup before knowledge and content are ready',async()=>{
  const h=harness();assert.equal((await h.api.PATCH(h.request({action:'complete'}),h.context)).status,409);assert.equal(h.writes.length,0);
- const ready=harness({state:{...fresh,publishingChosen:true,hasKnowledge:true,hasBrandVoice:true,hasChannels:true,hasContent:true}});assert.equal((await ready.api.PATCH(ready.request({action:'complete'}),ready.context)).status,200);assert.ok(ready.writes[0].data.setupCompletedAt instanceof Date);
+ const ready=harness({state:{...fresh,publishingChosen:true,hasKnowledge:true,hasBrandVoice:true,hasChannels:false,hasContent:true}});assert.equal((await ready.api.PATCH(ready.request({action:'complete'}),ready.context)).status,200);assert.ok(ready.writes[0].data.setupCompletedAt instanceof Date);
 });
 test('first-time generation is blocked before enqueueing or canonical dispatch',async()=>{
  const api=load('app/api/calendars/[id]/ai-generate/route.ts',{

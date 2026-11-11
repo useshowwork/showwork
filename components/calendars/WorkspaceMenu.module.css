@@ -167,3 +167,29 @@
 }
 
 .workspaceBrand{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;padding-block:4px}
+
+.headerMenu { display:none; }
+.navigationDrawer { background:#123568; color:#edf4ff; border-right:1px solid #335789; }
+.navigationDrawer .clusterHeading { color:#b5c9e7; }
+.navigationDrawer .navItem,.navigationDrawer .helpLink { color:#edf4ff; }
+.navigationDrawer .navItem[aria-current=page] { background:#1768e8; color:white; }
+.drawerBrand { padding:20px 24px 8px; }
+.drawerBrand p { margin:0; font-size:16px; font-weight:600; line-height:1.5; color:#edf4ff; overflow-wrap:anywhere; }
+@media(max-width:1023px) {
+.headerMenu { display:grid; place-items:center; width:40px; height:40px; flex-shrink:0; border:1px solid #ffffff55; border-radius:12px; color:white; background:#ffffff15; }
+.bottomNav { background:#1764ed; border-color:#5c99ff; box-shadow:0 8px 30px #124c9d55; }
+.bottomNav .dockItem { color:white; }
+.bottomNav > .dockItem[aria-current],.bottomNav > .dockItem[aria-expanded=true] { background:white; color:#155bd5; border-color:white; }
+}
+
+.navigationDrawer .cluster[data-featured=true] { background:#ffffff08; border-color:#ffffff20; padding:12px 6px; }
+.navigationDrawer .cluster[data-featured=true] .clusterHeading { color:#bcd4f7; }
+.navigationDrawer .navItem:hover { background:#ffffff12; border-color:transparent; color:#fff; }
+.navigationDrawer .iconWell { background:#ffffff0d; border-color:#ffffff20; color:#c3dcff; }
+.navigationDrawer .navItem[aria-current=page] .iconWell { color:white; background:#ffffff18; }
+.navigationDrawer .footer { border-color:#ffffff20; }
+.navigationDrawer .clientLink { background:#ffffff0d; border-color:#ffffff25; color:#e6efff; }
+.navigationDrawer .clientLink strong { color:#fff; }
+.navigationDrawer .clientLink small { color:#bcd0ed; }
+.navigationDrawer .clientIcon { background:#ffffff12; color:#c3dcff; }
+.navigationDrawer :focus-visible { outline-color:#b8d6ff; }
