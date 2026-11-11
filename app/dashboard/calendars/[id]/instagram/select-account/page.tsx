@@ -50,6 +50,7 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
       if (!response.ok) throw Error(body.error || 'Could not verify Page access.');
       setOptions(body); setVerifiedPageId(pageId.trim());
       setSelected(body.accounts.length === 1 ? body.accounts[0].accountId : '');
+      if (body.accounts.length) requestAnimationFrame(() => document.getElementById('account-heading')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     } catch (error) { setError(error instanceof Error ? error.message : 'Could not verify Page access.'); }
     finally { setBusy(false); }
   }
@@ -80,9 +81,9 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
       <div className={styles.layout}>
         <section className={styles.card} aria-labelledby="account-heading">
           <div className={styles.sectionHeading}><span className={styles.step}>1</span><h2 id="account-heading">Choose your account</h2></div>
-          <p className={styles.intro}>Select a Facebook Page and its linked Instagram professional account.</p>
+          <p className={styles.intro}>Select an account below, then connect it to your workspace.</p>
           {!options && !error && <p role="status" className={styles.notice}><Loader2 size={18} className={styles.spinner} /> Loading your linked accounts…</p>}
-          {options && options.accounts.length === 0 && <p className={styles.notice}>{options.diagnostics?.discoveryStatus === 'DISCOVERY_INCOMPLETE' ? 'Some account checks failed. Meta has not confirmed the complete list of Pages you can use.' : options.diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' ? 'Meta did not list your Pages in this authorization. Assigned Pages may still be accessible. Enter your Facebook Page ID below to find your Instagram.' : options.diagnostics?.discoveryStatus === 'PAGES_PERMISSION_MISSING' ? 'Page access was not granted. Restart authorization and allow access to your Facebook Page.' : 'No linked Instagram professional accounts found. Check your Page-to-Instagram connection and allow access to both assets when reconnecting.'}</p>}
+          {options && options.accounts.length === 0 && <p className={styles.notice}>{options.diagnostics?.discoveryStatus === 'DISCOVERY_INCOMPLETE' ? 'Some account checks failed. Meta has not confirmed the complete list of Pages you can use.' : options.diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' ? 'Meta did not list your Pages in this authorization. Assigned Pages may still be accessible. Use the Page ID helper to find your Instagram.' : options.diagnostics?.discoveryStatus === 'PAGES_PERMISSION_MISSING' ? 'Page access was not granted. Restart authorization and allow access to your Facebook Page.' : 'No linked Instagram professional accounts found. Check your Page-to-Instagram connection and allow access to both assets when reconnecting.'}</p>}
           {!!diagnostics?.pages?.length && (!options || options.accounts.length === 0) && <div className={styles.notice}>
             <strong>Facebook Pages found</strong>
             <p>Check that this is the Page linked to the Instagram account you selected.</p>
@@ -92,29 +93,6 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
           {!!diagnostics?.issues?.length && <details className={styles.notice}><summary>Connection check details</summary><p>Some accounts could not be checked. You can connect an available account or retry authorization.</p><ul>{diagnostics.issues.map((issue, index) => <li key={index}>{issue.stage.replaceAll('_', ' ')}: {issue.code}{issue.providerCode !== undefined ? ` (Meta ${issue.providerCode}${issue.providerSubcode !== undefined ? ` / ${issue.providerSubcode}` : ''})` : ''}</li>)}</ul></details>}
           {options?.accounts.length === 0 && <p className={styles.footnote}>You do not need to own the Page. Your Facebook profile needs the appropriate assigned access, and the Instagram account must be a linked professional account.</p>}
           {options?.accounts.length === 0 && !diagnostics?.pages?.length && diagnostics?.discoveryStatus === 'NO_FACEBOOK_PAGES' && diagnostics?.businessDiscovery === 'NOT_GRANTED' && <p className={styles.footnote}>Business Portfolio discovery was not included in this authorization. If your assigned assets are correct, contact Showwork support to check the app’s Business access setup.</p>}
-          <section className={styles.lookup} aria-labelledby="page-lookup-heading">
-            <span className={styles.lookupLabel}>CAN’T FIND YOUR INSTAGRAM?</span>
-            <h3 id="page-lookup-heading">Find it with your Facebook Page ID</h3>
-            <p>Enter the ID of the Facebook Page linked to your Instagram account. We’ll check your access and find the linked account.</p>
-            <form onSubmit={event => { event.preventDefault(); void findPage(); }}>
-              <label htmlFor="instagram-page-id">Facebook Page ID</label>
-              <div className={styles.lookupRow}>
-                <input id="instagram-page-id" inputMode="numeric" pattern="[0-9]{5,30}" value={pageId} onChange={event => setPageId(event.target.value)} placeholder="e.g. 381092961751993" aria-describedby="page-id-help" disabled={busy} required />
-                <button type="submit" disabled={busy || !/^\d{5,30}$/.test(pageId.trim())}>{busy ? 'Checking…' : 'Find Instagram'}<ArrowRight size={16} /></button>
-              </div>
-              <small id="page-id-help">Use your Facebook Page ID, not your personal Facebook or Instagram ID.</small>
-            </form>
-            <div className={styles.lookupGuide}>
-              <h4>How to find your Facebook Page ID</h4>
-              <ol>
-                <li>Open <a href="https://business.facebook.com/latest/settings/pages" target="_blank" rel="noopener noreferrer">Meta Business Suite settings <ArrowRight size={12} /></a>.</li>
-                <li>Select the business portfolio that contains your Page.</li>
-                <li>Under <strong>Accounts</strong>, choose <strong>Pages</strong>.</li>
-                <li>Select the Facebook Page linked to your Instagram.</li>
-                <li>Copy its <strong>Page ID</strong>, paste it above and select <strong>Find Instagram</strong>.</li>
-              </ol>
-            </div>
-          </section>
           <fieldset className={styles.accounts} disabled={busy}>
             <legend className="sr-only">Instagram accounts linked to Facebook Pages</legend>
             {options?.accounts.map(account => <label key={account.accountId} className={`${styles.account} ${selected === account.accountId ? styles.selected : ''}`}>
@@ -131,8 +109,32 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
           <p className={styles.footnote}><ShieldCheck size={16} /> Your account will be connected to this workspace.</p>
           <div className={styles.restart}><span>Missing an account or permission?</span><a href={`/api/calendars/${id}/instagram/connect`}>Restart authorization <RefreshCw size={13} /></a></div>
         </section>
-        <section className={`${styles.card} ${styles.permissions}`} aria-labelledby="permissions-heading">
-          <div className={styles.permissionHeading}><ShieldCheck size={21} /><h2 id="permissions-heading">Your Meta permissions</h2></div>
+        <aside className={styles.support}>
+          <section className={styles.lookup} aria-labelledby="page-lookup-heading">
+            <h3 id="page-lookup-heading">Can’t find your account?</h3>
+            <p>Enter the Facebook Page ID linked to your Instagram.</p>
+            <form onSubmit={event => { event.preventDefault(); void findPage(); }}>
+              <label htmlFor="instagram-page-id">Facebook Page ID</label>
+              <div className={styles.lookupRow}>
+                <input id="instagram-page-id" inputMode="numeric" pattern="[0-9]{5,30}" value={pageId} onChange={event => setPageId(event.target.value)} placeholder="e.g. 381092961751993" aria-describedby="page-id-help" disabled={busy} required />
+                <button type="submit" disabled={busy || !/^\d{5,30}$/.test(pageId.trim())}>{busy ? 'Checking…' : 'Find Instagram'}<ArrowRight size={16} /></button>
+              </div>
+              <small id="page-id-help">Use your Facebook Page ID, not your personal Facebook or Instagram ID.</small>
+            </form>
+            <a className={styles.settingsLink} href="https://business.facebook.com/latest/settings/pages" target="_blank" rel="noopener noreferrer">Open Meta Business Settings <ArrowRight size={13} /></a>
+            <details className={styles.lookupGuide}>
+              <summary>How to get your Facebook Page ID</summary>
+              <ol>
+                <li>Open <a href="https://business.facebook.com/latest/settings/pages" target="_blank" rel="noopener noreferrer">Meta Business Suite settings <ArrowRight size={12} /></a>.</li>
+                <li>Select the business portfolio that contains your Page.</li>
+                <li>Under <strong>Accounts</strong>, choose <strong>Pages</strong>.</li>
+                <li>Select the Facebook Page linked to your Instagram.</li>
+                <li>Copy its <strong>Page ID</strong>, paste it above and select <strong>Find Instagram</strong>.</li>
+              </ol>
+            </details>
+          </section>
+        <details className={`${styles.card} ${styles.permissions}`}>
+          <summary className={styles.permissionHeading}><ShieldCheck size={19} /><span>Your Meta permissions<small>{options ? `${grantedCount} of ${capabilities.length} available` : "View connection permissions"}</small></span></summary>
           <p className={styles.intro}>Access granted during this authorization, across your Instagram use cases.</p>
           <p role="status" className={styles.summary}>{options ? `${grantedCount} of ${capabilities.length} use cases have all required permissions` : error ? 'Permissions could not be verified.' : 'Checking permissions…'}</p>
           <div className={styles.capabilities}>{capabilities.map(({ title, description, scopes, icon: Icon }) => {
@@ -143,7 +145,8 @@ export default function InstagramAccountSelection({ params }: { params: Promise<
             </div>;
           })}</div>
           <p className={styles.permissionNote}>Meta’s approval lets Showwork request a permission. This list shows what Meta actually returned for your current connection. If Insights is missing, reconnect and allow Insights access. Account eligibility also affects available metrics.</p>
-        </section>
+        </details>
+        </aside>
       </div>
     </div>
   </main>;

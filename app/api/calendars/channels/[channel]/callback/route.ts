@@ -37,6 +37,11 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ channel: string }> },
 ) {
+  const requestedChannel = (await params).channel;
+  if (["linkedin", "x"].includes(requestedChannel)) {
+    return NextResponse.json({ error: "This channel is coming soon. New connections are unavailable." }, { status: 403 });
+  }
+
   /* canonical-integration-boundary */ if (publishingIntegrationInstalled()) { return await invokePublishingEntrypoint<never>("app/api/calendars/channels/[channel]/callback/route.ts#GET@34",Array.from(arguments)); } /* end-canonical-integration-boundary */
 
   const { channel: rawChannel } = await params;

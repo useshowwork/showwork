@@ -38,6 +38,10 @@ export async function GET(
     return NextResponse.redirect(`${appUrl()}${settingsPath}&${channel}Error=not_found`);
   }
 
+  if (["linkedin", "x"].includes(channel)) {
+    return NextResponse.redirect(`${appUrl()}${settingsPath}&${channel}Error=coming_soon`);
+  }
+
   try {
     const callbackPath = `/api/calendars/channels/${channel}/callback`;
     const redirectUri = `${appUrl()}${callbackPath}`;

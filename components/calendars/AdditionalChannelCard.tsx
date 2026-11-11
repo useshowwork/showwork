@@ -6,7 +6,6 @@ import PlatformBrandIcon from "./PlatformBrandIcon";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import UiSymbol from "@/components/ui/UiSymbol";
-import LinkedInPagePicker from "./LinkedInPagePicker";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -19,6 +18,7 @@ const CHANNEL_META: Record<AdditionalChannel, { name: string; mark: string; colo
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
+  coming_soon: "This channel is coming soon. New connections are not available yet.",
   denied: "The connection was cancelled.",
   not_configured: "This channel is not configured yet. Ask an administrator to finish its developer app setup.",
   not_found: "This workspace could not be found or you do not have permission to manage its channels.",
@@ -91,6 +91,7 @@ export default function AdditionalChannelCard({
   };
 
   const isConnected = !!connectedAccount;
+  const comingSoon = channel === "linkedin" || channel === "x";
 
   return (
     <section className={channelStyles.connectionCard}>
@@ -103,13 +104,13 @@ export default function AdditionalChannelCard({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold leading-5 text-white">{meta.name}</p>
               <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#8295AF]">
-                Connect a {meta.accountType}
+                {comingSoon ? "Coming soon" : `Connect a ${meta.accountType}`}
               </p>
             </div>
           </div>
           {isConnected ? (<span className="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#398D78]">
               Connected
-            </span>) : <span className={channelStyles.disconnected}>Not connected</span>}
+            </span>) : <span className={channelStyles.disconnected}>{comingSoon ? "Coming soon" : "Not connected"}</span>}
         </div>
 
         {justConnected && (
@@ -123,10 +124,8 @@ export default function AdditionalChannelCard({
           </p>
         )}
 
-        {channel === "linkedin" && isConnected && isManager && <LinkedInPagePicker calendarId={calendarId} />}
-        {channel === "linkedin" && <p className="mt-3 text-xs text-slate-400">LinkedIn inbox replies and message-to-lead import require approved Page Messaging access and a confirmed messaging subscription.</p>}
-        {isConnected && isManager && <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="mt-3 inline-block text-xs text-[#397CC8] underline" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Refresh permissions</a>}
-        <ChannelCapabilities platform={channel}/>
+        {!comingSoon && isConnected && isManager && <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="mt-3 inline-block text-xs text-[#397CC8] underline" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Refresh permissions</a>}
+        {!comingSoon && <ChannelCapabilities platform={channel}/>}
         {isConnected ? (
           <>
             <p className="mt-4 truncate text-sm font-medium text-white">{channel === "x" ? "@" : ""}{connectedAccount}</p>
@@ -137,13 +136,15 @@ export default function AdditionalChannelCard({
           </>
         ) : (
           <p className="mt-4 max-w-sm text-[11px] leading-5 text-[#71849E]">
-            Connect the {meta.accountType} used for this client&apos;s {meta.name} content.
+            {comingSoon ? `${meta.name} connections will be available soon.` : `Connect the ${meta.accountType} used for this client’s ${meta.name} content.`}
           </p>
         )}
       </div>
 
       <div className="border-t border-[#E4EBF6] bg-[#F7FAFF] p-4 sm:p-5">
-        {!isManager ? (
+        {comingSoon && !isConnected ? (
+          <button type="button" disabled className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-500">Coming soon</button>
+        ) : !isManager ? (
           <p className="text-[10px] leading-5 text-[#8295AF]">Channel-management permission is required to connect or disconnect accounts.</p>
         ) : isConnected ? (
           confirming ? (
