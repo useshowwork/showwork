@@ -1,13 +1,12 @@
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Terms of Service | Showwork",
-  description:
-    "Showwork's Terms of Service govern your use of the Showwork platform.",
-  alternates: { canonical: "/terms" },
-  openGraph: { type: "website", siteName: "Showwork", title: "Terms of Service | Showwork", description: "Read the terms governing use of Showwork's creator portfolios, client delivery and marketing workspace services.", url: "/terms" },
-  robots: { index: true, follow: true },
-};
+export const metadata: Metadata = pageMetadata({
+  "title": "Terms of Service | Showwork",
+  "description": "Read the terms for using Showwork, including marketing workspaces, portfolio websites, client project delivery, accounts and subscriptions.",
+  "path": "/terms",
+  "keywords": []
+});
 
 export default function TermsPage() {
   return (

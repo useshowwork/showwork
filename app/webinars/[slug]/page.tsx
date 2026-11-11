@@ -1,3 +1,4 @@
+import { socialPreviewImage } from "@/lib/seo";
 import SiteFooter from "@/components/landing/SiteFooter";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -43,8 +44,7 @@ export async function generateMetadata({
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL || "https://useshowwork.com";
 
-  const image =
-    webinar.flyerImageUrl || `${baseUrl}/images/shwk.jpg`;
+  const image = socialPreviewImage.url;
 
   return {
     title,
@@ -65,9 +65,9 @@ export async function generateMetadata({
       images: [
         {
           url: image,
-          width: 1200,
-          height: 630,
-          alt: webinar.topic,
+          width: socialPreviewImage.width,
+          height: socialPreviewImage.height,
+          alt: socialPreviewImage.alt,
         },
       ],
     },

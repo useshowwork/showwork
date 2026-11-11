@@ -1,3 +1,4 @@
+import { pageMetadata } from "@/lib/seo";
 import { Metadata } from "next";
 import { db } from "@/lib/db";
 import Navbar from "@/components/Navbar";
@@ -6,15 +7,18 @@ import BlogFooter from "@/components/blog/BlogFooter";
 
 const COLOR = { black: "#080808", offWhite: "#F7F4EC", blue: "#2478FF" };
 
-export const metadata: Metadata = {
-  title: "Creative Business Blog: Pricing, Clients & Growth | Showwork",
-  description:
-    "Practical advice on creative business pricing, client experience, portfolios and social media workflows for photographers, videographers and creative professionals.",
-  alternates: { canonical: "/blog" },
-  keywords: ["creative business advice", "photography business pricing", "videography business tips", "client management for creatives", "creative portfolio advice"],
-  openGraph: { type: "website", siteName: "Showwork", title: "Creative Business Blog | Showwork", description: "Practical advice on creative business pricing, client experience, portfolios and social media workflows.", url: "/blog", images: ["/images/work.jpg"] },
-  twitter: { card: "summary_large_image", title: "Creative Business Blog | Showwork", description: "Advice on pricing, clients, portfolios and growing a creative business.", images: ["/images/work.jpg"] },
-};
+export const metadata: Metadata = pageMetadata({
+  "title": "Marketing & Creative Business Blog | Showwork",
+  "description": "Explore practical guides to content planning, social media workflows, creative business pricing, client delivery and building a professional portfolio.",
+  "path": "/blog",
+  "keywords": [
+    "content marketing guides",
+    "social media workflow",
+    "creative business advice",
+    "photography business pricing",
+    "portfolio tips"
+  ]
+});
 
 // Without this, Next.js can treat this page as fully static (no
 // cookies()/headers() call to otherwise force it dynamic) and serve

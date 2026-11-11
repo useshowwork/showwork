@@ -144,24 +144,17 @@ export async function POST(req: NextRequest) {
 
   scheduleBenefitEmailDelivery();
 
-  // Welcome email — best effort.
+  // One-time welcome after successful account creation. Delivery failure must not
+  // undo signup; the provider key prevents duplicate sends on retried delivery.
   try {
     await sendWelcomeEmail({
-      to: result.creator.email,
-      name: result.creator.name,
+      to: result.creator.email, name: result.creator.name, creatorId: result.creator.id,
     });
-
     await db.creator.update({
-      where: { id: result.creator.id },
-      data: {
-        welcomeEmailSentAt: now,
-      },
+      where: { id: result.creator.id }, data: { welcomeEmailSentAt: new Date() },
     });
-  } catch (err) {
-    console.error(
-      "Failed to send welcome email at signup:",
-      err
-    );
+  } catch {
+    console.error("Account welcome email failed", { creatorId: result.creator.id });
   }
 
   // Partner referral notification — best effort.

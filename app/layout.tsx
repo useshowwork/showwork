@@ -1,3 +1,4 @@
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Script from "next/script";
@@ -18,37 +19,14 @@ const brandFont = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://useshowwork.com"),
-  title: "Showwork | The Platform for Creative Client Work",
-  description:
-    "Build a portfolio, deliver projects and manage client content, approvals, conversations, leads and analytics. Showwork is built for creators, agencies and social media teams.",
-  keywords: [
-    "creator business platform Nigeria",
-    "photographer portfolio Nigeria",
-    "videographer portfolio",
-    "client project delivery platform",
-    "social media content calendar",
-    "client content approval software",
-    "creative business tools",
-    "Showwork",
-  ],
-  openGraph: {
-    type: "website",
-    siteName: "Showwork",
-    title: "Showwork | The Platform for Creative Client Work",
-    description:
-      "Build a portfolio, deliver projects and manage client content, approvals, conversations, leads and analytics. Showwork is built for creators, agencies and social media teams.",
-    url: "/",
-    locale: "en_NG",
-    images: [{ url: "/images/work.jpg", width: 1200, height: 630, alt: "Showwork portfolios, project delivery and marketing workspaces" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Showwork | The Platform for Creative Client Work",
-    description:
-      "Build a portfolio, deliver projects and manage client content, approvals, conversations, leads and analytics. Showwork is built for creators, agencies and social media teams.",
-    images: ["/images/work.jpg"],
-  },
-  robots: { index: true, follow: true },
+  ...pageMetadata({
+    title: "Showwork | Marketing Workspace, Project Delivery & Portfolios",
+    description: "Plan social media content, collaborate with your team, deliver client projects and showcase creative work with Showwork.",
+    path: "/",
+    keywords: ["marketing workspace", "social media content calendar", "client project delivery", "creative portfolio builder"],
+  }),
+  // Canonicals belong to individual pages; private routes must not inherit the homepage URL.
+  alternates: undefined,
 };
 
 // Lets TypeScript know window.fbq exists (set by the Meta Pixel

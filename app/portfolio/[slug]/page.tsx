@@ -1,3 +1,4 @@
+import { socialPreviewImage } from "@/lib/seo";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -19,14 +20,11 @@ export async function generateMetadata({
     select: {
       companyName: true,
       heroTagline: true,
-      media: {
-        select: { id: true, fileKey: true, type: true },
-      },
     },
   });
 
   if (!portfolio) {
-    return { title: "Portfolio not found — Showwork" };
+    return { title: "Portfolio not found | Showwork", robots: { index: false, follow: false } };
   }
 
   const title = `${portfolio.companyName.slice(0, 45)} Portfolio | Showwork`;
@@ -34,23 +32,13 @@ export async function generateMetadata({
     ? `${portfolio.heroTagline} Explore ${portfolio.companyName}'s creative portfolio, selected work and services.`
     : `Explore ${portfolio.companyName}'s creative portfolio, featured work and services. View projects and get in touch.`).replace(/\s+/g, " ").trim().slice(0, 160);
 
-    // Any real photo from this creator's portfolio, picked at random —
-  // not a generic Showwork graphic. Only falls back to the generic
-  // image if the portfolio genuinely has no photos at all, since a
-  // video file itself can't be used as a share-preview image.
-  const portfolioPhotos = portfolio.media.filter((m) => m.type === "PHOTO");
-  const randomPhoto = portfolioPhotos.length > 0
-    ? portfolioPhotos[Math.floor(Math.random() * portfolioPhotos.length)]
-    : null;
-  const image = randomPhoto
-    ? publicUrlFor(randomPhoto.fileKey)
-    : "/images/shwk.jpg";
+  const image = socialPreviewImage.url;
 
   return {
     title,
     description,
     alternates: { canonical: `/portfolio/${slug}` },
-    openGraph: { type: "website", title, description, url: `/portfolio/${slug}`, siteName: "Showwork", images: [{ url: image, width: 1200, height: 630, alt: `${portfolio.companyName} creative portfolio` }] },
+    openGraph: { type: "website", title, description, url: `/portfolio/${slug}`, siteName: "Showwork", images: [{ url: image, width: socialPreviewImage.width, height: socialPreviewImage.height, alt: socialPreviewImage.alt }] },
     twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }

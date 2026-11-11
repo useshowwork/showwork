@@ -1,12 +1,12 @@
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Data Deletion | Showwork",
-  description: "Instructions for requesting deletion of your Showwork data.",
-  alternates: { canonical: "/data-deletion" },
-  openGraph: { type: "website", siteName: "Showwork", title: "Data Deletion | Showwork", description: "Find out how to request deletion of your Showwork account and personal data.", url: "/data-deletion" },
-  robots: { index: true, follow: true },
-};
+export const metadata: Metadata = pageMetadata({
+  "title": "Account & Personal Data Deletion | Showwork",
+  "description": "Learn how to request deletion of your Showwork account and personal data, including information associated with connected social media services.",
+  "path": "/data-deletion",
+  "keywords": []
+});
 
 export default function DataDeletionPage() {
   return (

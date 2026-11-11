@@ -1,3 +1,4 @@
+import { socialPreviewImage } from "@/lib/seo";
 import UiSymbol from "@/components/ui/UiSymbol";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -27,13 +28,13 @@ export async function generateMetadata({
   const title = (post.metaTitle || `${post.title} | Showwork`).slice(0, 60);
   const rawDescription = post.metaDescription || post.excerpt || "Creative business advice for photographers, videographers and independent creators.";
   const description = rawDescription.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
-  const image = post.coverImageUrl || "/images/shwk.jpg";
+  const image = socialPreviewImage.url;
 
   return {
     title,
     description,
     alternates: { canonical: `/blog/${slug}` },
-    openGraph: { title, description, url: `/blog/${slug}`, siteName: "Showwork", images: [{ url: image, width: 1200, height: 630, alt: title }], type: "article" },
+    openGraph: { title, description, url: `/blog/${slug}`, siteName: "Showwork", images: [{ url: image, width: socialPreviewImage.width, height: socialPreviewImage.height, alt: socialPreviewImage.alt }], type: "article" },
     twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }

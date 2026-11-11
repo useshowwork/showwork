@@ -1,3 +1,4 @@
+import { WEEKLY_MARKETING_MESSAGES } from "@/lib/weeklyMarketingContent";
 import { createHash } from "node:crypto";
 import { CONTENT_WORKSPACE_PLANS } from "@/lib/contentWorkspaceEntitlements";
 import { Resend } from "resend";
@@ -708,168 +709,57 @@ export async function sendNewUploadReadyForReviewEmail({
 /* LIFECYCLE                                                                    */
 /* -------------------------------------------------------------------------- */
 
+/** One-time account welcome, separate from the weekly workspace campaign. */
 export async function sendWelcomeEmail({
-  to,
-  name,
-}: {
-  to: string;
-  name: string | null;
-}) {
-  const firstName = firstNameOf(name);
-
+  to, name, creatorId,
+}: { to: string; name: string | null; creatorId: string }) {
+  const products = [
+    { name: "Marketing Workspace", description: "Plan content, get approvals, manage conversations and track results for each client.", path: "/dashboard/calendars", action: "Open Marketing Workspace" },
+    { name: "Project Delivery", description: "Share files, collect feedback and deliver finished work in one place.", path: "/dashboard/projects", action: "Open Project Delivery" },
+    { name: "Portfolio", description: "Showcase your work, services and testimonials with one link.", path: "/dashboard/portfolio", action: "Create your portfolio" },
+  ];
   await sendEmail({
-    from: FROM,
-    to,
-    subject: "Welcome to Showwork",
+    from: FROM, to, subject: "Welcome to Showwork — choose where to start",
+    text: `Hi ${firstNameOf(name) ?? "there"},\n\nWelcome to Showwork. Your account is ready. Choose the tool you need today.\n\n${products.map(product => `${product.name}\n${product.description}\n${product.action}: ${APP_URL}${product.path}`).join("\n\n")}\n\nStart with one tool. The others are here whenever you need them.`,
     html: emailShell({
       eyebrow: "Welcome to Showwork",
-      headline: firstName
-        ? `Good to have you here, ${firstName}.`
-        : "Good to have you here.",
-      body: `
-        Showwork helps creators and agencies build portfolios, deliver projects and manage client accounts. Marketing Workspace brings content, approvals, conversations, leads and analytics together for each client.
-        <br /><br />
-        Your account is ready. Build a portfolio, create a project delivery or start a marketing workspace from your dashboard.
-      `,
-      detailsHtml: `
-        <div style="padding:18px;background:#F6F8FB;border:1px solid #E3E8EF;border-radius:16px;">
-          <p style="margin:0 0 7px;font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#2478FF;">Your Showwork workspace</p>
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;font-weight:700;color:#172033;">Show your work. Deliver projects. Manage client accounts.</p>
-        </div>
-      `,
-      ctaLabel: "Open Showwork",
-      ctaUrl: `${APP_URL}/dashboard`,
-      heroImage: true,
-      footer: "Welcome to Showwork. We're glad you're here.",
+      headline: "Your next step starts here.",
+      body: `Hi ${escapeHtml(firstNameOf(name) ?? "there")},<br /><br />Your account is ready. Choose the tool you need today.`,
+      detailsHtml: products.map(product => `
+        <div style="padding:18px 0;border-bottom:1px solid #E3E8EF;">
+          <h2 style="margin:0 0 7px;font-family:Arial,sans-serif;font-size:17px;color:#172033;">${product.name}</h2>
+          <p style="margin:0 0 12px;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#526075;">${product.description}</p>
+          <a href="${escapeHtml(`${APP_URL}${product.path}`)}" style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#1764ED;text-decoration:underline;">${product.action} &rarr;</a>
+        </div>`).join(""),
+      footer: "Start with one tool. The others are here whenever you need them.",
     }),
-  });
+  }, `account-welcome/${creatorId}`);
 }
 
-export async function sendPortfolioInviteEmail({
-  to,
-  name,
-}: {
-  to: string;
-  name: string | null;
-}) {
-  const firstName = firstNameOf(name);
-
+export async function sendWeeklyMarketingWorkspaceEmail({
+  to, name, variant, unsubscribePath,
+}: { to: string; name: string | null; variant: number; unsubscribePath: string }, idempotencyKey: string) {
+  const message = WEEKLY_MARKETING_MESSAGES[variant];
+  if (!message) throw new Error("Unknown weekly email variant.");
+  const unsubscribeUrl = `${APP_URL}${unsubscribePath}`;
+  const greeting = escapeHtml(firstNameOf(name) ?? "there");
   await sendEmail({
-    from: FROM,
-    to,
-    subject: "Your portfolio is free — and ready when you are",
+    from: FROM, to, subject: message.subject,
+    text: `Hi ${firstNameOf(name) ?? "there"},\n\n${message.headline}\n\n${message.body}\n\n${message.takeaway}\n\n${message.ctaLabel}: ${APP_URL}/dashboard/calendars\n\nOne Marketing Workspace email a week. Unsubscribe: ${unsubscribeUrl}`,
+    headers: {
+      "List-Unsubscribe": `<${unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
     html: emailShell({
-      eyebrow: "Portfolio · Free",
-      headline: firstName
-        ? `${firstName}, make the work easy to believe in.`
-        : "Make the work easy to believe in.",
-      body: `
-        Your portfolio is free on Showwork. Give potential clients one polished place to see what you do, what you've made, and why they should trust you with the next brief.
-      `,
-      detailsHtml: `
-        <div style="padding:18px;background:#F6F8FB;border:1px solid #E3E8EF;border-radius:16px;">
-          <p style="margin:0 0 7px;font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#2478FF;">A better first impression</p>
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:15px;line-height:1.65;color:#344054;">Your work deserves more than a scattered feed or a folder of links.</p>
-        </div>
-      `,
-      ctaLabel: "Build your portfolio",
-      ctaUrl: `${APP_URL}/dashboard/portfolio`,
-      heroImage: true,
+      eyebrow: "Your week with Marketing Workspace",
+      headline: message.headline,
+      body: `Hi ${greeting},<br /><br />${escapeHtml(message.body)}`,
+      detailsHtml: infoBox("One thing to try this week", message.takeaway),
+      ctaLabel: message.ctaLabel,
+      ctaUrl: `${APP_URL}/dashboard/calendars`,
+      footer: `One Marketing Workspace email a week. <a href="${escapeHtml(unsubscribeUrl)}" style="color:#526b91;text-decoration:underline;">Unsubscribe</a> from these emails. Account and activity notifications are separate.`,
     }),
-  });
-}
-
-export async function sendProjectManagementIntroEmail({
-  to,
-  name,
-}: {
-  to: string;
-  name: string | null;
-}) {
-  const firstName = firstNameOf(name);
-
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: "There's more to the work than the final delivery",
-    html: emailShell({
-      eyebrow: "Project Delivery · Showwork",
-      headline: firstName
-        ? `${firstName}, take control before delivery day.`
-        : "Take control before delivery day.",
-      body: `
-        Build the brief, assign the work, keep everyone aligned and give your client a live view of progress — before the final files ever arrive.
-        <br /><br />
-        It's the difference between simply finishing work and running a professional operation.
-      `,
-      ctaLabel: "Start a managed project",
-      ctaUrl: `${APP_URL}/dashboard/start`,
-      heroImage: true,
-    }),
-  });
-}
-
-export async function sendCreativoPromoEmail({
-  to,
-  name,
-}: {
-  to: string;
-  name: string | null;
-}) {
-  const firstName = firstNameOf(name);
-
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: "Meet Creativo — the community built around the creative life",
-    html: emailShell({
-      eyebrow: "Showwork × Creativo",
-      headline: firstName
-        ? `${firstName}, you don't have to build alone.`
-        : "You don't have to build alone.",
-      body: `
-        Creativo is a free community for creators who are figuring out the business behind the work — pricing, positioning, better clients, visibility, growth and the things nobody teaches you at the beginning.
-        <br /><br />
-        Showwork helps you run the work. <strong style="color:#FFFFFF;">Creativo helps you grow around it.</strong>
-      `,
-      ctaLabel: "Join Creativo — it's free",
-      ctaUrl: COMMUNITY_URL,
-      dualBrand: true,
-      heroImage: true,
-      accent: "#7C5CFF",
-      footer: "Creativo is a free community for creators, presented by Showwork.",
-    }),
-  });
-}
-
-export async function sendDeliverReminderEmail({
-  to,
-  name,
-}: {
-  to: string;
-  name: string | null;
-}) {
-  const firstName = firstNameOf(name);
-
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: "Ready to send your next delivery?",
-    html: emailShell({
-      eyebrow: "Delivery · Whenever you're ready",
-      headline: firstName
-        ? `${firstName}, got something ready to send?`
-        : "Got something ready to send?",
-      body: `
-        A polished delivery changes how your work feels before the client even opens it.
-        <br /><br />
-        Put the files in one branded, password-protected experience and give the work the finish it deserves.
-      `,
-      ctaLabel: "Deliver a project",
-      ctaUrl: `${APP_URL}/start`,
-      heroImage: true,
-    }),
-  });
+  }, idempotencyKey);
 }
 
 export async function sendManagedProjectInviteEmail({
@@ -987,47 +877,6 @@ export async function sendPortfolioPaymentFailedEmail({
     }),
   });
 }
-
-export async function sendPortfolioOfflineReminderEmail({
-  to,
-  name,
-  portfolioName,
-  daysOffline,
-}: {
-  to: string;
-  name: string | null;
-  portfolioName: string;
-  daysOffline: number;
-}) {
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: `Reminder: "${portfolioName}" is still offline`,
-    html: emailShell({
-      eyebrow: "Portfolio · Still offline",
-      headline: "Your portfolio is waiting for you.",
-      body: `
-        Hi ${escapeHtml(firstNameOf(name) ?? "there")},<br /><br />
-        <strong style="color:#FFFFFF;">${escapeHtml(portfolioName)}</strong> has been offline for
-        ${daysOffline} day${daysOffline === 1 ? "" : "s"} because its recurring payment is still unresolved.
-      `,
-      detailsHtml: `
-        <div style="padding:16px 18px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:14px;">
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:13px;line-height:1.65;color:#7C2D12;">
-            Update your payment details to bring the client-facing portfolio back online.
-          </p>
-        </div>
-      `,
-      ctaLabel: "Bring it back online",
-      ctaUrl: `${APP_URL}/dashboard/portfolio`,
-      accent: "#F97316",
-    }),
-  });
-}
-
-/* -------------------------------------------------------------------------- */
-/* SPOTLIGHT                                                                   */
-/* -------------------------------------------------------------------------- */
 
 export async function sendSpotlightSubmissionEmail({
   name,
@@ -1416,175 +1265,6 @@ export async function sendCalendarPaymentFailedEmail({
     }),
   });
 }
-
-function calendarSubscribeButton(price: string): string {
-  return buttonHtml(`Subscribe — ${price}/month`, `${APP_URL}/dashboard/calendars`);
-}
-
-type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
-
-function contentWorkspacePlanLabel(plan: ContentWorkspacePlan): string {
-  return CONTENT_WORKSPACE_PLANS[plan].name;
-}
-
-function contentWorkspacePlanPrice(plan: ContentWorkspacePlan): string {
-  return `₦${CONTENT_WORKSPACE_PLANS[plan].priceNgnMonthly.toLocaleString("en-NG")}`;
-}
-
-export async function sendCalendarTrial2DaysLeftEmail({
-  to,
-  name,
-  plan,
-}: {
-  to: string;
-  name: string | null;
-  plan: ContentWorkspacePlan;
-}) {
-  const price = contentWorkspacePlanPrice(plan);
-  const planLabel = contentWorkspacePlanLabel(plan);
-
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: "2 days left on your Showwork Marketing Workspace trial",
-    html: emailShell({
-      eyebrow: "Marketing Workspace · 2 days left",
-      headline: "Your trial is almost at the finish line.",
-      body: `
-        Hi ${escapeHtml(firstNameOf(name) ?? "there")},<br /><br />
-        You have <strong style="color:#FFFFFF;">2 days left</strong> on your free Marketing Workspace trial.
-        <br /><br />
-        Keep your client work moving without interruption by choosing your plan before the trial ends.
-      `,
-      detailsHtml: `
-        <div style="padding:18px;background:#F4F8FF;border:1px solid #D8E7FF;border-radius:16px;">
-          <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#2478FF;">Your plan</p>
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:20px;font-weight:800;color:#172033;">${planLabel} · ${price}/month</p>
-        </div>
-      `,
-      ctaLabel: `Subscribe — ${price}/month`,
-      ctaUrl: `${APP_URL}/dashboard/calendars`,
-      accent: "#2478FF",
-    }),
-  });
-}
-
-export async function sendCalendarTrialFollowUpEmail({
-  to,
-  name,
-  plan,
-}: {
-  to: string;
-  name: string | null;
-  plan: ContentWorkspacePlan;
-}) {
-  const price = contentWorkspacePlanPrice(plan);
-  const planLabel = contentWorkspacePlanLabel(plan);
-
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: "Your Marketing Workspace trial ends tomorrow",
-    html: emailShell({
-      eyebrow: "Marketing Workspace · Tomorrow",
-      headline: "Still thinking about it?",
-      body: `
-        Hi ${escapeHtml(firstNameOf(name) ?? "there")},<br /><br />
-        Your free trial ends tomorrow. If you're getting value from keeping your client content, approvals, conversations, leads and analytics in one place, now is a good time to choose your plan.
-        <br /><br />
-        And if something is holding you back, reply to this email. We'd like to help.
-      `,
-      detailsHtml: `
-        <div style="padding:18px;background:#F6F8FB;border:1px solid #E3E8EF;border-radius:16px;">
-          <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#2478FF;">Your plan</p>
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:20px;font-weight:800;color:#172033;">${planLabel} · ${price}/month</p>
-        </div>
-      `,
-      ctaLabel: `Keep my workspace — ${price}/month`,
-      ctaUrl: `${APP_URL}/dashboard/calendars`,
-      accent: "#2478FF",
-    }),
-  });
-}
-
-export async function sendCalendarTrialEndsTodayEmail({
-  to,
-  name,
-  plan,
-}: {
-  to: string;
-  name: string | null;
-  plan: ContentWorkspacePlan;
-}) {
-  const price = contentWorkspacePlanPrice(plan);
-
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: "Your Showwork Marketing Workspace trial ends today",
-    html: emailShell({
-      eyebrow: "Marketing Workspace · Ends today",
-      headline: "Today is the last day of your trial.",
-      body: `
-        Hi ${escapeHtml(firstNameOf(name) ?? "there")},<br /><br />
-        Your free Marketing Workspace trial ends today.
-        <br /><br />
-        Subscribe now and keep your client work accessible without interruption.
-      `,
-      detailsHtml: `
-        <div style="padding:18px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:16px;">
-          <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#C2410C;">Starting price</p>
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:20px;font-weight:800;color:#172033;">${price}/month</p>
-        </div>
-      `,
-      ctaLabel: `Subscribe — ${price}/month`,
-      ctaUrl: `${APP_URL}/dashboard/calendars`,
-      accent: "#F97316",
-    }),
-  });
-}
-
-export async function sendCalendarTrialEndedEmail({
-  to,
-  name,
-  plan,
-}: {
-  to: string;
-  name: string | null;
-  plan: ContentWorkspacePlan;
-}) {
-  const price = contentWorkspacePlanPrice(plan);
-  const planLabel = contentWorkspacePlanLabel(plan);
-
-  await sendEmail({
-    from: FROM,
-    to,
-    subject: "Your Showwork Marketing Workspace trial has ended",
-    html: emailShell({
-      eyebrow: "Marketing Workspace · Trial ended",
-      headline: "Your work is still here. Your trial has simply ended.",
-      body: `
-        Hi ${escapeHtml(firstNameOf(name) ?? "there")},<br /><br />
-        Your free trial has ended and your Marketing Workspace access is currently locked until you subscribe.
-        <br /><br />
-        Your content hasn't gone anywhere. Subscribe and everything can continue from where you left off.
-      `,
-      detailsHtml: `
-        <div style="padding:18px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;">
-          <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#667085;">Your plan</p>
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:20px;font-weight:800;color:#172033;">${planLabel} · ${price}/month</p>
-        </div>
-      `,
-      ctaLabel: `Reactivate — ${price}/month`,
-      ctaUrl: `${APP_URL}/dashboard/calendars`,
-      accent: "#F97316",
-    }),
-  });
-}
-
-/* -------------------------------------------------------------------------- */
-/* PARTNER PROGRAM                                                             */
-/* -------------------------------------------------------------------------- */
 
 export async function sendPartnerReferralSignupEmail({
   to,

@@ -154,25 +154,21 @@ model Creator {
   // rather than always going to whoever owns the project.
   uploadedMedia         Media[]               @relation("UploadedMedia")
 
-  // ── Lifecycle email sequence ──
-  // The anchor point every "day N" step is measured from — set to
-  // createdAt for a brand-new signup, but NOT the same as createdAt
-  // for accounts that existed before this system did: those get this
-  // set to "now" via a one-time backfill, so they experience the same
-  // staggered welcome → day 1 → day 2 sequence as a new signup,
-  // rather than every step firing at once because their real signup
-  // date is months in the past. Null only in the brief window before
-  // that backfill/signup-time set actually runs.
+  // Legacy campaign history is retained to enforce the weekly cooldown during rollout.
   lifecycleSequenceStartedAt   DateTime?
   welcomeEmailSentAt           DateTime?
   portfolioInviteEmailSentAt   DateTime?
   projectManagementEmailSentAt DateTime?
   creativoPromoEmailSentAt     DateTime?
-  // Updated every time the recurring "deliver a project" reminder
-  // goes out — unlike the one-time steps above, this one repeats
-  // forever, so it needs a "last sent" timestamp rather than a
-  // single boolean-ish flag.
   lastDeliveryReminderSentAt   DateTime?
+
+  // Weekly Marketing Workspace campaign. Attempt time is reserved atomically
+  // before provider I/O; ambiguous failures never trigger a second send that week.
+  weeklyMarketingEmailLastAttemptAt DateTime?
+  weeklyMarketingEmailSentAt        DateTime?
+  weeklyMarketingEmailCount         Int       @default(0)
+  marketingEmailsUnsubscribedAt     DateTime?
+
 
   // ── Project management (separate system from delivery) ──
   // Managed projects this creator owns — briefs, tasks, and their own
@@ -253,8 +249,7 @@ model Creator {
   // to the whole account's calendar access, not one specific calendar.
   calendarLastFreeMonthGrantedAt      DateTime?
 
-  // ── Trial email drip — each step tracked so the daily job never
-  // sends the same step twice, regardless of how many times it runs.
+  // Retired trial drip history, retained for the weekly campaign cooldown.
   calendarTrial2DaysLeftEmailSentAt DateTime?
   calendarTrialFollowUpEmailSentAt  DateTime?
   calendarTrialEndsTodayEmailSentAt DateTime?

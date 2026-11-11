@@ -1,49 +1,20 @@
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 import { getCurrentCreator } from "@/lib/auth";
 import HomeClient from "./HomeClient";
 
-export const metadata: Metadata = {
-  title: "Showwork | Intelligent Marketing Workspace for Modern Teams",
-  description:
-    "Bring business knowledge, content workflows, team coordination and customer conversations into a more connected marketing workspace with Showwork.",
-  keywords: [
-    "marketing operations platform",
-    "marketing team collaboration",
-    "business knowledge",
-    "content planning",
+export const metadata: Metadata = pageMetadata({
+  "title": "Marketing Workspace & Social Media Content Calendar | Showwork",
+  "description": "Plan content, manage approvals, publish social posts and handle customer conversations with Showwork, the marketing workspace for teams and agencies.",
+  "path": "/",
+  "keywords": [
+    "marketing workspace",
+    "social media management software",
+    "social media content calendar",
     "content approval workflow",
-    "Marketing Workspace",
-    "Showwork",
-  ],
-  openGraph: {
-    title: "Showwork | Intelligent Marketing Workspace for Modern Teams",
-    description:
-      "Bring business knowledge, content workflows, team coordination and customer conversations into a more connected marketing workspace with Showwork.",
-    url: "/",
-    siteName: "Showwork",
-    locale: "en_NG",
-    type: "website",
-    images: [
-      {
-        url: "/images/landing/1.webp",
-        width: 1672,
-        height: 941,
-        alt: "Showwork marketing operations platform",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Showwork | Intelligent Marketing Workspace for Modern Teams",
-    description:
-      "Bring business knowledge, content workflows, team coordination and customer conversations into a more connected marketing workspace with Showwork.",
-    images: ["/images/landing/1.webp"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+    "marketing team collaboration"
+  ]
+});
 
 export default async function HomePage() {
   // No forced redirect — someone might genuinely want to look at

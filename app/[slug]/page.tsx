@@ -1,3 +1,4 @@
+import { socialPreviewImage } from "@/lib/seo";
 import { complimentaryAccessSelect, hasDeliveryPaidAccess } from "@/lib/complimentaryAccess";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -35,18 +36,13 @@ export async function generateMetadata({
   const title = `${project.clientName} — Delivered by ${creatorName}`;
   const description = `View, review and download ${project.clientName}'s creative project delivery from ${creatorName}. Shared securely with Showwork.`;
 
-   // Any real photo from this delivery, picked at random — not
-  // specifically the banner, and not a generic Showwork graphic.
-  // Only falls back to the generic image if the project genuinely
-  // has no photos at all (video-only or document-only deliveries),
-  // since a video file itself can't be used as a share-preview image.
-  const image = "/images/shwk.jpg";
+  const image = socialPreviewImage.url;
 
   return {
     title,
     description,
     robots: { index: false, follow: false, noarchive: true },
-    openGraph: { title, description, url: `/${slug}`, siteName: "Showwork", images: [{ url: image, width: 1200, height: 630, alt: `${project.clientName} project delivery` }] },
+    openGraph: { title, description, url: `/${slug}`, siteName: "Showwork", images: [{ url: image, width: socialPreviewImage.width, height: socialPreviewImage.height, alt: socialPreviewImage.alt }] },
     twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }

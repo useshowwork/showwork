@@ -1,3 +1,4 @@
+import { pageMetadata } from "@/lib/seo";
 import { Metadata } from "next";
 import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -14,14 +15,17 @@ const DEFAULT_HEADLINE = "Great work deserves to be seen.";
 const DEFAULT_DESCRIPTION =
   "Every month, we spotlight the strongest client work submitted by creators — real projects, judged on real craft. Submit yours for a shot at the monthly Top 3.";
 
-export const metadata: Metadata = {
-  title: "Creator Portfolio Competition & Monthly Spotlight | Showwork",
-  description: "Submit your best creative project to the Showwork Monthly Spotlight. Discover featured work from photographers, videographers and creative professionals.",
-  alternates: { canonical: "/spotlight" },
-  keywords: ["creative portfolio competition", "photography competition Nigeria", "videography showcase", "creator spotlight"],
-  openGraph: { type: "website", siteName: "Showwork", title: "Creator Monthly Spotlight | Showwork", description: "Submit your creative project to the Showwork Monthly Spotlight and discover featured work from creators.", url: "/spotlight", images: ["/images/create.jpg"] },
-  twitter: { card: "summary_large_image", title: "Creator Monthly Spotlight | Showwork", description: "Celebrate standout work from photographers, videographers and creative professionals.", images: ["/images/create.jpg"] },
-};
+export const metadata: Metadata = pageMetadata({
+  "title": "Monthly Creator Spotlight & Portfolio Competition | Showwork",
+  "description": "Submit your best creative project to the Showwork Monthly Spotlight. Discover featured photography, video and design work from the Creativo community.",
+  "path": "/spotlight",
+  "keywords": [
+    "creator spotlight",
+    "creative portfolio competition",
+    "photography showcase",
+    "videography showcase"
+  ]
+});
 
 // Same reasoning as /creativo: no cookies()/headers() call of its own
 // to otherwise force dynamic rendering, and it reads admin-managed

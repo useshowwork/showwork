@@ -1,14 +1,20 @@
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Marketing Workspace | Showwork",
-  description:
-    "Plan content with AI, collect approvals, publish to supported channels, manage conversations and leads, and track performance in a workspace for each client.",
-  keywords: ["social media content calendar", "client content approval", "social media agency workflow", "AI social content planning", "marketing workspace Nigeria", "social media lead management", "social media analytics", "social media inbox"],
-  alternates: { canonical: "/content-workspace" },
-  openGraph: { type: "website", siteName: "Showwork", title: "Marketing Workspace | Showwork", description: "Plan content with AI, collect approvals, publish to supported channels, manage conversations and leads, and track performance in a workspace for each client.", url: "/content-workspace", images: ["/images/work.jpg"] },
-  twitter: { card: "summary_large_image", title: "Marketing Workspace | Showwork", description: "Plan content with AI, collect approvals, publish to supported channels, manage conversations and leads, and track performance in a workspace for each client.", images: ["/images/work.jpg"] },
-};
+export const metadata: Metadata = pageMetadata({
+  "title": "Marketing Workspace & AI Content Planning | Showwork",
+  "description": "Organize client marketing with an AI content calendar, team approvals, social publishing, a shared inbox, lead management and analytics in Showwork.",
+  "path": "/content-workspace",
+  "keywords": [
+    "marketing workspace",
+    "AI content planning",
+    "social media content calendar",
+    "client content approval software",
+    "social media scheduling",
+    "shared social inbox",
+    "marketing analytics"
+  ]
+});
 
 export default function ContentWorkspaceLayout({ children }: { children: React.ReactNode }) {
   return children;
