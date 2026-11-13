@@ -57,7 +57,7 @@ function reportingData(leadQueries = [], reportQueries = []) {
   };
   const mod = { exports: {} };
   const mocks = { '@/lib/calendarPermissions': { canUseCalendarFeature: async () => true }, '@/lib/db': { db }, '@/lib/r2': { publicUrlFor: () => null }, '@/lib/reporting/adapters': { getSocialReportingAdapter: () => null }, '@/lib/reporting/comparison': moduleUnderTest.exports };
-  new Function('require', 'module', 'exports', ts.transpileModule(fs.readFileSync('lib/reporting/data.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText)(name => { assert.ok(mocks[name], `Unexpected dependency ${name}`); return mocks[name]; }, mod, mod.exports);
+  new Function('require', 'module', 'exports', ts.transpileModule(fs.readFileSync('lib/reporting/data.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText)(name => { if (name === '@/lib/reporting/monthlyStrategy') return require('./helpers/load-typescript.cjs').load('lib/reporting/monthlyStrategy.ts'); assert.ok(mocks[name], `Unexpected dependency ${name}`); return mocks[name]; }, mod, mod.exports);
   return mod.exports;
 }
 test('rejects impossible calendar dates and uses whole-day default periods', () => {

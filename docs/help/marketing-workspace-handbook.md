@@ -952,9 +952,9 @@ Guide: /help/workspace?guide=report-insights
 
 1. Open Analytics & Reporting and select the report filters you intend to analyze.
 2. Open AI action studio and read the available findings and evidence.
-3. Use Refresh AI analysis when you want a new analysis and have the required allowance.
-4. Filter findings by wins, improvements, trends or next actions.
-5. Use Create content from this insight or Apply all recommendations to carry the selected direction into Generate.
+3. Optionally enter your goal, then choose Get recommendations or Refresh strategy; analysis uses your AI allowance.
+4. Read what is working, what needs attention and the recommended direction. Expand Why we recommend this for supporting evidence.
+5. Choose Generate next calendar to add the strategy to Creative direction. Choose your own platforms, dates, duration and frequency in the generator before generating drafts.
 6. Review the campaign settings and brief before starting a content batch.
 
 **What happens next:** Observed performance informs a new brief; content is not automatically generated or published merely by applying recommendations.

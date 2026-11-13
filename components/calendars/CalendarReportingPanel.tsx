@@ -1,4 +1,6 @@
 "use client";
+
+import { strategyBrief, type MonthlyStrategy } from "@/lib/reporting/monthlyStrategy";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import WorkspaceFeatureNotice from "@/components/calendars/WorkspaceFeatureNotice";
@@ -12,7 +14,7 @@ import dashboardStyles from "./ReportingDashboard.module.css";
 import { queueReportingRecommendation } from "@/lib/reporting/recommendationHandoff";
 import UiSymbol from "@/components/ui/UiSymbol";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3,  Eye, Flame, Minus, Target, RefreshCw, Sparkles, Users, ChartNoAxesCombined, CircleAlert, ChevronDown } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3,  Eye, Flame, Minus, Target, RefreshCw, Sparkles, Users, ChartNoAxesCombined, ChevronDown } from "lucide-react";
 
 type Metrics = {
   reach?: number | null;
@@ -59,7 +61,7 @@ export type Report = {
     connection: { accountName: string | null; username: string | null } | null;
     calendarPost: { caption: string | null; postType: string; assets: Array<{ mediaType: string; previewUrl: string | null }> };
   }>;
-  insights: Array<{ id: string; platform: string | null; type: string; title: string; description: string; recommendation: string | null; generatedAt: string }>;
+  insights: Array<{ id: string; platform: string | null; type: string; title: string; description: string; recommendation: string | null; generatedAt: string; strategy?: MonthlyStrategy | null; evidence?: string | null; researchSources?: Array<{ url: string; title: string }>; targetMonth?: { startDate: string; endDate: string } | null }>;
 };
 
 const label: Record<string, string> = { INSTAGRAM: "Instagram", TIKTOK: "TikTok", FACEBOOK: "Facebook", LINKEDIN: "LinkedIn", X: "X", YOUTUBE: "YouTube" };
@@ -92,6 +94,23 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   const [syncNotice, setSyncNotice] = useState("");
   const [reportSection, setReportSection] = useState("performance");
   const [postsExpanded, setPostsExpanded] = useState(false);
+  const [sectionRequest, setSectionRequest] = useState(0);
+  const pendingSection = useRef<{ id: string; focus: boolean } | null>(null);
+  function showSection(id: string, focus = false) {
+    pendingSection.current = { id, focus };
+    setReportSection(id);
+    setSectionRequest(value => value + 1);
+  }
+  useEffect(() => {
+    const pending = pendingSection.current;
+    if (!pending || pending.id !== reportSection || !report) return;
+    const panel = document.getElementById?.(`analytics-panel-${pending.id}`);
+    if (!panel) return;
+    pendingSection.current = null;
+    // Run after the destination is visible; hidden panels otherwise preserve the old bottom position.
+    panel.scrollIntoView({ block: "start", behavior: "instant" });
+    if (pending.focus) panel.focus({ preventScroll: true });
+  }, [reportSection, report, sectionRequest]);
   const channelDropdown = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
@@ -183,39 +202,34 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   }, [calendarId, clientSlug, report?.updating]);
 
   const connected = report?.connections.filter(c => c.status === "CONNECTED" && c.platform !== "YOUTUBE").length ?? 0;
-  const [insightFilter, setInsightFilter] = useState("ALL");
-  const shownInsights = report?.insights.filter(i => insightFilter === "ALL" || (insightFilter === "ACTION" ? Boolean(i.recommendation?.trim()) : i.type === insightFilter)) ?? [];
-
-  const recommendations = shownInsights.filter(insight => insight.recommendation?.trim());
-  const canApply = canApplyRecommendations && recommendationsAccess && !clientSlug && !loading && !analyzing && !!report;
+  const [strategyDirty, setStrategyDirty] = useState(false);
+  const [strategyObjective, setStrategyObjective] = useState("");
+  const shownInsights = report?.insights ?? [];
+  const canApply = canApplyRecommendations && recommendationsAccess && !clientSlug && !analyzing && !!report && !strategyDirty;
 
   async function analyzePerformance() {
     setAnalyzing(true); setError("");
     try {
       const response = await calendarMutationFetch(`/api/calendars/${encodeURIComponent(calendarId)}/reporting/analyze`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to, ...(platform ? { platform } : {}) }),
+        body: JSON.stringify({ from, to, objective: strategyObjective, ...(platform ? { platform } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not analyze reporting data.");
-      if (mounted.current) await latestLoad.current();
+      if (mounted.current) { await latestLoad.current(); setStrategyDirty(false); }
     } catch (err) { setError(err instanceof Error ? err.message : "Could not analyze reporting data."); }
     finally { setAnalyzing(false); }
   }
 
   function applyRecommendation(title: string, description: string, recommendation: string | null) {
-    if (!canApply || !recommendation?.trim()) return;
-    const instructions = `Reporting insight: ${title}.\nRecommendation to test: ${recommendation}.\nEvidence: ${description}.\nBuild the next content batch around this experiment while following the business knowledge and brand voice.`;
-    openContentGenerator(instructions);
-  }
-
-  function applyAllRecommendations() {
-    if (!canApply || !recommendations.length) return;
-    const instructions = [
-      "Apply all of these reporting recommendations across the next content batch while following the business knowledge and brand voice. Match each recommendation to its relevant platform and distribute experiments across suitable posts.",
-      ...recommendations.map((insight, index) => `${index + 1}. ${insight.title} (${insight.platform ? label[insight.platform] || insight.platform : "All platforms"})\nRecommendation: ${insight.recommendation}\nEvidence: ${insight.description}`),
-    ].join("\n\n");
-    openContentGenerator(instructions);
+    if (!canApply) return;
+    const insight = shownInsights.find(item => item.strategy && item.title === title);
+    if (insight?.strategy) {
+      openContentGenerator(strategyBrief(insight.strategy));
+      return;
+    }
+    if (!recommendation?.trim()) return;
+    openContentGenerator(`Reporting insight: ${title}.\nEvidence: ${description}.\nRecommendation: ${recommendation}`);
   }
 
   function openContentGenerator(instructions: string) {
@@ -241,8 +255,7 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   const hasObservations = activeConnections.some(connection => connection.lastSyncAt);
   const primaryCards = [cards[0], cards[1], cards[3], !clientSlug && canViewLeads && report?.leads ? cards.at(-1)! : cards[2]];
   const topPosts = [...(report?.accountPosts ?? [])].filter(post => post.engagement != null).sort((a, b) => (b.engagement ?? 0) - (a.engagement ?? 0)).slice(0, 3);
-  const nextRecommendation = report?.insights.find(insight => insight.recommendation?.trim());
-  const needsAttention = report?.connections.filter(connection => connection.status === "NEEDS_REAUTH" || (connection.status === "CONNECTED" && connection.lastSyncError)) ?? [];
+  const nextRecommendation = report?.insights.find(insight => insight.strategy || insight.recommendation?.trim());
   const openChannels = () => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "channels" } }));
   const reachDays = new Map<string, number>();
   for (const connection of report?.connections ?? []) {
@@ -267,16 +280,8 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
     <header className={dashboardStyles.simpleHeader}>
       <div><p className={dashboardStyles.reportEyebrow}><ChartNoAxesCombined size={15} aria-hidden="true"/> Analytics & reporting</p><h1>See what’s working.</h1>
         <div className={dashboardStyles.statusLine}><div className={dashboardStyles.freshness} role="status" aria-live="polite"><RefreshCw size={13} className={report?.updating || syncing ? "animate-spin" : ""} aria-hidden="true"/>
-          {report?.updating || syncing ? "Updating your results…" : updatedAt ? `All channels updated as of ${new Date(updatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : connected ? "Collecting your first results" : report ? "Connect a channel to get started" : "Loading your results…"}
+          {report?.updating || syncing ? "Updating your results…" : updatedAt ? `Results last updated ${new Date(updatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : connected ? "Collecting your first results" : report ? "Connect a channel to get started" : "Loading your results…"}
         </div>
-        {(report?.updateUnavailable || needsAttention.length > 0) && <details className={dashboardStyles.statusDropdown} onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
-          <summary><CircleAlert size={14} aria-hidden="true"/>Updates need attention<ChevronDown size={13} aria-hidden="true"/></summary>
-          <div className={dashboardStyles.statusPopover}>
-            {report?.updateUnavailable && <p><strong>Automatic updates unavailable</strong>Saved results remain available. Please try again later.</p>}
-            {needsAttention.map(connection => <p key={connection.id}><strong>{label[connection.platform] || connection.platform}</strong>{connection.status === "NEEDS_REAUTH" ? "Reconnect to resume updates." : "Some metrics could not be updated. Check this channel’s access and availability."}</p>)}
-            {!clientSlug && needsAttention.length > 0 && <button type="button" onClick={openChannels}>Check channels <ArrowUpRight size={14} aria-hidden="true"/></button>}
-          </div>
-        </details>}
         </div>
       </div>
       <div className={dashboardStyles.simpleFilters}>
@@ -304,19 +309,25 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
     {syncNotice && <p role="status" className={dashboardStyles.infoNotice}>{syncNotice}</p>}
 
     {(!advancedAccess || report?.advancedAccess === false) && <WorkspaceFeatureNotice compact feature="advancedAnalytics" />}
-    <nav className={dashboardStyles.simpleTabs} aria-label="Analytics sections" role="tablist">{[["performance", "Overview"], ["channel-detail", "Posts"], ["ai-insights", "Recommendations"]].map(([id, title], index, tabs) => <button type="button" key={id} id={`analytics-tab-${id}`} role="tab" aria-selected={reportSection === id} aria-controls={`analytics-panel-${id}`} tabIndex={reportSection === id ? 0 : -1} onClick={() => setReportSection(id)} onKeyDown={event => {
+    <nav className={dashboardStyles.simpleTabs} aria-label="Analytics sections" role="tablist">{[["performance", "Overview"], ["channel-detail", "Posts"], ["ai-insights", "Recommendations"]].map(([id, title], index, tabs) => <button type="button" key={id} id={`analytics-tab-${id}`} role="tab" aria-selected={reportSection === id} aria-controls={`analytics-panel-${id}`} tabIndex={reportSection === id ? 0 : -1} onClick={() => showSection(id)} onKeyDown={event => {
       const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
-      if (next != null) { event.preventDefault(); setReportSection(tabs[next][0]); document.getElementById(`analytics-tab-${tabs[next][0]}`)?.focus(); }
+      if (next != null) { event.preventDefault(); showSection(tabs[next][0]); document.getElementById(`analytics-tab-${tabs[next][0]}`)?.focus(); }
     }}>{title}</button>)}</nav>
     {loading && !report ? <div className={dashboardStyles.empty}>Loading your results…</div> : report && <>
       {!connected && !hasObservations && <div className={dashboardStyles.firstResults}><BarChart3 size={26} aria-hidden="true"/><h2>Your results start here</h2><p>Connect your social channels. We’ll collect the available metrics automatically.</p>{!clientSlug && <button type="button" onClick={openChannels}>Connect channels <ArrowUpRight size={15}/></button>}</div>}
       {connected > 0 && !hasObservations && <div className={dashboardStyles.firstResults} role="status"><RefreshCw size={24} aria-hidden="true"/><h2>{report.updating ? "Preparing your analytics" : "Your first results are on their way"}</h2><p>Available results will appear automatically. Some metrics need additional channel permissions.</p></div>}
-      <div id="analytics-panel-performance" role="tabpanel" aria-labelledby="analytics-tab-performance" hidden={reportSection !== "performance"} className={dashboardStyles.tabPanel}>
+      <div id="analytics-panel-performance" tabIndex={-1} role="tabpanel" aria-labelledby="analytics-tab-performance" hidden={reportSection !== "performance"} className={dashboardStyles.tabPanel}>
         <div className={dashboardStyles.metricGrid}>{primaryCards.map(({ title, metric, icon: Icon, tint }) => <article key={title} className={dashboardStyles.metricCard} data-unavailable={metric.value == null}><div className="flex items-start justify-between gap-2"><p className="text-xs font-semibold text-slate-600">{title}</p><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tint}`}><Icon className="h-4 w-4" aria-hidden="true"/></span></div><p className="mt-3 text-3xl font-semibold tracking-tight">{number(metric.value)}</p><p className="mt-1 text-xs leading-5 text-slate-500">{metric.basis}</p><div className="mt-3"><Trend metric={metric} followers={title.includes("followers") || title === "Followers"}/></div></article>)}</div>
         <ReportingVisuals timeline={timeline} posts={report.accountPosts} compact />
         <div className={dashboardStyles.overviewBottom}>
-          <section className={dashboardStyles.topPosts}><div><h2>Top posts</h2><button type="button" onClick={() => setReportSection("channel-detail")}>View all <ArrowUpRight size={14}/></button></div><p>Ranked by available lifetime engagements.</p>{topPosts.length ? topPosts.map(post => <article key={post.id}><PlatformBrandIcon platform={post.platform} size={21}/><div><p>{post.caption || post.postType || "Published post"}</p><span>{new Date(post.publishedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · {number(post.engagement)} engagements</span></div>{post.permalink && <a href={post.permalink} target="_blank" rel="noopener noreferrer" aria-label={`Open ${label[post.platform] || post.platform} post`}><ArrowUpRight size={17}/></a>}</article>) : <p className={dashboardStyles.empty}>No post metrics for this period yet.</p>}</section>
-          <section className={dashboardStyles.recommendedAction}><Sparkles size={21} aria-hidden="true"/><h2>Your next step</h2>{nextRecommendation && recommendationsAccess ? <><h3>{nextRecommendation.title}</h3><p>{nextRecommendation.recommendation}</p><button type="button" onClick={() => setReportSection("ai-insights")}>Explore recommendations <ArrowUpRight size={14}/></button></> : <><p>{clientSlug ? "Your team’s recommendations will appear here." : "Turn your results into a clear plan for your next posts."}</p><button type="button" onClick={() => setReportSection("ai-insights")}>View recommendations <ArrowUpRight size={14}/></button></>}</section>
+          <section className={dashboardStyles.topPosts}><div><h2>Top posts</h2><button type="button" onClick={() => showSection("channel-detail", true)}>View all <ArrowUpRight size={14}/></button></div><p>Ranked by available lifetime engagements.</p>{topPosts.length ? topPosts.map(post => <article key={post.id}><PlatformBrandIcon platform={post.platform} size={21}/><div><p>{post.caption || post.postType || "Published post"}</p><span>{new Date(post.publishedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · {number(post.engagement)} engagements</span></div>{post.permalink && <a href={post.permalink} target="_blank" rel="noopener noreferrer" aria-label={`Open ${label[post.platform] || post.platform} post`}><ArrowUpRight size={17}/></a>}</article>) : <p className={dashboardStyles.empty}>No post metrics for this period yet.</p>}</section>
+          <section className={dashboardStyles.recommendedAction} aria-labelledby="next-move-title">
+            <div className={dashboardStyles.nextMoveTop}><span><Sparkles size={13} aria-hidden="true"/>{nextRecommendation && recommendationsAccess ? "Your strategy is ready" : "Your next move"}</span><ArrowUpRight size={36} aria-hidden="true"/></div>
+            <h2 id="next-move-title">Before your next post,<br/>read this.</h2>
+            <p>{nextRecommendation && recommendationsAccess ? nextRecommendation.title : "Turn your results into one clear direction for your next calendar."}</p>
+            <button type="button" onClick={() => showSection("ai-insights", true)}>{nextRecommendation && recommendationsAccess ? "See my recommendation" : "Explore my next move"}<ArrowUpRight size={17} aria-hidden="true"/></button>
+            <span className={dashboardStyles.nextMoveNote}>The insight. The reason. Your next direction.</span>
+          </section>
         </div>
         <details className={dashboardStyles.supportingDetail}><summary>Channel status & data availability</summary><div className={dashboardStyles.statusList}>{report.connections.map(connection => <div key={connection.id}><PlatformBrandIcon platform={connection.platform} size={18}/><strong>{label[connection.platform] || connection.platform}</strong><span>{connection.status === "NEEDS_REAUTH" ? "Reconnect required" : connection.status !== "CONNECTED" ? "Disconnected" : connection.platform === "YOUTUBE" ? "Reporting not available yet" : connection.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString() : "Waiting for first update"}</span>{!clientSlug && (connection.status === "NEEDS_REAUTH" || connection.lastSyncError) && <button type="button" onClick={openChannels}>Check access</button>}</div>)}</div></details>
         {!clientSlug && canViewLeads && report.leads && <details className={dashboardStyles.supportingDetail}><summary>Lead opportunities · {number(report.leads.acquired.value)} new this period</summary>
@@ -324,8 +335,8 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
         </details>}
         <details className={dashboardStyles.supportingDetail}><summary>How these numbers are calculated</summary><p>Comparisons use {report.comparisonPeriod.start.slice(0, 10)}–{report.comparisonPeriod.end.slice(0, 10)}. Missing observations remain gaps, never zeroes. Post counters are current lifetime totals for posts published in this period. Daily reach may count the same person on different days. Metrics depend on channel access and availability.</p></details>
       </div>
-      <div id="analytics-panel-channel-detail" role="tabpanel" aria-labelledby="analytics-tab-channel-detail" hidden={reportSection !== "channel-detail"}><ReportingChannels report={report} expanded={postsExpanded} onToggle={() => setPostsExpanded(value => !value)} /></div>
-      <div id="analytics-panel-ai-insights" role="tabpanel" aria-labelledby="analytics-tab-ai-insights" hidden={reportSection !== "ai-insights"}><ReportingInsights insights={shownInsights} total={report.insights.length} filter={insightFilter} onFilter={setInsightFilter} analyzing={analyzing} loading={loading} canAnalyze={canAnalyze && hasObservations} canApply={canApply} access={recommendationsAccess} client={Boolean(clientSlug)} onAnalyze={() => void analyzePerformance()} onApplyAll={applyAllRecommendations} onApply={applyRecommendation}/></div>
+      <div id="analytics-panel-channel-detail" tabIndex={-1} role="tabpanel" aria-labelledby="analytics-tab-channel-detail" hidden={reportSection !== "channel-detail"}><ReportingChannels report={report} expanded={postsExpanded} onToggle={() => setPostsExpanded(value => !value)} /></div>
+      <div id="analytics-panel-ai-insights" tabIndex={-1} role="tabpanel" aria-labelledby="analytics-tab-ai-insights" hidden={reportSection !== "ai-insights"}><ReportingInsights insights={shownInsights} total={report.insights.length} analyzing={analyzing} loading={loading && !report} canAnalyze={canAnalyze} canApply={canApply} access={recommendationsAccess} client={Boolean(clientSlug)} onAnalyze={() => void analyzePerformance()} onApply={applyRecommendation} objective={strategyObjective} onObjective={value => { setStrategyObjective(value); setStrategyDirty(true); }} goalChanged={strategyDirty}/></div>
     </>}
   </section>;
 }

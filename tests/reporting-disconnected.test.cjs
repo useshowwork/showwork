@@ -25,3 +25,10 @@ test('analysis based on old or disconnected sources is hidden; fresh current-sou
  const lead=f.queries[1].where.AND[0].OR;
  assert.deepEqual(lead[0],{socialConversation:null});assert.deepEqual(lead[1].socialConversation.connection.status.in,['CONNECTED','NEEDS_REAUTH']);
 });
+
+test('monthly strategies use the exact platform scope and newest version only',async()=>{
+ const current=baseConnection('current','CONNECTED');
+ const make=(id,scope,date)=>({...insight(id,null,date,['current']),supportingData:{version:1,scope,connectionIds:['current'],strategy:{version:1,title:id}}});
+ const f=fixture([current],[make('latest','ALL','2026-11-11'),make('older','ALL','2026-11-10'),make('instagram-only','INSTAGRAM','2026-11-12')]);
+ const report=await f.report(false);assert.deepEqual(report.insights.map(item=>item.id),['latest']);assert.equal(report.insights[0].strategy.title,'latest');
+});

@@ -255,7 +255,7 @@ const togglePlatform = (platform: string) => {
         <div className={studioStyles.form}>
           {reportingRecommendationLoaded && (
             <p role="status" className="mt-4 flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800">
-              <SparkIcon /> Reporting recommendations added to Creative direction. Review or edit them before generating.
+              <SparkIcon /> Strategy added to Creative direction. Choose your calendar settings, then generate drafts.
             </p>
           )}
 

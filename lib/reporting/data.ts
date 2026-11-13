@@ -1,3 +1,4 @@
+import { strategyScope } from "@/lib/reporting/monthlyStrategy";
 import { canUseCalendarFeature } from "@/lib/calendarPermissions";
 import type { SocialPlatform } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -156,9 +157,13 @@ export async function getCalendarReportingData(
     // Legacy cross-channel analysis has no account provenance: invalidate it
     // when a source is disconnected rather than showing an outdated mix.
     if (insight.generatedAt.getTime() <= latestDisconnect) return false;
-    const provenance = insight.supportingData as { connectionIds?: unknown } | null;
+    const provenance = insight.supportingData as { connectionIds?: unknown; scope?: string } | null;
+    if (provenance?.scope !== undefined && provenance.scope !== strategyScope(platforms)) return false;
     return !Array.isArray(provenance?.connectionIds) || provenance.connectionIds.every(id => typeof id === "string" && currentIds.has(id));
   });
+
+  const latestStrategy = visibleInsights.find(insight => (insight.supportingData as { version?: number } | null)?.version === 1 || (insight.supportingData as { version?: number } | null)?.version === 2);
+  const selectedInsights = latestStrategy ? [latestStrategy] : visibleInsights;
 
   let facebookPageActivity: FacebookPageActivity | null = null;
   let facebookPageActivityError: string | null = null;
@@ -291,9 +296,10 @@ export async function getCalendarReportingData(
       },
     })),
     accountPosts,
-    insights: visibleInsights.map((insight) => includeSyncErrors
-      ? insight
-      : {
+    insights: selectedInsights.map((insight) => {
+      const saved = insight.supportingData as { strategy?: unknown; evidence?: string; researchSources?: unknown; targetMonth?: unknown } | null;
+      const detail = { strategy: saved?.strategy ?? null, evidence: saved?.evidence ?? null, researchSources: saved?.researchSources ?? [], targetMonth: saved?.targetMonth ?? null };
+      return includeSyncErrors ? { ...insight, ...detail } : {
           id: insight.id,
           platform: insight.platform,
           periodStart: insight.periodStart,
@@ -303,7 +309,9 @@ export async function getCalendarReportingData(
           description: insight.description,
           recommendation: insight.recommendation,
           generatedAt: insight.generatedAt,
-        }),
+          ...detail,
+        };
+    }),
     facebookPageActivity,
     facebookPageActivityError,
   };

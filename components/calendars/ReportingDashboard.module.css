@@ -378,3 +378,96 @@
 .channelOptions input[type=checkbox] { appearance:auto; -webkit-appearance:checkbox; flex-shrink:0; width:16px; height:16px; margin:0; padding:0; accent-color:#1768e8; }
 .channelOptions > button { width:100%; min-height:36px; margin-top:7px; padding:8px; border-radius:8px; color:#fff; background:#1768e8; font-size:12px; font-weight:600; }
 @media(max-width:600px) { .channelDropdown { min-width:0; }.channelDropdown > summary { min-height:44px; font-size:16px; }.channelOptions label { min-height:44px; } }
+
+.strategySection { width: 100%; min-width: 0; max-width: 1120px; margin-inline: auto; scroll-margin-top: 120px; }
+.strategyGoal { margin: 22px 0 26px; }
+.strategyGoal label { display: block; margin-bottom: 8px; color: #243b56; font-size: 13px; font-weight: 600; }
+.strategyGoal label span { margin-left: 6px; color: #6b7d94; font-weight: 400; }
+.strategyGoal > div { display: flex; align-items: stretch; gap: 10px; }
+.strategyGoal input { flex: 1; min-width: 0; min-height: 46px; padding: 12px 14px; border: 1px solid #ccd8e8; border-radius: 10px; color: #182c46; background: white; font: inherit; }
+.strategySection :is(input, button, summary, a):focus-visible { outline: 3px solid #619cf0; outline-offset: 4px; }
+.strategyCard { margin-top: 22px; overflow-wrap: anywhere; }
+.strategySignals { margin: 4px 0 24px; border-top: 1px solid #dce6f2; }
+.strategySignal { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: start; gap: 24px; padding: 20px 4px; border-bottom: 1px solid #dce6f2; min-width: 0; }
+.strategySignalHeading { display: flex; align-items: center; gap: 10px; padding-top: 1px; }
+.strategySignalIcon { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; }
+.strategySignalIcon[data-tone=positive] { color: #257464; background: #e4f1ed; }
+.strategySignalIcon[data-tone=attention] { color: #95631b; background: #fff0d8; }
+.strategySignal h5 { margin: 0; font-size: 12px; font-weight: 650; color: #36516f; line-height: 1.5; }
+.strategySignalBody { min-width: 0; max-width: 76ch; }
+.strategySignal p { margin: 0; font-size: 14px; line-height: 1.75; color: #243b56; white-space: pre-line; }
+.strategySignalDetail summary { list-style: none; cursor: pointer; }
+.strategySignalDetail summary::-webkit-details-marker { display: none; }
+.strategySignalDetail summary > span { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; color: #1768e8; font-size: 11px; font-weight: 600; }
+.strategySignalDetail summary > span:hover { text-decoration: underline; text-underline-offset: 3px; }
+.strategySignalDetail[open] summary > p { display: none; }
+.strategySignalDetail[open] summary > span { margin: 0 0 10px; }
+.strategySignalDetail[open] summary svg { transform: rotate(180deg); }
+.strategyDirection { position: relative; padding: clamp(22px, 3vw, 36px); border: 1px solid #1f4b85; border-radius: 18px; background: linear-gradient(125deg, #102e56 0%, #163f75 100%); box-shadow: 0 12px 30px #15386612; }
+.strategyDirectionLabel { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+.strategyDirectionLabel > span:first-child { display: inline-flex; align-items: center; gap: 8px; color: #bad6ff; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.strategyDirectionLine { flex: 1; height: 1px; background: #ffffff26; }
+.strategyDirection h5 { margin: 0 0 18px; max-width: 30ch; font-size: clamp(23px, 2.3vw, 30px); font-weight: 650; letter-spacing: -.035em; line-height: 1.3; color: #fff; }
+.strategyDirection .strategyRecommendation { margin: 0; max-width: 72ch; font-size: 16px; line-height: 1.85; color: #f1f6ff; white-space: pre-line; }
+.strategyReason { margin-top: 24px; padding-left: 14px; border-left: 2px solid #79b0ff; }
+.strategyReason > span { font-size: 11px; font-weight: 700; color: #bad6ff; }
+.strategyReason p { margin: 6px 0 0; max-width: 80ch; font-size: 13px; line-height: 1.75; color: #d3e2f6; white-space: pre-line; }
+.strategyFooter { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-top: 28px; padding-top: 24px; border-top: 1px solid #ffffff26; }
+.strategyFooter strong { font-size: 13px; font-weight: 600; color: #fff; }
+.strategyFooter p { margin: 6px 0 0; color: #c3d6ef; font-size: 12px; line-height: 1.6; }
+.strategyApply { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 46px; padding: 13px 18px; border: 1px solid #fff; border-radius: 10px; background: #fff; color: #12417c; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s, box-shadow .15s; }
+.strategyApply:hover:not(:disabled) { background: #e8f1ff; box-shadow: 0 3px 12px #0002; }
+.strategyApply:disabled { opacity: .55; cursor: not-allowed; }
+.strategyFooter .strategyChanged { flex-basis: 100%; color: #ffdfa0; }
+.strategyEvidence { margin-top: 16px; border: 1px solid #dce6f2; border-radius: 14px; background: #fff; }
+.strategyEvidence > summary { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 18px 20px; list-style: none; cursor: pointer; border-radius: 14px; }
+.strategyEvidence > summary::-webkit-details-marker { display: none; }
+.strategyEvidence > summary:hover { background: #f5f8fe; }
+.strategyEvidenceIcon { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border-radius: 11px; background: #edf4ff; color: #1768e8; }
+.strategyEvidence summary > span:nth-child(2) { display: grid; gap: 5px; flex: 1; }
+.strategyEvidence summary strong { color: #243b56; font-size: 13px; font-weight: 600; }
+.strategyEvidence summary span span { color: #6b7d94; font-size: 11px; }
+.strategyEvidence summary > svg { flex-shrink: 0; color: #6b7d94; transition: transform .15s; }
+.strategyEvidence[open] summary > svg { transform: rotate(180deg); }
+.strategyEvidenceBody { padding: 0 22px 22px; border-top: 1px solid #e8eef6; }
+.strategyEvidenceBody ol { margin: 0; padding: 0; list-style: none; }
+.strategyEvidenceBody ol > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 14px; align-items: start; padding: 18px 0; border-bottom: 1px solid #e8eef6; }
+.strategyEvidenceBody ol > li > span { width: 28px; padding-top: 2px; white-space: nowrap; overflow-wrap: normal; word-break: normal; font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 700; color: #1768e8; }
+.strategyEvidenceBody li p { min-width: 0; margin: 0; font-size: 13px; line-height: 1.8; color: #36516f; white-space: pre-line; }
+.strategyLimitation { margin-top: 18px; padding: 14px 16px; border-radius: 10px; background: #f4f7fb; }
+.strategyLimitation strong, .strategySources > strong { color: #526580; font-size: 11px; font-weight: 700; }
+.strategyLimitation p { margin: 6px 0 0; color: #526580; font-size: 12px; line-height: 1.75; }
+.strategySources { margin-top: 18px; }
+.strategySources ul { margin: 6px 0 0; padding: 0; list-style: none; }
+.strategySources li { border: 0; padding: 5px 0; }
+.strategySources a { display: inline-flex; align-items: center; gap: 5px; color: #155fc7; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.strategyEmpty { display: grid; justify-items: center; gap: 12px; padding: 44px 22px; border: 1px dashed #b9cde8; border-radius: 16px; text-align: center; background: #f7faff; }
+.strategyEmpty > span { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 18px; background: #e7f0ff; color: #1768e8; }
+.strategyEmpty h5 { margin: 4px 0 0; color: #243b56; font-size: 19px; }
+.strategyEmpty p { margin: 0; max-width: 44ch; font-size: 13px; line-height: 1.8; color: #526580; }
+@media (max-width: 600px) {
+  .strategyGoal > div { flex-direction: column; }
+  .strategySignal { grid-template-columns: 1fr; gap: 9px; padding: 17px 0; }
+  .strategySignalBody { padding-left: 36px; }
+  .strategyDirection { padding: 22px 18px; }
+  .strategyDirection .strategyRecommendation { font-size: 15px; line-height: 1.8; }
+  .strategyFooter { align-items: stretch; flex-direction: column; gap: 14px; }
+  .strategyFooter > button { width: 100%; }
+  .strategyEvidence > summary { padding: 16px; }
+  .strategyEvidenceBody { padding: 0 16px 18px; }
+}
+@media (prefers-reduced-motion: reduce) { .strategyApply, .strategyEvidence summary > svg { transition: none; } }
+
+/* A focused invitation beside Top posts, with a clear route into the strategy. */
+.recommendedAction { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden; padding: clamp(24px, 3vw, 34px); border: 1px solid #2868d7; background: linear-gradient(140deg, #1052c0 0%, #163b77 100%); box-shadow: 0 10px 28px #164a9a19; }
+.recommendedAction::after { content: ""; position: absolute; z-index: -1; width: 260px; height: 260px; right: -150px; bottom: -150px; border: 1px solid #ffffff24; border-radius: 50%; box-shadow: 0 0 0 35px #ffffff07, 0 0 0 70px #ffffff06; pointer-events: none; }
+.nextMoveTop { display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; margin-bottom: 28px; }
+.nextMoveTop > span { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #ffffff32; border-radius: 30px; font-size: 10px; font-weight: 600; color: #e4efff; }
+.nextMoveTop > svg { color: #a8cbff; }
+.recommendedAction h2 { margin: 0; max-width: 100%; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.15; letter-spacing: -.04em; color: #fff; font-weight: 700; }
+.recommendedAction > p { margin: 20px 0 26px; max-width: 38ch; color: #d8e7ff; font-size: 14px; line-height: 1.8; }
+.recommendedAction button { justify-content: space-between; gap: 18px; margin-top: auto; min-height: 46px; padding: 13px 17px; border: 1px solid #fff; border-radius: 10px; background: #fff; color: #12417c; font-size: 12px; font-weight: 700; box-shadow: 0 4px 12px #08285520; cursor: pointer; }
+.recommendedAction button:hover { background: #eaf2ff; }
+.nextMoveNote { margin-top: 14px; color: #b7d0f5; font-size: 10px; line-height: 1.6; }
+.dashboard [role=tabpanel] { scroll-margin-top: 128px; }
+@media(max-width:600px) { .recommendedAction { padding: 24px; }.nextMoveTop { margin-bottom: 22px; }.recommendedAction button { width: 100%; } }
