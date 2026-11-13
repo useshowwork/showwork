@@ -19,7 +19,7 @@ export async function getWorkspaceSetup(calendarId: string): Promise<WorkspaceSe
     publishingChosen: !!calendar.publishingPreferenceSetAt,
     autoPublishEnabled: calendar.autoPublishEnabled,
     hasKnowledge: calendar._count.businessDocuments > 0,
-    hasBrandVoice: !!readBrandPersonality(calendar.businessDocuments[0]?.extractedText),
+    hasBrandVoice: Object.values(readBrandPersonality(calendar.businessDocuments[0]?.extractedText)?.answers ?? {}).some(answer => answer.choices.length > 0),
     hasChannels: calendar.socialConnections.length > 0 || !!(
       (calendar.instagramAccountId && calendar.instagramAccessToken) ||
       (calendar.tikTokOpenId && calendar.tikTokAccessToken) ||

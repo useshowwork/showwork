@@ -259,6 +259,11 @@ export async function POST(
       id: postId,
     },
     data: {
+      internalReviewStatus: "PENDING",
+      internalReviewNote: null,
+      internalReviewedAt: null,
+      internalReviewedBy: null,
+      internalReviewVersion: { increment: 1 },
       approvalStatus: "PENDING",
       approvalNote: null,
       reviewedAt: null,

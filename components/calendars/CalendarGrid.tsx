@@ -8,9 +8,11 @@ import type { ReactNode } from "react";
 import contentStyles from "./ContentPlanner.module.css";
 import { calendarWeek, moveCalendarPeriod } from "@/lib/calendarView";
 import CreativeBriefEditor, { type BriefEditorState } from "./CreativeBriefEditor";
+import BulkApprovalBubble from "./BulkApprovalBubble";
+import ReusePostMedia from "./ReusePostMedia";
 import reviewStyles from "./PostReviewFlow.module.css";
 import type { CreativeBrief, CreativeDevelopment } from "@/lib/content/brief";
-import { FilePenLine, ShieldCheck, Users, MessageSquare, Send, X, Plus, CalendarDays, Layers3, Sparkles, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Upload, FilePenLine, ShieldCheck, Users, MessageSquare, Send, X, Plus, CalendarDays, Layers3, Sparkles, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { calendarWorkflow, matchesCalendarStage, type CalendarStageFilter } from "@/lib/calendarWorkflow";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import { mergeSavedCalendarPosts } from "@/lib/calendarPostCollection";
@@ -2648,6 +2650,8 @@ function AddPostPanel({
 function PostDetailPanel({
   calendarId,
   post,
+  posts,
+  onOtherPostUpdated,
   userRole,
   permissions,
   theme,
@@ -2656,6 +2660,8 @@ function PostDetailPanel({
 }: {
   calendarId: string;
   post: CalendarPostData;
+  posts: CalendarPostData[];
+  onOtherPostUpdated: (post: CalendarPostData) => void;
   userRole: "VIEW_ONLY" | "ADD_CONTENT" | "EDIT_CALENDAR";
   permissions?: readonly TeamPermission[];
   theme: Theme;
@@ -2670,12 +2676,11 @@ function PostDetailPanel({
   const canDeliver = permissions ? permissions.includes("delivery.manage") : userRole === "EDIT_CALENDAR";
   const t = THEMES[theme];
   const router = useRouter();
-  const [aiHeaderHost, setAiHeaderHost] = useState<HTMLDivElement | null>(null);
-  const [detailTab, setDetailTab] = useState<"content" | "internal" | "client" | "publishing">("content");
+  const [detailTab, setDetailTab] = useState<"content" | "brief" | "internal" | "client" | "publishing">("content");
   const [briefState, setBriefState] = useState<BriefEditorState>({dirty:false,busy:false,needsContext:false});
   const briefSave = useRef<(() => void) | null>(null);
   const registerBriefSave = useCallback((save: (() => void) | null) => { briefSave.current = save; }, []);
-  const workflowStep = ["content", "internal", "client", "publishing"].indexOf(detailTab);
+  const mainSection = detailTab === "content" || detailTab === "brief" ? detailTab : "review";
   const detailScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (detailScrollRef.current) detailScrollRef.current.scrollTop = 0; }, [detailTab]);
   const [internalNote, setInternalNote] = useState(post.internalReviewNote ?? "");
@@ -2739,6 +2744,7 @@ function PostDetailPanel({
     };
   }, []);
 
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const videoRef =
     useRef<HTMLVideoElement>(null);
 
@@ -3082,11 +3088,9 @@ caption: draftDetails.caption,
     <div
       className="
         fixed inset-0 z-[150]
-        flex items-end justify-center
+        flex items-center justify-center
         bg-black/75
-        p-0
-        sm:items-center sm:p-4
-        md:p-6
+        p-2 sm:p-6
       "
       onClick={onClose}
     >
@@ -3100,21 +3104,12 @@ caption: draftDetails.caption,
         onClick={(e) =>
           e.stopPropagation()
         }
-        className={`${reviewStyles.panel}
+        className={`${reviewStyles.panel} ${reviewStyles.dialogPanel}
           relative
           flex
-          h-[100dvh]
-          max-h-[100dvh]
           w-full
           flex-col
           overflow-hidden
-          rounded-none
-          border
-          shadow-2xl
-          sm:h-[92dvh]
-          sm:max-h-[94vh]
-          sm:max-w-[1200px]
-          sm:rounded-3xl
         `}
         style={{
           "--review-surface": t.modalBg,
@@ -3124,25 +3119,21 @@ caption: draftDetails.caption,
           "--review-muted": t.textMuted,
           background: t.modalBg,
           borderColor: t.cardBorder,
-          boxShadow:
-            theme === "dark"
-              ? "0 35px 120px rgba(0,0,0,0.6)"
-              : "0 35px 120px rgba(0,0,0,0.16)",
         } as React.CSSProperties}
       >
         {/* HEADER */}
         <div
-          className="
+          className={`${reviewStyles.editorHeader}
             flex-shrink-0
             border-b
             px-4 py-4
-            sm:px-7 sm:py-6
-          "
+            sm:px-7 sm:py-4
+          `}
           style={{
             borderColor: t.cardBorder,
           }}
         >
-          <div className="flex items-start justify-between gap-3">
+          <div className={reviewStyles.headerRow}>
             <div className="flex min-w-0 items-center gap-3">
               <div
                 className="
@@ -3181,6 +3172,7 @@ caption: draftDetails.caption,
                   >
                     {`${platformMeta.label} post`}
                   </h2>
+                  <span role="status" className={reviewStyles.headerSave}>{reviewSaving || briefState.busy || savingDetails ? "Saving…" : briefState.dirty || editingDetails ? "Unsaved changes" : "Saved ✓"}</span>
 
                   {post.postType && (
                     <span
@@ -3255,7 +3247,16 @@ caption: draftDetails.caption,
               </div>
             </div>
 
-            <div className={reviewStyles.headerActions}><div ref={setAiHeaderHost}/>
+            <div className={reviewStyles.headerActions}><div className={reviewStyles.headerTools}>
+              {(detailTab === "content" || detailTab === "brief") && canInternalReview && !isApproved && <button id="quick-feedback-toggle" type="button" className={reviewStyles.feedbackButton} aria-expanded={feedbackOpen} aria-controls="quick-team-feedback" onClick={() => setFeedbackOpen(open => !open)}><MessageSquare size={16} aria-hidden="true"/><span>Feedback</span></button>}
+              {editingDetails ? <button type="button" onClick={saveDetails} disabled={savingDetails} className={reviewStyles.next}>{savingDetails ? "Saving…" : "Save changes"}</button>
+                : briefState.dirty ? <button type="button" disabled={briefState.busy} onClick={() => briefSave.current?.()} className={reviewStyles.next}>Save changes</button>
+                : (detailTab === "content" || detailTab === "brief") ? <button type="button" disabled={briefState.busy || reviewSaving} onClick={() => { setFeedbackOpen(false); setDetailTab("internal"); }} className={reviewStyles.next}>Continue to review<span aria-hidden="true">→</span></button>
+                : detailTab === "internal" && canInternalReview && !internallyApproved && !isApproved ? <button type="button" disabled={reviewSaving} onClick={() => setConfirmApproval(true)} className={reviewStyles.next}>{reviewSaving ? "Saving…" : "Approve for client review"}</button>
+                : detailTab === "internal" ? <button type="button" disabled={!internallyApproved} onClick={() => setDetailTab("client")} className={reviewStyles.next}>Client approval<span aria-hidden="true">→</span></button>
+                : detailTab === "client" ? <button type="button" disabled={!isApproved} onClick={() => setDetailTab("publishing")} className={reviewStyles.next}>Publishing<span aria-hidden="true">→</span></button>
+                : null}
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -3278,25 +3279,42 @@ caption: draftDetails.caption,
             </button>
             </div>
           </div>
+          {feedbackOpen && (detailTab === "content" || detailTab === "brief") && canInternalReview && !isApproved && (
+            <section id="quick-team-feedback" className={reviewStyles.quickFeedback} aria-label="Private team feedback" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setFeedbackOpen(false); document.getElementById("quick-feedback-toggle")?.focus(); } }}>
+              <div className={reviewStyles.feedbackHeading}><label htmlFor="quick-team-note"><Users size={16} aria-hidden="true"/>Private team feedback</label><button type="button" aria-label="Collapse feedback" onClick={() => setFeedbackOpen(false)}><X size={18}/></button></div>
+              <p>Only your team sees this. Your post stays in view.</p>
+              <textarea ref={quickFeedbackRef} id="quick-team-note" value={internalNote} onChange={e => setInternalNote(e.target.value)} maxLength={4000} rows={3} disabled={reviewSaving} placeholder="Share feedback on the creative, caption or direction…"/>
+              <div className={reviewStyles.quickFeedbackActions}><span>{internalNote.length.toLocaleString()} / 4,000</span><button type="button" className={reviewStyles.feedbackButton} disabled={reviewSaving || !internalNote.trim() || briefState.dirty || briefState.busy || editingDetails || savingDetails} onClick={() => saveInternalReview("feedback")}>{reviewSaving ? "Sharing…" : "Share feedback"}<Send size={14} aria-hidden="true"/></button></div>
+              {reviewNotice && <p role="status">{reviewNotice}</p>}
+              {reviewError && <p role="alert" className={reviewStyles.feedbackError}>{reviewError}</p>}
+            </section>
+          )}
+          {confirmApproval && detailTab === "internal" && <div className={reviewStyles.approvalConfirm}><span>Make this post available for client review? Approval does not publish it.</span><button type="button" onClick={() => setConfirmApproval(false)}>Cancel</button><button type="button" disabled={reviewSaving || briefState.dirty || briefState.busy || editingDetails || savingDetails} onClick={() => saveInternalReview("approve")} className={reviewStyles.feedbackButton}>Confirm approval</button></div>}
         </div>
 
-        <nav className={reviewStyles.progress} aria-label="Post review steps">
-          <p className={reviewStyles.mobileStep}>Step {workflowStep + 1} of 4 <span>{["Check your post", "Team review", "Client approval", "Publishing"][workflowStep]}</span></p>
-          <ol>
-            {([["content", "Content"], ["internal", "Team review"], ["client", "Client approval"], ["publishing", "Publishing"]] as const).map(([value,label],index) => (
-              <li key={value}>
-                <button type="button" aria-label={`Step ${index + 1}: ${label}`} aria-current={detailTab === value ? "step" : undefined} onClick={() => setDetailTab(value)} disabled={briefState.dirty || briefState.busy || editingDetails}>
-                  <span className={reviewStyles.stepNumber}>{index + 1}</span><span>{label}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
+        <nav className={reviewStyles.sectionNavigation} aria-label="Post sections">
+          {([
+            ["content", "Content", FilePenLine],
+            ["brief", "Creative brief", Sparkles],
+            ["review", "Review & publish", ShieldCheck],
+          ] as const).map(([value, label, Icon]) => <button key={value} type="button" aria-current={mainSection === value ? "page" : undefined} disabled={briefState.dirty || briefState.busy || editingDetails} onClick={() => { setFeedbackOpen(false); setConfirmApproval(false); setDetailTab(value === "review" ? "internal" : value); }}><Icon size={16} aria-hidden="true"/><span>{label}</span></button>)}
         </nav>
+        {mainSection === "review" && <nav className={reviewStyles.reviewNavigation} aria-label="Review progress">{([["internal", "Team review"], ["client", "Client approval"], ["publishing", "Publishing"]] as const).map(([value, label], index) => <button key={value} type="button" aria-current={detailTab === value ? "step" : undefined} onClick={() => {setConfirmApproval(false); setDetailTab(value);}}><span>{index + 1}</span>{label}</button>)}</nav>}
+        {(reviewError || reviewNotice) && !feedbackOpen && <p className={reviewStyles.reviewMessage} role={reviewError ? "alert" : "status"}>{reviewError || reviewNotice}</p>}
         {/* A single scroll surface keeps long captions and publishing controls reachable. */}
         <div ref={detailScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-wrap:anywhere]">
 
-          <div className={detailTab === "content" ? `${contentStyles.editorColumns} ${reviewStyles.columns} grid min-w-0 gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6` : "hidden"}>
+          <div className={(detailTab === "content" || detailTab === "brief") ? `${contentStyles.editorColumns} ${reviewStyles.columns} mx-auto grid w-full max-w-[1440px] min-w-0 gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-8` : "hidden"}>
             <div className={`${contentStyles.editorMedia} min-w-0`}>
+              {canUpload && !isApproved && <div className={reviewStyles.mediaUploadAction}>
+                <button type="button" className={reviewStyles.mediaUploadButton} disabled={uploading} onClick={() => mediaInputRef.current?.click()}>
+                  <Upload size={17} aria-hidden="true"/>
+                  {uploading ? `Uploading ${Math.round(uploadPercent)}%` : post.assets.length ? post.postType === "Carousel" ? "Add more files" : "Replace content" : "Upload content"}
+                </button>
+                <input ref={mediaInputRef} type="file" multiple={post.postType === "Carousel"} accept={MEDIA_FILE_ACCEPT} className="hidden" disabled={uploading} onChange={event => { if (event.target.files?.length) void uploadMany(event.target.files); event.currentTarget.value = ""; }}/>
+              </div>}
+
+              {canUpload && post.assets.length > 0 && !uploading && <ReusePostMedia key={post.id} calendarId={calendarId} source={post} posts={posts} canReplace={canEdit} onUpdated={onOtherPostUpdated} />}
             {/* MEDIA */}
             <section>
               <div className="mb-3 flex items-end justify-between gap-3">
@@ -3600,123 +3618,7 @@ caption: draftDetails.caption,
                 </div>
               )}
 
-              {/* UPLOAD */}
-              {canUpload && !isApproved && (
-                <label
-                  className="
-                  group
-                  mt-3
-                  flex
-                  min-h-[60px]
-                  cursor-pointer
-                  items-center
-                  justify-center
-                  gap-3
-                  rounded-2xl
-                  border
-                  border-dashed
-                  px-4 py-3
-                  text-center
-                  transition-all
-                  hover:border-blue-500/40
-                  active:scale-[0.99]
-                "
-                  style={{
-                    borderColor: t.inputBorder,
-                    background: t.inputBg,
-                  }}
-                >
-                  <span
-                    className="
-                    flex h-9 w-9
-                    flex-shrink-0
-                    items-center justify-center
-                    rounded-xl
-                  "
-                    style={{
-                      background:
-                        "rgba(36,120,255,0.1)",
-                      color: "#2478FF",
-                    }}
-                  >
-                    {uploading ? (
-                      <span className="
-                      h-3.5 w-3.5
-                      animate-spin
-                      rounded-full
-                      border-2
-                      border-blue-500/30
-                      border-t-blue-500
-                    " />
-                    ) : (
-                      "+"
-                    )}
-                  </span>
 
-                  <span className="min-w-0 text-left">
-                    <span
-                      className="block text-xs font-semibold"
-                      style={{
-                        color: uploading
-                          ? t.textFaint
-                          : "#2478FF",
-                      }}
-                    >
-                      {uploading
-                        ? `Uploading ${uploadPercent}%`
-                        : post.assets.length > 0
-                          ? post.postType ===
-                            "Carousel"
-                            ? "Add more files"
-                            : "Replace content"
-                          : "Upload content"}
-                    </span>
-
-                    {!uploading && (
-                      <span
-                        className="
-                        mt-0.5
-                        block
-                        text-[9px]
-                      "
-                        style={{
-                          color: t.textFaint,
-                        }}
-                      >
-                        {post.postType ===
-                          "Carousel"
-                          ? "Add more images or videos to this carousel"
-                          : "JPG, PNG, WebP, MP4, MOV or WebM"}
-                      </span>
-                    )}
-                  </span>
-
-                  <input
-                    type="file"
-                    multiple={
-                      post.postType ===
-                      "Carousel"
-                    }
-                    accept={MEDIA_FILE_ACCEPT}
-                    className="hidden"
-                    disabled={uploading}
-                    onChange={(e) => {
-                      if (
-                        e.target.files &&
-                        e.target.files.length >
-                        0
-                      ) {
-                        uploadMany(
-                          e.target.files
-                        );
-
-                        e.currentTarget.value =
-                          "";
-                      }
-                    }}
-                  />
-                </label>
-              )}
 
               {isApproved && (
                 <div
@@ -3771,10 +3673,10 @@ caption: draftDetails.caption,
             {/* POST DETAILS */}
             <section>
               <div className={reviewStyles.copyHeading}>
-                <div><span className={reviewStyles.eyebrow}>STEP 1 · CONTENT</span><h3>Check your post</h3></div>
+                <div><h3>{detailTab === "brief" ? "Creative brief" : "Post content"}</h3><p className={reviewStyles.sectionHelp}>{detailTab === "brief" ? "The direction and thinking behind this post." : "Shape the copy that goes with your creative."}</p></div>
                 <span className={reviewStyles.status}>{isApproved ? "Client approved · Locked" : internallyApproved ? "Ready for client review" : "Team only · Awaiting review"}</span>
               </div>
-              {canEdit && !isApproved && !editingDetails && <button type="button" onClick={startEditingDetails} disabled={briefState.dirty || briefState.busy} className={reviewStyles.editSchedule}><FilePenLine size={14}/>Edit schedule &amp; details</button>}
+              {detailTab === "content" && canEdit && !isApproved && !editingDetails && <button type="button" onClick={startEditingDetails} disabled={briefState.dirty || briefState.busy} className={reviewStyles.editSchedule}><FilePenLine size={14}/>Edit schedule &amp; details</button>}
 
               {isApproved && (
                 <div
@@ -3918,7 +3820,7 @@ caption: draftDetails.caption,
     </div>
   </div>
 ) : !editingDetails ? (
-  <CreativeBriefEditor guided aiControlsHost={aiHeaderHost} onStateChange={setBriefState} onSaveReady={registerBriefSave} key={post.id} calendarId={calendarId} post={{...post}} readOnly={!canEdit||isApproved} onUpdated={updated=>onUpdated({...post,...updated})}/>
+  <CreativeBriefEditor guided guidedSection={detailTab === "brief" ? "brief" : "copy"} onStateChange={setBriefState} onSaveReady={registerBriefSave} key={post.id} calendarId={calendarId} post={{...post}} readOnly={!canEdit||isApproved} onUpdated={updated=>onUpdated({...post,...updated})}/>
 ) : editingDetails ? (
                 <div
                   className="rounded-2xl border p-4 sm:p-5"
@@ -4659,7 +4561,7 @@ caption: draftDetails.caption,
             </section>
             <aside className={reviewStyles.importantNote} aria-label="Important approval information">
               <span className={reviewStyles.importantIcon} aria-hidden="true">!</span>
-              <div><strong>{internallyApproved ? "If you edit this post" : "Before you approve"}</strong><p>{internallyApproved ? "Changes to the creative, caption or schedule require a new team approval." : "Approval allows client review when the client portal is unlocked. It does not publish this post."}</p>{!internallyApproved && <small>Editing the post later restarts team approval.</small>}</div>
+              <div><strong>{internallyApproved ? "If you edit this post" : "Before you approve"}</strong><p>{internallyApproved ? "Changes to the creative, caption or schedule require a new team approval." : "Approval makes this post ready for client review. It does not publish it."}</p></div>
             </aside>
             {canInternalReview && !isApproved ? <>
               <section className={reviewStyles.feedbackCard}>
@@ -4973,65 +4875,12 @@ caption: draftDetails.caption,
               )}
 
 
-            {!post.assets.length && <p className="rounded-xl border p-4 text-sm" style={{ borderColor: t.cardBorder, color: t.textMuted }}>Add your creative in Content &amp; creative to prepare this post for review.</p>}
+            {!post.assets.length && <p className="rounded-xl border p-4 text-sm" style={{ borderColor: t.cardBorder, color: t.textMuted }}>Add your creative in Content to prepare this post for review.</p>}
           </div>
         </div>
 
 
-        {/* FOOTER */}
-        <div
-          className={`${reviewStyles.reviewFooter}
-            flex
-            flex-shrink-0
-            flex-col
-            gap-3
-            border-t
-            px-4 py-3
-            sm:flex-row
-            sm:items-center
-            sm:justify-between
-            sm:px-7 sm:py-4
-          `}
-          style={{
-            borderColor: t.cardBorder,
-            background:
-              theme === "dark"
-                ? "rgba(20,36,58,0.96)"
-                : "rgba(255,255,255,0.96)",
-            backdropFilter: "blur(18px)",
-          }}
-        >
-          {feedbackOpen && detailTab === "content" && canInternalReview && !isApproved && (
-            <section id="quick-team-feedback" className={reviewStyles.quickFeedback} aria-label="Private team feedback" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setFeedbackOpen(false); document.getElementById("quick-feedback-toggle")?.focus(); } }}>
-              <div className={reviewStyles.feedbackHeading}><label htmlFor="quick-team-note"><Users size={16} aria-hidden="true"/>Private team feedback</label><button type="button" aria-label="Collapse feedback" onClick={() => setFeedbackOpen(false)}><X size={18}/></button></div>
-              <p>Only your team sees this. Your post stays in view.</p>
-              <textarea ref={quickFeedbackRef} id="quick-team-note" value={internalNote} onChange={e => setInternalNote(e.target.value)} maxLength={4000} rows={3} disabled={reviewSaving} placeholder="Share feedback on the creative, caption or direction…"/>
-              <div className={reviewStyles.quickFeedbackActions}><span>{internalNote.length.toLocaleString()} / 4,000</span><button type="button" className={reviewStyles.feedbackButton} disabled={reviewSaving || !internalNote.trim() || briefState.dirty || briefState.busy || editingDetails || savingDetails} onClick={() => saveInternalReview("feedback")}>{reviewSaving ? "Sharing…" : "Share feedback"}<Send size={14} aria-hidden="true"/></button></div>
-              {reviewNotice && <p role="status">{reviewNotice}</p>}
-              {reviewError && <p role="alert" className={reviewStyles.feedbackError}>{reviewError}</p>}
-            </section>
-          )}
-          {confirmApproval && detailTab === "content" && <div className={reviewStyles.approvalConfirm}><span>Make this post available for client review? This does not publish it.</span><button type="button" onClick={() => setConfirmApproval(false)}>Cancel</button><button type="button" disabled={reviewSaving || briefState.dirty || briefState.busy || editingDetails || savingDetails} onClick={() => saveInternalReview("approve")} className={reviewStyles.feedbackButton}>Confirm approval</button></div>}
-          <p role={reviewError ? "alert" : "status"} className={reviewStyles.saveStatus}>{reviewSaving ? "Saving review…" : internalNote !== (post.internalReviewNote ?? "") ? "Feedback not shared yet" : briefState.busy || savingDetails ? "Saving…" : briefState.dirty || editingDetails ? "Unsaved changes" : reviewError || reviewNotice || "Changes saved"}<span>{detailTab === "internal" ? "Use the button to confirm your review." : detailTab === "content" ? "Feedback stays private. Approval does not publish." : "Approval and publishing require confirmation."}</span></p>
-          <div className={`${reviewStyles.footerActions} flex items-center justify-between gap-2 pb-[env(safe-area-inset-bottom)]`}>
-          {detailTab === "content" && canInternalReview && !isApproved && <button id="quick-feedback-toggle" type="button" className={reviewStyles.feedbackButton} aria-expanded={feedbackOpen} aria-controls="quick-team-feedback" onClick={() => setFeedbackOpen(open => !open)}><MessageSquare size={16} aria-hidden="true"/>Feedback{internalNote !== (post.internalReviewNote ?? "") ? " •" : ""}</button>}
-          {detailTab === "content" && canInternalReview && !internallyApproved && !isApproved && !editingDetails && !briefState.dirty && <button type="button" disabled={reviewSaving || briefState.busy || savingDetails} className={reviewStyles.next} onClick={() => { setFeedbackOpen(false); setConfirmApproval(true); }}>Approve for client review</button>}
-          {editingDetails && (
-            <button type="button" onClick={saveDetails} disabled={savingDetails}
-              className="min-h-11 flex-1 rounded-xl bg-[#155FC7] px-5 py-2.5 text-xs font-semibold text-white disabled:opacity-50 sm:flex-none">
-              {savingDetails ? "Saving…" : "Save changes"}
-            </button>
-          )}
-          {!editingDetails && briefState.dirty && <button type="button" disabled={briefState.busy} onClick={() => briefSave.current?.()} className={reviewStyles.next}>Save changes</button>}
-          {detailTab === "internal" && canInternalReview && !internallyApproved && !isApproved && <button type="button" disabled={reviewSaving} onClick={() => saveInternalReview("approve")} className={reviewStyles.next}>{reviewSaving ? "Saving…" : "Approve for client review"}</button>}
-          {!editingDetails && !briefState.dirty && detailTab !== "publishing" && !((detailTab === "internal" || detailTab === "content") && canInternalReview && !internallyApproved && !isApproved) && (
-            <button type="button" disabled={briefState.busy || (detailTab === "internal" && !internallyApproved) || (detailTab === "client" && !isApproved)} onClick={() => setDetailTab(detailTab === "content" ? "internal" : detailTab === "internal" ? "client" : "publishing")} className={reviewStyles.next}>
-              Next: {detailTab === "content" ? "Team review" : detailTab === "internal" ? "Client approval" : "Publishing"}<span aria-hidden="true">→</span>
-            </button>
-          )}
-          {detailTab === "publishing" && <button type="button" onClick={onClose} className={reviewStyles.next}>Done</button>}
-          </div>
-        </div>
+
       </div>
     </div>
   );
@@ -6342,10 +6191,14 @@ export default function CalendarGrid({
           POST DETAIL
           ===================================================== */}
 
+      {(isOwner || permissions?.includes("internal_review.manage")) && <BulkApprovalBubble mode="internal" calendarKey={calendarId} posts={posts} hidden={!!selectedPost || !!addingDate} onUpdated={updated => { const safe = normalize(updated); setPosts(previous => previous.map(post => post.id === safe.id ? safe : post)); }} />}
+
       {selectedPost && (
         <PostDetailPanel
           calendarId={calendarId}
           post={selectedPost}
+          posts={posts}
+          onOtherPostUpdated={updated => setPosts(previous => previous.map(item => item.id === updated.id ? normalize(updated) : item))}
           userRole={userRole}
           permissions={permissions}
           theme={theme}

@@ -322,14 +322,12 @@ if (presignContentType.includes("application/json")) {
     setUploading(true);
     setError(null);
     const failures: string[] = [];
-    let addedSources = 0;
     try {
       await Promise.all(selectedFiles.map(async (file, index) => {
         setUploadFile({ index: index + 1, total: selectedFiles.length, name: file.name });
         try {
           const result = await uploadOne(file);
           if (result?.document) {
-            addedSources++;
             const uploadedDocument = result.document as BusinessDocumentData;
             setDocumentsState(current => [...current.filter(document => document.id !== uploadedDocument.id), uploadedDocument]);
           }
@@ -345,7 +343,6 @@ if (presignContentType.includes("application/json")) {
       }));
       router.refresh();
       if (failures.length) setError(failures.join("\n"));
-      else if (addedSources > 0 && !hasBrandVoice) focusBrandVoice();
     } finally {
       setUploading(false);
       setUploadFile(null);
@@ -375,7 +372,6 @@ if (presignContentType.includes("application/json")) {
         window.sessionStorage.setItem(`calendar:${calendarId}:has-business-summary`, "true");
         setWebsiteUrl("");
         router.refresh();
-        if (!hasBrandVoice) focusBrandVoice();
       } else {
         setError("The website was saved, but the AI couldn't update its business summary. Try again shortly.");
       }
@@ -556,6 +552,7 @@ if (presignContentType.includes("application/json")) {
     </div>
     <input ref={fileInputRef} type="file" multiple accept={BUSINESS_DOCUMENT_ACCEPT} disabled={uploading || addingWebsite || !canEdit} className="hidden" aria-label="Upload business knowledge documents" onChange={event => { if (event.target.files?.length) { void handleFiles(event.target.files); event.currentTarget.value = ""; } }}/>
 
-    {documentsState.length > 0 && (!hasBrandVoice || nextSection) && <div className={knowledgeStyles.nextStep}><div><strong>{hasBrandVoice ? "Your business knowledge is ready" : "Business sources added"}</strong><p>{!hasBrandVoice ? "Next, choose how your brand should sound." : nextSection === "channels" ? "Next, connect a social channel." : "Next, create your first content batch."}</p></div><button type="button" disabled={uploading || addingWebsite} onClick={() => { if (!hasBrandVoice) focusBrandVoice(); else if (nextSection) window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: nextSection } })); }}>{!hasBrandVoice ? "Set brand voice" : nextSection === "channels" ? "Connect channels" : "Generate content"}<ArrowUpRight size={15}/></button></div>}
+    {documentsState.length > 0 && <div className={knowledgeStyles.nextStep}><div><strong>Your business knowledge is ready</strong><p>Continue to the next step. Brand voice is optional.</p></div>{!hasBrandVoice && <button type="button" disabled={uploading || addingWebsite} onClick={focusBrandVoice}>Add brand voice (optional)</button>}{nextSection && <button type="button" disabled={uploading || addingWebsite} onClick={() => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: nextSection } }))}>{nextSection === "channels" ? "Connect channels" : "Generate content"}<ArrowUpRight size={15}/></button>}</div>}
+
   </section>;
 }

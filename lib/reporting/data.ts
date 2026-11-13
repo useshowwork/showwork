@@ -34,6 +34,7 @@ export async function getCalendarReportingData(
   searchParams: URLSearchParams,
   includeSyncErrors: boolean,
   includeLeads = includeSyncErrors,
+  includeLeadSummary = false,
 ) {
   const advancedAccess = await canUseCalendarFeature(calendarId, "advancedAnalytics");
   const { start, end } = reportingPeriod(searchParams);
@@ -214,18 +215,35 @@ export async function getCalendarReportingData(
   const leadWhere = { calendarId, ...(platform ? { socialConversation: { platform } } : {}),
     AND: [{ OR: [{ socialConversation: null }, { socialConversation: { connection: { status: { in: ["CONNECTED", "NEEDS_REAUTH"] as Array<"CONNECTED" | "NEEDS_REAUTH"> } } } }] }],
   };
-  const [leadTotal, newLeads, previousLeads, hotCount, customers, hottest] = includeSyncErrors && includeLeads ? await Promise.all([
+  const includeLeadCounts = (includeSyncErrors && includeLeads) || includeLeadSummary;
+  let leadHistoryStartedAt: Date | null = null;
+  if (includeLeadCounts && db.leadAnalyticsTracking) {
+    try { leadHistoryStartedAt = (await db.leadAnalyticsTracking.findUnique({where:{id:"lead-milestones-v1"}}))?.startedAt ?? null; }
+    catch (error) {
+      // Keep existing analytics readable while this additive migration rolls out.
+      if (!error || typeof error !== "object" || !("code" in error) || !["P2021","P2022"].includes(String(error.code))) throw error;
+    }
+  }
+  const milestoneBasis = !leadHistoryStartedAt ? "current" as const
+    : end < leadHistoryStartedAt ? "unavailable" as const
+    : start < leadHistoryStartedAt ? "tracked-period" as const : "period" as const;
+  const milestoneCountsAvailable = milestoneBasis === "period" || milestoneBasis === "tracked-period";
+  const milestoneCountsComplete = milestoneBasis === "period";
+  const milestoneInPeriod = (kind: "HOT" | "CUSTOMER") => ({milestones:{some:{kind,occurredAt:{gte:start,lte:end}}}});
+  const [leadTotal, newLeads, previousLeads, hotCount, customers, hottest] = includeLeadCounts ? await Promise.all([
     db.calendarLead.count({ where: { ...leadWhere, createdAt: { lte: end } } }),
     db.calendarLead.count({ where: { ...leadWhere, createdAt: { gte: start, lte: end } } }),
     db.calendarLead.count({ where: { ...leadWhere, createdAt: { gte: previousStart, lte: previousEnd } } }),
-    db.calendarLead.count({ where: { ...leadWhere, createdAt: { gte: start, lte: end }, temperature: "HOT", status: { notIn: ["CUSTOMER", "LOST"] } } }),
-    db.calendarLead.count({ where: { ...leadWhere, createdAt: { gte: start, lte: end }, status: "CUSTOMER" } }),
-    db.calendarLead.findMany({
-      where: { ...leadWhere, createdAt: { gte: start, lte: end }, temperature: "HOT", status: { notIn: ["CUSTOMER", "LOST"] } },
+    milestoneCountsAvailable ? db.calendarLead.count({ where: { ...leadWhere, ...milestoneInPeriod("HOT") } })
+      : milestoneBasis === "current" ? db.calendarLead.count({where:{...leadWhere,temperature:"HOT",status:{notIn:["CUSTOMER","LOST"]}}}) : Promise.resolve(null),
+    milestoneCountsAvailable ? db.calendarLead.count({ where: { ...leadWhere, ...milestoneInPeriod("CUSTOMER") } })
+      : milestoneBasis === "current" ? db.calendarLead.count({where:{...leadWhere,status:"CUSTOMER"}}) : Promise.resolve(null),
+    includeSyncErrors && includeLeads && advancedAccess && milestoneCountsAvailable ? db.calendarLead.findMany({
+      where: { ...leadWhere, ...milestoneInPeriod("HOT"), temperature: "HOT", status: { notIn: ["CUSTOMER", "LOST"] } },
       orderBy: [{ updatedAt: "desc" }, { id: "asc" }], take: 5,
       select: { id: true, name: true, company: true, username: true, status: true, source: true, updatedAt: true,
         socialConversation: { select: { platform: true, participantName: true, participantUsername: true } } },
-    }),
+    }) : Promise.resolve([]),
   ]) : [0, 0, 0, 0, 0, []] as const;
   // The lower panel and overview must compare the same enriched post data.
   // Keep earlier saved posts for comparisons; replace current records by ID.
@@ -257,7 +275,7 @@ export async function getCalendarReportingData(
     period: { start: start.toISOString(), end: end.toISOString() },
     comparisonPeriod: { start: previousStart.toISOString(), end: previousEnd.toISOString() },
     performance,
-    leads: includeSyncErrors && includeLeads && advancedAccess ? { total: leadTotal, acquired: change(newLeads, previousLeads, "vs previous period"), hotCount, customers, hottest } : null,
+    leads: includeLeadCounts ? { total: leadTotal, acquired: change(newLeads, previousLeads, "vs previous period"), hotCount, customers, hottest, historyStartedAt:leadHistoryStartedAt?.toISOString() ?? null, milestoneCountsAvailable, milestoneCountsComplete, milestoneBasis } : null,
     clientSharing: { enabled: true },
     connections: connections.map((connection) => ({
       id: connection.id,

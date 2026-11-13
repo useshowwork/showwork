@@ -8,7 +8,9 @@ test('review decisions validate action, version and private feedback',()=>{
  for(const input of [{action:'publish',version:0},{action:'approve',version:-1},{action:'approve'},{action:'request_changes',version:0,note:' '},{action:'approve',version:0,note:{}}])assert.throws(()=>internalReviewInput(input));
  assert.equal(internalReviewInput({action:'request_changes',version:0,note:' Fix caption '}).note,'Fix caption');
  assert.equal(internalReviewError({approvalStatus:'APPROVED'},'PENDING'),'Client-approved content is locked.');
- assert(internalReviewError({approvalStatus:'PENDING',isAiDraft:true},'APPROVED'));
+ assert.equal(internalReviewError({approvalStatus:'PENDING',isAiDraft:true},'APPROVED'),null);
+ assert(internalReviewError({approvalStatus:'PENDING',isAiDraft:true},'NEEDS_CHANGES'));
+ assert(internalReviewError({approvalStatus:'PENDING',isAiDraft:true},undefined));
  assert(internalReviewError({approvalStatus:'PENDING',publishStatus:'SCHEDULED'},'APPROVED'));
 });
 test('client responses strip internal notes and reviewer metadata',()=>{

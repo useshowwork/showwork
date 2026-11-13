@@ -109,6 +109,7 @@ export default function CreativeBriefEditor({
   reviewStep,
   onReviewStepChange,
   guided = false,
+  guidedSection,
   readOnly = false,
 }: {
   calendarId: string;
@@ -119,6 +120,7 @@ export default function CreativeBriefEditor({
   reviewStep?: string;
   onReviewStepChange?: (step: string) => void;
   guided?: boolean;
+  guidedSection?: "copy" | "brief";
   readOnly?: boolean;
   onStateChange?: (state: BriefEditorState) => void;
   onSaveReady?: (save: (() => void) | null) => void;
@@ -430,17 +432,21 @@ export default function CreativeBriefEditor({
         aria-labelledby={guided ? undefined : `${post.id}-tab-${tab}`}
         className="space-y-5"
       >
-        {(guided || tab === "copy") && (
+        {((guided && guidedSection !== "brief") || (!guided && tab === "copy")) && (
           <>
             {guided ? <>
+              {guidedSection && field("title", 1)}
               {field("caption", 4)}
-              <details className={styles.disclosure}><summary>Post title, call to action &amp; hashtags <span>+</span></summary><div className="space-y-4">{field("title", 1)}{field("suggestedCta", 1)}{field("hashtags", 1)}</div></details>
+              {guidedSection ? <>
+                {field("hashtags", 1)}
+                <details className={styles.disclosure}><summary>Call to action <span>+</span></summary><div>{field("suggestedCta", 1)}</div></details>
+              </> : <details className={styles.disclosure}><summary>Post title, call to action &amp; hashtags <span>+</span></summary><div className="space-y-4">{field("title", 1)}{field("suggestedCta", 1)}{field("hashtags", 1)}</div></details>}
               {!readOnly && !aiControlsHost && <details className={styles.disclosure}><summary><span className="inline-flex items-center gap-2"><Sparkles size={15}/>Improve with AI</span><span>+</span></summary><div>{aiControls}</div></details>}
             </> : <>{field("title", 1)}{field("caption", 4)}{field("suggestedCta", 1)}{field("hashtags", 1)}</>}
           </>
         )}
-        {(guided || tab === "strategy") && (
-          <details open={guided ? undefined : true} className={guided ? styles.disclosure : undefined}>
+        {((guided && guidedSection !== "copy") || (!guided && tab === "strategy")) && (
+          <details id={`${post.id}-brief-strategy`} open={guidedSection === "brief" ? true : guided ? undefined : true} className={guided ? styles.disclosure : undefined}>
             {!guided && <summary hidden>Strategy</summary>}
             {guided && <summary><span className="inline-flex items-center gap-2"><Target size={16}/>Strategy {missingContext && <small>Needs attention</small>}</span><span>+</span></summary>}
             <div className="space-y-4">
@@ -471,8 +477,8 @@ export default function CreativeBriefEditor({
             </div>
           </details>
         )}
-        {(guided || tab === "creative") && (
-          <details open={guided ? undefined : true} className={guided ? styles.disclosure : undefined}>
+        {((guided && guidedSection !== "copy") || (!guided && tab === "creative")) && (
+          <details id={`${post.id}-brief-creative`} open={guidedSection === "brief" ? true : guided ? undefined : true} className={guided ? styles.disclosure : undefined}>
             {!guided && <summary hidden>Creative direction</summary>}
             {guided && <summary><span className="inline-flex items-center gap-2"><Palette size={16}/>Creative direction</span><span>+</span></summary>}
             <div className="space-y-4">
@@ -575,7 +581,7 @@ export default function CreativeBriefEditor({
           </details>
         )}
       </section>
-      {!readOnly && (
+      {!readOnly && !onSaveReady && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
           <span
             role="status"

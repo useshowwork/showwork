@@ -1,3 +1,4 @@
+import { clientPostBrief } from "@/lib/clientPostBrief";
 import { complimentaryAccessSelect } from "@/lib/complimentaryAccess";
 import { requirePostPlatform } from "@/lib/calendarPosts";
 import { notFound } from "next/navigation";
@@ -356,12 +357,18 @@ export default async function SocialCalendarPage({
     category: p.category,
     caption: p.caption,
     contentIdea: p.contentIdea,
+    hook: p.hook,
+    script: p.script,
+    creativeBrief: clientPostBrief(p.creativeBrief),
     cta: p.cta,
     hashtags: p.hashtags,
     taggedAccounts: p.taggedAccounts,
     linkUrl: p.linkUrl,
     approvalStatus: p.approvalStatus,
     approvalNote: p.approvalNote,
+    publishStatus: p.publishStatus,
+    instagramPublishStatus: p.instagramPublishStatus,
+    tikTokPublishStatus: p.tikTokPublishStatus,
     assets: p.assets.map((a) => ({
       id: a.id,
       mediaType: normalizeAssetMediaType(String(a.mediaType)),

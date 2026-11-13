@@ -1,6 +1,9 @@
 "use client";
+import type { CreativeBrief } from "@/lib/content/brief";
+import { clientReviewLocked } from "@/lib/clientPostReview";
+import BulkApprovalBubble from "./BulkApprovalBubble";
 import styles from "./ClientContentCalendar.module.css";
-import { ArrowUpRight, FileText, Layers, Play } from "lucide-react";
+import { ArrowUpRight, FileText, Layers, Play, Palette, Target } from "lucide-react";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import { useMemo, useState, useRef, useEffect } from "react";
@@ -35,12 +38,18 @@ interface CalendarPostData {
   category: string | null;
   caption: string | null;
   contentIdea: string | null;
+  hook?: string | null;
+  script?: string | null;
+  creativeBrief?: CreativeBrief | null;
   cta: string | null;
   hashtags: string | null;
   taggedAccounts: string | null;
   linkUrl: string | null;
   approvalStatus: ApprovalStatus;
   approvalNote: string | null;
+  publishStatus?: string;
+  instagramPublishStatus?: string;
+  tikTokPublishStatus?: string;
   assets: CalendarPostAssetData[];
   videoComments: CalendarVideoCommentData[];
   customFields: CalendarPostCustomFieldData[];
@@ -270,6 +279,16 @@ function PostDetailPanel({
   onUpdated: (post: CalendarPostData) => void;
 }) {
   const router = useRouter();
+  const [section, setSection] = useState<"content" | "creative" | "strategy">("content");
+  const sections = [
+    {id:"content",label:"Content",icon:FileText},
+    {id:"creative",label:"Creative direction",icon:Palette},
+    {id:"strategy",label:"Strategy",icon:Target},
+  ] as const;
+  const brief = post.creativeBrief;
+  const reviewBodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (reviewBodyRef.current) reviewBodyRef.current.scrollTop = 0; }, [section]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const meta = PLATFORM_META[post.platform];
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -377,7 +396,8 @@ useEffect(() => {
   }
 };
 
-  const canReview = post.assets.length > 0 || (["FACEBOOK", "LINKEDIN", "X"].includes(post.platform) && !!post.caption?.trim());
+  const reviewLocked = clientReviewLocked(post);
+  const canReview = !reviewLocked && (post.assets.length > 0 || (["FACEBOOK", "LINKEDIN", "X"].includes(post.platform) && !!post.caption?.trim()));
   return (
     <dialog ref={dialogRef} className={styles.reviewDialog} aria-labelledby="post-review-title" aria-busy={submitting}
       onCancel={(event) => { event.preventDefault(); if (!submitting) onClose(); }}
@@ -386,7 +406,14 @@ useEffect(() => {
         <div className={styles.reviewHeading}><span className={styles.reviewPlatform}><PlatformIcon platform={post.platform} className="h-5 w-5" /></span><div><p>CONTENT REVIEW</p><h2 id="post-review-title">{meta.label} <span>· {post.postType || "Post"}</span></h2><div className={styles.reviewDate}>{new Date(post.postDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · {new Date(post.postDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</div></div></div>
         <button type="button" autoFocus className={styles.reviewClose} onClick={onClose} disabled={submitting} aria-label="Close content review">×</button>
       </header>
-      <div className={styles.reviewBody}>
+      <nav className={styles.briefNavigation} aria-label="Post information">
+        <div role="tablist" aria-label="Post information sections">{sections.map(({id,label,icon:Icon},index)=><button key={id} type="button" id={`client-${post.id}-tab-${id}`} role="tab" aria-selected={section===id} aria-controls={`client-${post.id}-brief-panel`} tabIndex={section===id?0:-1} onClick={()=>setSection(id)} onKeyDown={event=>{
+          const next=event.key==="ArrowRight"?(index+1)%sections.length:event.key==="ArrowLeft"?(index+sections.length-1)%sections.length:event.key==="Home"?0:event.key==="End"?sections.length-1:null;
+          if(next!==null){event.preventDefault();setSection(sections[next].id);document.getElementById(`client-${post.id}-tab-${sections[next].id}`)?.focus();}
+        }}><Icon size={16} aria-hidden="true"/><span>{label}</span></button>)}</div>
+        <p>Switch between post content, creative direction and strategy.</p>
+      </nav>
+      <div ref={reviewBodyRef} className={styles.reviewBody}>
         <section className={styles.reviewCreative} aria-label="Content preview">
           <div className={styles.reviewSectionHeading}><h3>Content preview</h3><span>{post.assets.length} {post.assets.length === 1 ? "asset" : "assets"}</span></div>
           <div className={styles.reviewStage}>
@@ -398,10 +425,13 @@ useEffect(() => {
           {post.assets.length > 1 && <div className={styles.reviewThumbnails} aria-label="Choose an asset">{post.assets.map((asset, index) => <button key={asset.id} type="button" aria-label={`View asset ${index + 1}`} aria-pressed={index === activeAssetIdx} onClick={() => setActiveAssetIdx(index)}>{asset.mediaType === "PHOTO" ? <img src={asset.contentUrl} alt="" /> : asset.mediaType === "VIDEO" ? <Play size={20} /> : <FileText size={20} />}<span>{index + 1}</span></button>)}</div>}
           {activeAsset?.mediaType === "VIDEO" && <div className={styles.reviewVideoComments}><CalendarVideoComments comments={comments} readOnly={false} getCurrentTime={() => videoRef.current?.currentTime ?? 0} onSeekTo={(time) => { if (videoRef.current) { videoRef.current.currentTime = time; void videoRef.current.play(); } }} onAddComment={addComment} /></div>}
         </section>
-        <aside className={styles.reviewDetails} aria-label="Post details">
-          <div className={styles.reviewSectionHeading}><h3>Post details</h3><span className={styles.approval} data-status={reviewStatus}>{APPROVAL_META[reviewStatus].text}</span></div>
+        <aside className={styles.reviewDetails} id={`client-${post.id}-brief-panel`} role="tabpanel" aria-labelledby={`client-${post.id}-tab-${section}`} tabIndex={0}>
+          <div className={styles.reviewSectionHeading}><h3>{sections.find(item=>item.id===section)?.label}</h3><span className={styles.approval} data-status={reviewStatus}>{APPROVAL_META[reviewStatus].text}</span></div>
+          {section === "content" && <>
+          {brief?.title && <section><h4>Post title</h4><p>{brief.title}</p></section>}
+          {post.hook && <section><h4>Hook</h4><p>{post.hook}</p></section>}
           {post.caption && <section><h4>Caption</h4><p>{post.caption}</p></section>}
-          {post.contentIdea && <section><h4>Content idea</h4><p>{post.contentIdea}</p></section>}
+          {!brief && post.contentIdea && <section><h4>Content idea</h4><p>{post.contentIdea}</p></section>}
           {post.category && <section><h4>Category</h4><p>{post.category}</p></section>}
           {post.cta && <section><h4>Call to action</h4><p>{post.cta}</p></section>}
           {post.hashtags && <section><h4>Hashtags</h4><p>{post.hashtags}</p></section>}
@@ -409,12 +439,42 @@ useEffect(() => {
           {post.linkUrl && <section><h4>Link</h4><a href={post.linkUrl} target="_blank" rel="noopener noreferrer">{post.linkUrl} ↗</a></section>}
           {post.customFields.map(field => <section key={field.id}><h4>{field.label}</h4><p>{field.value}</p></section>)}
           {!post.caption && !post.contentIdea && <p>Your team has not added a caption yet.</p>}
+          </>}
+          {section === "creative" && <>
+            {(brief?.format || post.postType) && <section><h4>Format</h4><p>{brief?.format || post.postType}</p></section>}
+            {(brief?.creativeDirection || post.contentIdea) ? <section><h4>Creative direction</h4><p>{brief?.creativeDirection || post.contentIdea}</p></section> : <p>Your team hasn’t added creative direction yet.</p>}
+            {brief?.coreIdea && <section><h4>Core idea</h4><p>{brief.coreIdea}</p></section>}
+            {post.script && <section><h4>Script</h4><p>{post.script}</p></section>}
+          </>}
+          {section === "strategy" && <>
+            {([
+              ["Objective",brief?.objective], ["Target audience",brief?.targetAudience],
+              ["Key message",brief?.keyMessage], ["Desired audience response",brief?.desiredResponse],
+              ["Brand connection",brief?.brandConnection], ["Content pillar",brief?.pillar || post.category],
+            ] as const).filter(([,value])=>value).map(([label,value])=><section key={label}><h4>{label}</h4><p>{value}</p></section>)}
+            {!brief?.objective && !brief?.targetAudience && !brief?.keyMessage && !brief?.desiredResponse && !brief?.brandConnection && !brief?.pillar && !post.category && <p>Your team hasn’t added strategy details yet.</p>}
+          </>}
           {reviewStatus === "NEEDS_REVISION" && post.approvalNote && <section><h4>Your feedback</h4><p>{post.approvalNote}</p></section>}
         </aside>
       </div>
       <footer className={styles.reviewFooter}>
         {error && <p role="alert" className={styles.reviewError}>{error}</p>}
-        {canReview && reviewStatus === "PENDING" ? requestingRevision ? <div className={styles.reviewFeedback}><label htmlFor="review-feedback">What would you like to change?</label><textarea id="review-feedback" autoFocus value={note} onChange={event => setNote(event.target.value)} rows={3} placeholder="Share a little detail so your team can get it right." disabled={submitting} /><div className={styles.reviewActions}><button type="button" onClick={() => { setRequestingRevision(false); setError(null); }} disabled={submitting}>Cancel</button><button type="button" className={styles.reviewPrimary} onClick={() => respond("request_revision")} disabled={submitting || !note.trim()}>{submitting ? "Sending…" : "Send feedback"}</button></div></div> : <><div className={styles.reviewFooterMessage}><strong>Ready to go?</strong><p>Approve this post or let your team know what to change.</p></div><div className={styles.reviewActions}><button type="button" onClick={() => setRequestingRevision(true)} disabled={submitting}>Request changes</button><button type="button" className={styles.reviewPrimary} onClick={() => respond("approve")} disabled={submitting}><IconCheck className="h-4 w-4" />{submitting ? "Approving…" : "Approve post"}</button></div></> : <><div className={styles.reviewFooterMessage}><strong>{reviewStatus === "APPROVED" ? "✓ You approved this post" : reviewStatus === "NEEDS_REVISION" ? "Feedback sent to your team" : "Not ready for review yet"}</strong><p>{reviewStatus === "APPROVED" ? "You’re all set. Your team can take it from here." : reviewStatus === "NEEDS_REVISION" ? "Your team will update the post for another look." : "Check back once your team has added the content."}</p></div><div className={styles.reviewActions}><button type="button" onClick={onClose}>Done</button></div></>}
+        {canReview && requestingRevision ? <div className={styles.reviewFeedback}>
+          <label htmlFor="review-feedback">What would you like to change?</label>
+          {reviewStatus === "APPROVED" && <p className={styles.revisionHelp}>Sending feedback withdraws your approval and cancels scheduled publishing until you approve again.</p>}
+          <textarea id="review-feedback" autoFocus value={note} onChange={event => setNote(event.target.value)} rows={3} maxLength={4000} placeholder="Share a little detail so your team can get it right." disabled={submitting} />
+          <div className={styles.reviewActions}><button type="button" onClick={() => { setRequestingRevision(false); setError(null); }} disabled={submitting}>Cancel</button><button type="button" className={styles.reviewPrimary} onClick={() => respond("request_revision")} disabled={submitting || !note.trim()}>{submitting ? "Sending…" : reviewStatus === "APPROVED" ? "Send feedback & pause publishing" : "Send feedback"}</button></div>
+        </div> : <>
+          <div className={styles.reviewFooterMessage}>
+            <strong>{reviewLocked ? "Publishing has started" : reviewStatus === "APPROVED" ? "✓ You approved this post" : reviewStatus === "NEEDS_REVISION" ? "Publishing is paused" : canReview ? "Ready to go?" : "Not ready for review yet"}</strong>
+            <p>{reviewLocked ? "This post can no longer be changed here. Contact your team if something needs attention." : reviewStatus === "APPROVED" ? "Changed your mind? Request changes before publishing begins." : reviewStatus === "NEEDS_REVISION" ? "Your feedback has been sent. Publishing stays paused until you approve again." : canReview ? "Approve this post or let your team know what to change." : "Check back once your team has added the content."}</p>
+          </div>
+          <div className={styles.reviewActions}>
+            {canReview && <button type="button" onClick={() => { setRequestingRevision(true); setError(null); }} disabled={submitting}>Request changes</button>}
+            {canReview && reviewStatus !== "APPROVED" ? <button type="button" className={styles.reviewPrimary} onClick={() => respond("approve")} disabled={submitting}><IconCheck className="h-4 w-4" />{submitting ? "Approving…" : reviewStatus === "NEEDS_REVISION" ? "Approve again" : "Approve post"}</button> : <button type="button" onClick={onClose} disabled={submitting}>Done</button>}
+          </div>
+        </>}
+
       </footer>
     </dialog>
   );
@@ -441,6 +501,8 @@ export default function ClientCalendarView({
   const [localTheme, setTheme] = useState<Theme>("light");
   const theme = controlledTheme ?? localTheme;
   const [viewMode, setViewMode] = useState<"calendar" | "instagram" | "tiktok" | "linkedin" | "facebook" | "x" | "inbox">("calendar");
+  const [inboxVisited, setInboxVisited] = useState(false);
+  useEffect(() => { if (viewMode === "inbox") setInboxVisited(true); }, [viewMode]);
   const [currentPlanStatus, setCurrentPlanStatus] = useState(planStatus);
 
   useEffect(() => {
@@ -770,8 +832,8 @@ export default function ClientCalendarView({
           channel={viewMode} onOpen={setSelectedPost} filtersActive={activeFilterCount > 0 || Boolean(searchQuery.trim())} onClearFilters={clearFilters} />
       )}
 
-      {viewMode === "inbox" && (
-        <div className="relative z-10">
+      {(viewMode === "inbox" || inboxVisited) && (
+        <div hidden={viewMode !== "inbox"} className="relative z-10" data-client-panel="inbox">
           <SocialLeadInbox slug={slug} clientMode />
         </div>
       )}
@@ -1130,6 +1192,10 @@ export default function ClientCalendarView({
           You&apos;ve approved this plan — click any post below to review its actual content as it gets uploaded.
         </div>
       )}
+      <BulkApprovalBubble mode="client" calendarKey={slug} posts={posts} hidden={!!selectedPost || viewMode === "inbox"} onUpdated={updated => {
+        const safe = {...updated, assets: updated.assets ?? [], videoComments: updated.videoComments ?? [], customFields: updated.customFields ?? []};
+        setPosts(previous => previous.map(post => post.id === safe.id ? safe : post));
+      }}/>
     </div>
   );
 }

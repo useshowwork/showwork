@@ -2086,10 +2086,27 @@ model CalendarLead {
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @updatedAt
 
+  milestones CalendarLeadMilestone[]
+
   @@unique([calendarId, email])
   @@index([calendarId, status])
   @@index([calendarId, temperature])
   @@index([calendarId, updatedAt])
+}
+
+model CalendarLeadMilestone {
+  id String @id @default(uuid())
+  leadId String
+  lead CalendarLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  kind String
+  occurredAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([leadId, kind, occurredAt])
+}
+
+model LeadAnalyticsTracking {
+  id String @id
+  startedAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model SocialLeadMessage {

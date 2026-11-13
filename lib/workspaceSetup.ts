@@ -11,17 +11,15 @@ export type WorkspaceSetupState = {
 export const WORKSPACE_SETUP_STEPS = [
   { id: "publishing", label: "Publishing" },
   { id: "knowledge", label: "Business knowledge" },
-  { id: "voice", label: "Brand voice" },
   { id: "generate", label: "Create content" },
   { id: "content", label: "Review content" },
 ] as const;
 export function workspaceSetupStep(state: WorkspaceSetupState) {
   if (!state.publishingChosen) return 0;
   if (!state.hasKnowledge) return 1;
-  if (!state.hasBrandVoice) return 2;
-  if (!state.hasContent) return 3;
-  return state.complete ? 5 : 4;
+  if (!state.hasContent) return 2;
+  return state.complete ? 4 : 3;
 }
 export function canGenerateDuringSetup(state: WorkspaceSetupState) {
-  return !state.enabled || state.complete || (state.hasKnowledge && state.hasBrandVoice);
+  return !state.enabled || state.complete || state.hasKnowledge;
 }

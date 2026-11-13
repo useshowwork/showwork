@@ -1,3 +1,4 @@
+import { clientRevisionNote } from "../clientPostReview";
 import { calendarSlugCandidate } from "@/lib/calendarSlug";
 import { brandPersonalityDocumentId } from "../knowledge/brandPersonality";
 import { parseCreativeBrief } from "../content/brief";
@@ -110,19 +111,22 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
    const error=internalReviewError(p as any,decision.status);if(error)throw Error(error);
    if(await busy(tx,p.id))throw Error('PENDING_RECONCILIATION');
    if(p.internalReviewVersion!==decision.version)throw Error('This post changed. Refresh and review the latest version.');
-   await tx.query(`UPDATE "CalendarPost" SET "internalReviewStatus"=$2::"InternalReviewStatus","internalReviewNote"=$3,"internalReviewedAt"=CASE WHEN $5 THEN "internalReviewedAt" ELSE clock_timestamp() END,"internalReviewedBy"=CASE WHEN $5 THEN "internalReviewedBy" ELSE $4 END,"internalReviewVersion"="internalReviewVersion"+1,"updatedAt"=clock_timestamp() WHERE id=$1`,[p.id,decision.status ?? p.internalReviewStatus,decision.note,input.actor,decision.status===undefined]);
-   return {ok:true,notification:{calendarId:input.calendarId,postId:input.postId,version:decision.version+1,action:String(input.body.action),note:decision.note}};
+   // Confirm before approval so the content-change trigger cannot undo the decision.
+   if(p.isAiDraft && decision.status==='APPROVED')await tx.query(`UPDATE "CalendarPost" SET "isAiDraft"=false WHERE id=$1`,[p.id]);
+   const reviewed=(await tx.query(`UPDATE "CalendarPost" SET "internalReviewStatus"=$2::"InternalReviewStatus","internalReviewNote"=$3,"internalReviewedAt"=CASE WHEN $5 THEN "internalReviewedAt" ELSE clock_timestamp() END,"internalReviewedBy"=CASE WHEN $5 THEN "internalReviewedBy" ELSE $4 END,"internalReviewVersion"="internalReviewVersion"+1,"updatedAt"=clock_timestamp() WHERE id=$1 RETURNING "internalReviewVersion"`,[p.id,decision.status ?? p.internalReviewStatus,decision.note,input.actor,decision.status===undefined])).rows[0];
+   return {ok:true,notification:{calendarId:input.calendarId,postId:input.postId,version:reviewed.internalReviewVersion,action:String(input.body.action),note:decision.note}};
   });
  }
  async function review(input:{operationId:string;calendarId:string;postId:string;credential:string;approved:boolean;note?:string}){
+  const revisionNote=input.approved ? null : clientRevisionNote(input.note);
   // Viewer authority cannot be substituted for a creator scheduling principal.
   return deps.database.transaction(async tx=>{
    const {v}=services(tx);await v.lockForPolicyChange(tx);const authority=await v.validateViewerApproval(tx,input);
    const old=(await tx.query(`SELECT * FROM "PublishingApplicationOperation" WHERE "operationId"=$1`,[input.operationId])).rows[0],hash=policyHash({...input,credential:undefined});if(old){if(old.actor!==authority.principalId||old.requestHash!==hash)throw Error('OPERATION_CONFLICT');return old.result;}
    const p=await post(tx,input.postId,input.calendarId);if(await busy(tx,p.id))throw Error('PENDING_RECONCILIATION');
    await tx.query(`UPDATE "CalendarPost" SET "approvalStatus"=$2,"tikTokConsentAt"=CASE WHEN $3 THEN "tikTokConsentAt" ELSE NULL END,"tikTokConsentHash"=CASE WHEN $3 THEN "tikTokConsentHash" ELSE NULL END WHERE id=$1`,[p.id,input.approved?'APPROVED':'NEEDS_REVISION',input.approved]);
-   if(!input.approved)await tx.query(`UPDATE "CalendarPost" SET "publishStatus"=CASE WHEN "publishStatus"='SCHEDULED' THEN 'NOT_SCHEDULED' ELSE "publishStatus" END,"instagramPublishStatus"=CASE WHEN "instagramPublishStatus"='SCHEDULED' THEN 'NOT_SCHEDULED' ELSE "instagramPublishStatus" END,"tikTokPublishStatus"=CASE WHEN "tikTokPublishStatus"='SCHEDULED' THEN 'NOT_SCHEDULED' ELSE "tikTokPublishStatus" END WHERE id=$1`,[p.id]);
-   if((await tx.query(`SELECT to_jsonb(p) ? 'reviewedAt' AS present FROM "CalendarPost" p WHERE id=$1`,[p.id])).rows[0].present)await tx.query(`UPDATE "CalendarPost" SET "approvalNote"=$2,"reviewedAt"=clock_timestamp() WHERE id=$1`,[p.id,input.approved?null:input.note?.trim()||null]);
+   if(!input.approved)await tx.query(`UPDATE "CalendarPost" SET "tikTokConsentBy"=NULL,"tikTokConsentAccountId"=NULL,"tikTokConsentVersion"=NULL,"publishStatus"=CASE WHEN "publishStatus"='SCHEDULED' THEN 'NOT_SCHEDULED' ELSE "publishStatus" END,"instagramPublishStatus"=CASE WHEN "instagramPublishStatus"='SCHEDULED' THEN 'NOT_SCHEDULED' ELSE "instagramPublishStatus" END,"tikTokPublishStatus"=CASE WHEN "tikTokPublishStatus"='SCHEDULED' THEN 'NOT_SCHEDULED' ELSE "tikTokPublishStatus" END WHERE id=$1`,[p.id]);
+   if((await tx.query(`SELECT to_jsonb(p) ? 'reviewedAt' AS present FROM "CalendarPost" p WHERE id=$1`,[p.id])).rows[0].present)await tx.query(`UPDATE "CalendarPost" SET "approvalNote"=$2,"reviewedAt"=clock_timestamp() WHERE id=$1`,[p.id,revisionNote]);
    // DB eligibility invalidation is permanent for withdrawn revisions. No implicit viewer scheduling/delegation.
    const result={ok:true,approvalStatus:input.approved?'APPROVED':'NEEDS_REVISION',maySend:false};await tx.query(`INSERT INTO "PublishingApplicationOperation"("operationId",actor,"requestHash",result) VALUES($1,$2,$3,$4)`,[input.operationId,authority.principalId,hash,result]);return result;
   });
@@ -143,7 +147,7 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
  async function media(input:{operationId:string;actor:string;calendarId:string;postId:string;assetId:string;remove?:boolean;upload?:unknown},verifyUpload:(upload:unknown)=>Promise<{fileKey:string;objectVersion:string;contentSha256:string;mediaType:'PHOTO'|'VIDEO';sizeBytes:string;verifiedFor:{calendarId:string;postId:string};reservationId?:string;sourceAssetId?:string;sourcePostId?:string}>){
   const access=input.remove?'calendar.edit':'creatives.upload';await permission(input.actor,input.calendarId,access);const verified=input.remove?null:await verifyUpload({upload:input.upload,calendarId:input.calendarId,postId:input.postId,actor:input.actor});
   return replay(input.operationId,input.actor,{...input,upload:verified},async tx=>{
-   const {v}=services(tx);await v.lockForPolicyChange(tx);await v.validateWorkspacePermission(tx,{actor:input.actor,calendarId:input.calendarId,permission:access});const p=await post(tx,input.postId,input.calendarId);if(p.creativeBrief)throw Error('Use the creative brief editor to develop this content');if(p.approvalStatus==='APPROVED'||p.publishWorkerStartedAt||p.tikTokInitStartedAt||p.tikTokPublishId||p.instagramMediaId||p.platformPostId||await busy(tx,p.id))throw Error('MEDIA_LOCKED');
+   const {v}=services(tx);await v.lockForPolicyChange(tx);await v.validateWorkspacePermission(tx,{actor:input.actor,calendarId:input.calendarId,permission:access});const p=await post(tx,input.postId,input.calendarId);if(p.approvalStatus==='APPROVED'||p.publishWorkerStartedAt||p.tikTokInitStartedAt||p.tikTokPublishId||p.instagramMediaId||p.platformPostId||await busy(tx,p.id))throw Error('MEDIA_LOCKED');
    // Cancellation requires publishing.manage. Contributors cannot invalidate a publisher's live intent silently.
    if((await tx.query(`SELECT 1 FROM "PublishingIntent" WHERE "postId"=$1 AND state='ACTIVE'`,[p.id])).rows.length)await invalidate(tx,p,input.actor,input.operationId,access);
    if(!input.remove){if(!verified||!/^\d+$/.test(verified.sizeBytes)||BigInt(verified.sizeBytes)>BigInt(Number.MAX_SAFE_INTEGER))throw Error('VERIFIED_UPLOAD_SIZE_REQUIRED');
@@ -161,7 +165,7 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
    if(input.remove){if(!(await tx.query(`DELETE FROM "CalendarPostAsset" WHERE id=$1 AND "postId"=$2 RETURNING id`,[input.assetId,p.id])).rows.length)throw Error('Asset not found');}else{
     if(verified?.verifiedFor?.calendarId!==input.calendarId||verified?.verifiedFor?.postId!==input.postId)throw Error('UPLOAD_RESOURCE_BINDING_REQUIRED');if(!verified?.objectVersion||!/^[a-f0-9]{64}$/.test(verified.contentSha256))throw Error('VERIFIED_UPLOAD_REQUIRED');
     const updated=(await tx.query(`INSERT INTO "CalendarPostAsset"(id,"postId","fileKey","mediaType","displayOrder","objectVersion","contentSha256","sizeBytes") VALUES($1,$2,$3,$4,(SELECT count(*)::integer FROM "CalendarPostAsset" WHERE "postId"=$2),$5,$6,$7) ON CONFLICT(id) DO UPDATE SET "fileKey"=EXCLUDED."fileKey","objectVersion"=EXCLUDED."objectVersion","contentSha256"=EXCLUDED."contentSha256","mediaType"=EXCLUDED."mediaType","sizeBytes"=EXCLUDED."sizeBytes" WHERE "CalendarPostAsset"."postId"=EXCLUDED."postId" RETURNING id`,[input.assetId,p.id,verified.fileKey,verified.mediaType,verified.objectVersion,verified.contentSha256,verified.sizeBytes])).rows;if(updated.length!==1)throw Error('ASSET_RESOURCE_SCOPE_CONFLICT');
-   }await tx.query(`UPDATE "CalendarPost" SET "tikTokConsentAt"=NULL,"tikTokConsentHash"=NULL,"tikTokConsentBy"=NULL WHERE id=$1`,[p.id]);return {ok:true,assetId:input.assetId};
+   }await tx.query(`UPDATE "CalendarPost" SET "tikTokConsentAt"=NULL,"tikTokConsentHash"=NULL,"tikTokConsentBy"=NULL,"internalReviewStatus"='PENDING',"internalReviewNote"=NULL,"internalReviewedAt"=NULL,"internalReviewedBy"=NULL,"internalReviewVersion"="internalReviewVersion"+1,"approvalStatus"='PENDING',"approvalNote"=NULL,"reviewedAt"=NULL,"updatedAt"=clock_timestamp() WHERE id=$1`,[p.id]);return {ok:true,assetId:input.assetId};
   });
  }
  async function account(input:{operationId:string;actor:string;calendarId:string;bindingId:string;expectedVersion:number;disconnect?:boolean;proof:unknown}){

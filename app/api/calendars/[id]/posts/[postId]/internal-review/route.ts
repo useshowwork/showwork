@@ -23,6 +23,9 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       const error = internalReviewError(current, decision.status);
       if (error) throw new Error(error);
       if (current.internalReviewVersion !== decision.version) throw new Error('This post changed. Refresh and review the latest version.');
+      // Confirm first inside this transaction: the content-change trigger resets
+      // review state when isAiDraft changes. Approve only after that reset.
+      if (current.isAiDraft && decision.status === "APPROVED") await tx.calendarPost.update({where:{id:postId},data:{isAiDraft:false}});
       return tx.calendarPost.update({where:{id:postId},data:{internalReviewStatus:decision.status ?? current.internalReviewStatus,internalReviewNote:decision.note,
         internalReviewedAt:decision.status === undefined ? current.internalReviewedAt : new Date(),internalReviewedBy:decision.status === undefined ? current.internalReviewedBy : creator.id,internalReviewVersion:{increment:1}},
         include:{assets:{orderBy:{displayOrder:'asc'}},videoComments:true,customFields:true}});

@@ -26,7 +26,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     if (!(await hasCalendarPermission(creator.id, id, "publishing.manage"))) return NextResponse.json({ error: "You cannot change publishing settings." }, { status: 403 });
     await db.socialCalendar.update({ where: { id }, data: { autoPublishEnabled: body.autoPublishEnabled, publishingPreferenceSetAt: new Date() } });
   } else if (body?.action === "complete") {
-    if (workspaceSetupStep(state) < 4) return NextResponse.json({ error: "Finish the setup steps before completing your review." }, { status: 409 });
+    if (workspaceSetupStep(state) < 3) return NextResponse.json({ error: "Finish the setup steps before completing your review." }, { status: 409 });
     await db.socialCalendar.update({ where: { id }, data: { setupCompletedAt: new Date() } });
   } else return NextResponse.json({ error: "Choose a valid setup action." }, { status: 400 });
   return NextResponse.json(await getWorkspaceSetup(id));

@@ -53,7 +53,7 @@ export async function GET(
     if (!canAccessCalendar(calendar.manager)) {
       return NextResponse.json({ error: "This workspace isn’t active." }, { status: 403 });
     }
-    const report = await getCalendarReportingData(calendar.id, req.nextUrl.searchParams, false);
+    const report = await getCalendarReportingData(calendar.id, req.nextUrl.searchParams, false, false, true);
     let updating = false;
     let updateUnavailable = false;
     try {

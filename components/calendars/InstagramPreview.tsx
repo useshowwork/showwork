@@ -533,7 +533,7 @@ function GridCell({
         )
       ) : (
         <div className="flex h-full w-full items-center justify-center">
-          <div className="flex flex-col items-center gap-2 px-3 text-center"><IconCamera className="h-5 w-5 text-white/30"/><span className="line-clamp-3 text-[10px] leading-relaxed text-white/55">{post.caption || "Creative coming soon"}</span></div>
+          <div className="flex flex-col items-center gap-2 px-3 text-center"><IconCamera className="h-5 w-5 text-white/30"/><span className="text-[10px] font-semibold text-white/70">Awaiting creative</span><span className="text-[9px] leading-relaxed text-white/40">No image or video uploaded</span></div>
         </div>
       )}
 
@@ -677,7 +677,7 @@ export default function InstagramPreview({
 
             <div
               ref={feedScrollRef}
-              className="h-[610px] overflow-y-auto overscroll-contain"
+              className={styles.feedViewport}
               style={{
                 background: "#050505",
                 scrollbarWidth: "none",
@@ -700,7 +700,7 @@ export default function InstagramPreview({
              PROFILE MODE — MATCHES THE REFERENCE INSTAGRAM
           ─────────────────────────────────────────────────── */
           <div
-            className="h-[658px] overflow-y-auto bg-[#080b0e]"
+            className={styles.profileViewport}
             style={{
               scrollbarWidth: "none",
             }}

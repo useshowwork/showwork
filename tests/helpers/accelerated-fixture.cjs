@@ -6,6 +6,7 @@ exports.acceleratedFixture=async(cluster,n,run,{activate=true,legacyPost=false}=
  await h.q(fs.readFileSync('scripts/publishing-reliability/provider-schema.sql','utf8'));
  await h.q(`ALTER TABLE "CalendarPost" ADD COLUMN "postDate" timestamptz DEFAULT now(),ADD COLUMN "publishWorkerStartedAt" timestamptz,ADD COLUMN "tikTokInitStartedAt" timestamptz,ADD COLUMN "tikTokPublishId" text,ADD COLUMN "instagramMediaId" text,ADD COLUMN "platformPostId" text`);
  await h.q(`ALTER TABLE "CalendarPost" ADD COLUMN hook text,ADD COLUMN script text,ADD COLUMN category text,ADD COLUMN "contentIdea" text,ADD COLUMN "tikTokPrivacyLevel" text`);
+ await h.q(`ALTER TABLE "CalendarPost" ADD COLUMN "creativeBrief" jsonb,ADD COLUMN "internalReviewStatus" text DEFAULT 'APPROVED',ADD COLUMN "internalReviewNote" text,ADD COLUMN "internalReviewedAt" timestamptz,ADD COLUMN "internalReviewedBy" text,ADD COLUMN "internalReviewVersion" integer NOT NULL DEFAULT 1,ADD COLUMN "approvalNote" text,ADD COLUMN "reviewedAt" timestamptz`);
  await h.q(`ALTER TABLE "CalendarPostAsset" ADD COLUMN "sizeBytes" bigint NOT NULL DEFAULT 0`);
  await h.q(`ALTER TABLE "SocialConnection" ADD COLUMN "updatedAt" timestamptz NOT NULL DEFAULT now()`);
  await h.q(fs.readFileSync('scripts/publishing-reliability/integration-schema.sql','utf8'));

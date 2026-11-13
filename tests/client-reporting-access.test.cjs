@@ -30,6 +30,8 @@ test('unlocked clients can read recommendations even when legacy sharing is disa
   assert.equal(response.body.insights[0].recommendation, 'Try videos');
   assert.equal(route.calls[0][0], 'calendar');
   assert.equal(route.calls[0][2], false);
+  assert.equal(route.calls[0][3], false);
+  assert.equal(route.calls[0][4], true);
 });
 
 test('client reporting still requires a valid workspace password token', async () => {

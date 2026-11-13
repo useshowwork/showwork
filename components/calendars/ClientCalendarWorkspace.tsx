@@ -4,17 +4,18 @@ import PlatformBrandIcon from "./PlatformBrandIcon";
 import styles from "./ClientWorkspace.module.css";
 import HelpLink from "@/components/help/HelpLink";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Moon, Sun, ChartNoAxesCombined, ArrowUpRight, CalendarDays, CheckCheck, Clock3, FileImage, ShieldCheck, MoreHorizontal, LayoutDashboard, MessageSquareText } from "lucide-react";
+import { Moon, Sun, ChartNoAxesCombined, ArrowUpRight, CalendarDays, CheckCheck, Clock3, FileImage, ShieldCheck, MoreHorizontal, ContactRound, LayoutDashboard, MessageSquareText } from "lucide-react";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { useSearchParams } from "next/navigation";
 import MobileDrawer, { NavigationToggle } from "@/components/navigation/MobileDrawer";
+import CalendarLeadsPanel from "./CalendarLeadsPanel";
 import CalendarReportingPanel from "@/components/calendars/CalendarReportingPanel";
 import ClientCalendarView from "@/components/calendars/ClientCalendarView";
 import SocialFeedPreview from "@/components/calendars/SocialFeedPreview";
 import InstagramPreview from "@/components/calendars/InstagramPreview";
 import TikTokPreview from "@/components/calendars/TikTokPreview";
 
-type WorkspaceView = "overview" | "calendar" | "instagram" | "tiktok" | "linkedin" | "facebook" | "x" | "review" | "analytics";
+type WorkspaceView = "leads" | "overview" | "calendar" | "instagram" | "tiktok" | "linkedin" | "facebook" | "x" | "review" | "analytics";
 
 type Platform =
   | "INSTAGRAM"
@@ -100,6 +101,7 @@ function Icon({
     | "linkedin"
     | "facebook"
     | "x"
+    | "leads"
     | "analytics"
     | "review"
     | "check"
@@ -111,6 +113,7 @@ function Icon({
   className?: string;
 }) {
   if (["instagram","tiktok","linkedin","facebook","x"].includes(name)) return <PlatformBrandIcon platform={name.toUpperCase()} size={18}/>;
+  if (name === "leads") return <ContactRound className={className} aria-hidden="true"/>;
   if (name === "analytics") return <ChartNoAxesCombined className={className} aria-hidden="true"/>;
 
   const common = {
@@ -315,12 +318,14 @@ export default function ClientCalendarWorkspace({
   const [previewPostId, setPreviewPostId] = useState<string>();
   const [previewRequest, setPreviewRequest] = useState(0);
   const [calendarVisited, setCalendarVisited] = useState(false);
+  const [analyticsVisited, setAnalyticsVisited] = useState(false);
+  const [leadsVisited, setLeadsVisited] = useState(false);
   const searchParams = useSearchParams();
   const requestedView = searchParams.get("view");
-  const validViews: WorkspaceView[] = ["overview", "calendar", "instagram", "tiktok", "linkedin", "facebook", "x", "review", "analytics"];
+  const validViews: WorkspaceView[] = ["overview", "calendar", "leads", "instagram", "tiktok", "linkedin", "facebook", "x", "review", "analytics"];
   const activeView: WorkspaceView = validViews.includes(requestedView as WorkspaceView)
     ? requestedView as WorkspaceView : "calendar";
-  useEffect(() => { if (activeView === "calendar") setCalendarVisited(true); }, [activeView]);
+  useEffect(() => { if (activeView === "calendar") setCalendarVisited(true); if (activeView === "analytics") setAnalyticsVisited(true); if (activeView === "leads") setLeadsVisited(true); }, [activeView]);
 
   // Keyboard navigation makes the workspace feel like an application rather than
   // a collection of page anchors.
@@ -368,6 +373,16 @@ export default function ClientCalendarWorkspace({
   );
 
   const contentScrollRef = useRef<HTMLDivElement>(null);
+  // Reset after the new view commits; resetting before navigation lets browser
+  // scroll anchoring carry the previous view's offset into the preview.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      contentScrollRef.current?.scrollTo({top:0,behavior:"instant"});
+      window.scrollTo({top:0,behavior:"instant"});
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeView]);
+
 
   const navigate = (view: WorkspaceView) => {
     setMobileOpen(false);
@@ -410,6 +425,7 @@ export default function ClientCalendarWorkspace({
             <div className="space-y-1">
               <SidebarItem active={activeView === "calendar"} onClick={() => navigate("calendar")} icon="calendar" label="Content Calendar" />
               <SidebarItem active={activeView === "analytics"} onClick={() => navigate("analytics")} icon="analytics" label="Analytics & Reporting" />
+              <SidebarItem active={activeView === "leads"} onClick={() => navigate("leads")} icon="leads" label="Leads" />
               <SidebarItem active={activeView === "overview"} onClick={() => navigate("overview")} icon="grid" label="Overview" />
             </div>
 
@@ -493,6 +509,8 @@ export default function ClientCalendarWorkspace({
                     ? "Content"
                     : activeView === "analytics"
                       ? "Analytics & Reporting"
+                    : activeView === "leads"
+                      ? "Leads"
                     : activeView === "review"
                       ? "Client review"
                       : "Social preview"}
@@ -539,8 +557,12 @@ export default function ClientCalendarWorkspace({
                 </section>
               </div>}
 
-              {activeView === "analytics" && (
-                <CalendarReportingPanel calendarId={slug} clientSlug={slug} isManager={false} canAnalyze={false} canApplyRecommendations={false} />
+              {(activeView === "leads" || leadsVisited) && <div hidden={activeView !== "leads"} data-client-panel="leads"><CalendarLeadsPanel calendarId={slug} clientSlug={slug} canEdit={false}/></div>}
+
+              {(activeView === "analytics" || analyticsVisited) && (
+                <div hidden={activeView !== "analytics"} data-client-panel="analytics">
+                  <CalendarReportingPanel calendarId={slug} clientSlug={slug} onOpenLeads={()=>navigate("leads")} isManager={false} canAnalyze={false} canApplyRecommendations={false} />
+                </div>
               )}
 
               {(activeView === "calendar" || calendarVisited) && (
@@ -568,12 +590,7 @@ export default function ClientCalendarWorkspace({
 
               {activeView === "instagram" && (
                 <div className="mx-auto max-w-6xl">
-                  <ViewHeader
-                    eyebrow="Social preview"
-                    title="Instagram"
-                    description="See how the planned Instagram content comes together as a complete feed."
-                  />
-                  <div className="relative overflow-hidden rounded-[28px] border border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-panel))] p-3 sm:p-6">
+                  <div className="relative min-w-0 overflow-hidden rounded-[22px]">
                     <div className="pointer-events-none absolute -left-32 top-10 h-80 w-80 rounded-full bg-[#E1306C]/10 blur-[110px]" />
                     <div className="pointer-events-none absolute -right-32 bottom-10 h-80 w-80 rounded-full bg-[#7C3AED]/10 blur-[110px]" />
                     <div className="relative z-10">
@@ -585,12 +602,7 @@ export default function ClientCalendarWorkspace({
 
               {activeView === "tiktok" && (
                 <div className="mx-auto max-w-6xl">
-                  <ViewHeader
-                    eyebrow="Social preview"
-                    title="TikTok"
-                    description="Experience the planned vertical content as a viewer would move through the feed."
-                  />
-                  <div className="relative overflow-hidden rounded-[28px] border border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-panel))] p-3 sm:p-6">
+                  <div className="relative min-w-0 overflow-hidden rounded-[22px]">
                     <div className="pointer-events-none absolute -left-32 top-10 h-80 w-80 rounded-full bg-[#25F4EE]/10 blur-[110px]" />
                     <div className="pointer-events-none absolute -right-32 bottom-10 h-80 w-80 rounded-full bg-[#FE2C55]/10 blur-[110px]" />
                     <div className="relative z-10">
@@ -618,7 +630,7 @@ export default function ClientCalendarWorkspace({
         </section>
       </div>
 
-      <nav className={styles.mobileDock} aria-label="Client workspace navigation">{([{id:"calendar",label:"Calendar",icon:CalendarDays},{id:"analytics",label:"Analytics",icon:ChartNoAxesCombined},{id:"overview",label:"Overview",icon:LayoutDashboard}] as const).map(item => <button key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={activeView === item.id ? "page" : undefined}><item.icon size={20}/><span>{item.label}</span></button>)}<button type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-current={["calendar","analytics","overview"].includes(activeView) ? undefined : "true"} aria-haspopup="dialog"><MoreHorizontal size={20}/><span>More</span></button></nav>
+      <nav className={styles.mobileDock} aria-label="Client workspace navigation">{([{id:"calendar",label:"Calendar",icon:CalendarDays},{id:"analytics",label:"Analytics",icon:ChartNoAxesCombined},{id:"leads",label:"Leads",icon:ContactRound},{id:"overview",label:"Overview",icon:LayoutDashboard}] as const).map(item => <button key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={activeView === item.id ? "page" : undefined}><item.icon size={20}/><span>{item.label}</span></button>)}<button type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-current={["calendar","analytics","leads","overview"].includes(activeView) ? undefined : "true"} aria-haspopup="dialog"><MoreHorizontal size={20}/><span>More</span></button></nav>
 
     </main>
   );

@@ -138,7 +138,11 @@ export default function CalendarWorkspaceShell({
     });
   };
   const [tourId, setTourId] = useState<WorkspaceSectionId | null>(null);
-  const [mountedInsightViews, setMountedInsightViews] = useState<Set<WorkspaceSectionId>>(() => new Set());
+  const [mountedInsightViews, setMountedInsightViews] = useState<Set<WorkspaceSectionId>>(() => new Set([activeId]));
+
+  useEffect(() => {
+    setMountedInsightViews(current => current.has(activeId) ? current : new Set(current).add(activeId));
+  }, [activeId]);
 
   const rememberInsightView = (id: WorkspaceSectionId) => {
 

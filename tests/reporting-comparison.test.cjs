@@ -47,12 +47,13 @@ test('disconnected accounts and empty histories are excluded', () => {
   assert.equal(result.followers.value, null);
   assert.equal(result.reach.value, null);
 });
-function reportingData(leadQueries = [], reportQueries = []) {
+function reportingData(leadQueries = [], reportQueries = [], historyStart = new Date("2020-01-01")) {
   const db = {
     calendarReportingPermission: { findUnique: async () => null },
     socialConnection: { findMany: async args => { reportQueries.push(args); return []; }, findFirst: async args => { if (args.where.platform === "FACEBOOK") reportQueries.push("facebook"); return null; } },
     publishedSocialPost: { findMany: async args => { reportQueries.push(args); return []; } },
     reportingInsight: { findMany: async args => { reportQueries.push(args); return []; } },
+    leadAnalyticsTracking: { findUnique: async () => historyStart ? {startedAt:historyStart} : null },
     calendarLead: { count: async args => { leadQueries.push(args); return 0; }, findMany: async args => { leadQueries.push(args); return []; } },
   };
   const mod = { exports: {} };
@@ -83,7 +84,7 @@ test('hot-lead shortlist stays in workspace, period and platform and excludes cl
   assert.equal(query.where.temperature, 'HOT');
   assert.deepEqual(query.where.status, { notIn: ['CUSTOMER', 'LOST'] });
   assert.deepEqual(query.where.socialConversation, { platform: { in: ['INSTAGRAM'] } });
-  assert.equal(query.where.createdAt.gte.toISOString(), '2026-10-01T00:00:00.000Z');
+  assert.equal(query.where.milestones.some.occurredAt.gte.toISOString(), '2026-10-01T00:00:00.000Z');
   assert.equal(query.select.email, undefined);
 });
 test('TikTok native posts restore views and engagement without inventing daily counters', () => {
@@ -140,7 +141,7 @@ test('report reads use persisted Facebook observations and never call the provid
   const savedSnapshot={snapshotDate:new Date('2026-10-06'),followers:15,reach:20,views:30,engagement:4};
   const savedPost={id:'saved',platformPostId:'post',publishedAt:new Date('2026-08-09'),caption:'Saved content',likes:4,comments:0,shares:0,reach:269,impressions:283,engagement:4,metricsUpdatedAt:new Date('2026-10-06')};
   const connection={id:'fb',platform:'FACEBOOK',platformAccountId:'page',accountName:'Page',status:'CONNECTED',accountMetricSnapshots:[savedSnapshot],accountPosts:[savedPost]};
-  const db={socialConnection:{findMany:async()=>[connection],findFirst:async()=>connection},publishedSocialPost:{findMany:async()=>[]},reportingInsight:{findMany:async()=>[]},calendarLead:{count:async()=>0,findMany:async()=>[]}};
+  const db={leadAnalyticsTracking:{findUnique:async()=>({startedAt:new Date("2020-01-01")})},socialConnection:{findMany:async()=>[connection],findFirst:async()=>connection},publishedSocialPost:{findMany:async()=>[]},reportingInsight:{findMany:async()=>[]},calendarLead:{count:async()=>0,findMany:async()=>[]}};
   const deps={'@/lib/calendarPermissions':{canUseCalendarFeature:async()=>true},'@/lib/db':{db},'@/lib/r2':{publicUrlFor:()=>null},'@/lib/reporting/comparison':moduleUnderTest.exports};
   const {load}=require('./helpers/load-typescript.cjs');
   const original=global.fetch;global.fetch=()=>{throw Error('Provider IO forbidden on report reads');};
@@ -165,4 +166,28 @@ test('multiple platforms restrict every report query and reject unknown platform
   await data.getCalendarReportingData('workspace', new URLSearchParams({ platform: 'INSTAGRAM,FACEBOOK' }), true);
   assert.ok(queries.includes('facebook'));
   await assert.rejects(data.getCalendarReportingData('workspace', new URLSearchParams({ platform: 'INSTAGRAM,INVALID' }), true), /supported social platform/);
+});
+
+test('client lead summaries return counts scoped to workspace, period and channel without private records',async()=>{
+ const queries=[];
+ const report=await reportingData(queries).getCalendarReportingData('workspace',new URLSearchParams({from:'2026-10-01',to:'2026-10-02',platform:'INSTAGRAM'}),false,false,true);
+ assert.equal(report.leads.total,0);assert.equal(report.leads.hotCount,0);assert.equal(report.leads.customers,0);assert.deepEqual(report.leads.hottest,[]);
+ assert.equal(queries.length,5);assert.ok(queries.every(query=>query.select===undefined&&query.take===undefined));
+ for(const query of queries){assert.equal(query.where.calendarId,'workspace');assert.deepEqual(query.where.socialConversation,{platform:{in:['INSTAGRAM']}});}
+ assert.equal(queries[3].where.milestones.some.kind,'HOT');assert.equal(queries[4].where.milestones.some.kind,'CUSTOMER');
+ assert.equal(queries[3].where.createdAt,undefined);assert.equal(queries[4].where.createdAt,undefined);
+ assert.equal(queries[4].where.milestones.some.occurredAt.gte.toISOString(),'2026-10-01T00:00:00.000Z');
+});
+test('team members without lead access do not query or receive lead analytics',async()=>{
+ const queries=[];const report=await reportingData(queries).getCalendarReportingData('workspace',new URLSearchParams({from:'2026-10-01',to:'2026-10-02'}),true,false);
+ assert.equal(report.leads,null);assert.equal(queries.length,0);
+});
+
+test('partial periods retain recorded milestone counts instead of hiding the whole card',async()=>{
+ const queries=[];const report=await reportingData(queries,[],new Date('2026-10-02T12:00:00Z')).getCalendarReportingData('workspace',new URLSearchParams({from:'2026-10-01',to:'2026-10-02'}),false,false,true);
+ assert.equal(report.leads.milestoneCountsAvailable,true);assert.equal(report.leads.milestoneCountsComplete,false);assert.equal(report.leads.milestoneBasis,'tracked-period');assert.equal(report.leads.hotCount,0);assert.equal(report.leads.customers,0);assert.equal(queries.length,5);
+});
+test('periods entirely before tracking keep historical milestone totals unavailable',async()=>{
+ const queries=[];const report=await reportingData(queries,[],new Date('2026-10-03T12:00:00Z')).getCalendarReportingData('workspace',new URLSearchParams({from:'2026-10-01',to:'2026-10-02'}),false,false,true);
+ assert.equal(report.leads.milestoneBasis,'unavailable');assert.equal(report.leads.hotCount,null);assert.equal(report.leads.customers,null);assert.equal(queries.length,3);
 });

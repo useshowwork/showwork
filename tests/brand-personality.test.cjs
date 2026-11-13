@@ -5,7 +5,7 @@ test('five single-choice answers and custom answers validate and round-trip',()=
  const profile=brand.parseBrandPersonality(makeProfile(true));
  assert.deepEqual(brand.readBrandPersonality(brand.serializeBrandPersonality(profile)),profile);
  assert.equal(profile.answers.represents.custom,'Curiosity and shared progress');
- assert.throws(()=>brand.parseBrandPersonality({version:1,answers:{}}));
+ assert.equal(brand.parseBrandPersonality({version:1,answers:{}}).answers.personality.choices.length,0);
  const invalid=makeProfile(true);invalid.answers.represents.custom=' ';assert.throws(()=>brand.parseBrandPersonality(invalid));
  invalid.answers.represents.custom='x'.repeat(201);assert.throws(()=>brand.parseBrandPersonality(invalid));
  const multiple=makeProfile();multiple.answers.represents.choice=['Teamwork','Community'];assert.throws(()=>brand.parseBrandPersonality(multiple));
@@ -38,8 +38,8 @@ test('workspace profiles save reload update and remain isolated without duplicat
  assert.deepEqual((await (await f.get('a')).json()).profile,brand.parseBrandPersonality(a));
  assert.deepEqual((await (await f.get('b')).json()).profile,brand.parseBrandPersonality(b));
  a.answers.personality={choice:'Bold',custom:''};await f.save('a',a);
- assert.equal((await (await f.get('a')).json()).profile.answers.personality.choice,'Bold');
- assert.equal((await (await f.get('b')).json()).profile.answers.personality.choice,b.answers.personality.choice);
+ assert.deepEqual((await (await f.get('a')).json()).profile.answers.personality.choices,['Bold']);
+ assert.deepEqual((await (await f.get('b')).json()).profile.answers.personality.choices,[b.answers.personality.choice]);
  assert.equal(f.records.size,2);
 });
 test('permission and authentication checks occur before reading or writing knowledge',async()=>{
@@ -54,7 +54,7 @@ test('read-only knowledge users can inspect profiles but cannot update them',asy
 });
 test('invalid saves never replace the existing knowledge profile',async()=>{
  const f=fixture();await f.save('a',makeProfile());const before=JSON.stringify(f.records.get('a'));
- assert.equal((await f.save('a',{version:1,answers:{}})).status,400);assert.equal(JSON.stringify(f.records.get('a')),before);
+ assert.equal((await f.save('a',{version:1,answers:{personality:{choices:['Invalid trait'],custom:''}}})).status,400);assert.equal(JSON.stringify(f.records.get('a')),before);
 });
 test('content and reply context include only their own personality and separate preferences from factual documents',async()=>{
  const profiles={a:makeProfile(true),b:makeProfile()};profiles.b.answers.communication={choice:'Calm',custom:''};
@@ -97,16 +97,31 @@ test('AI Studio passes personality into campaign planning with holistic interpre
  assert.match(body.instructions,/Do not mechanically repeat/);
  assert.match(body.input,/BRAND_PERSONALITY_CONTEXT_V1/);
 });
-test('radio form displays five questions, single-choice names and custom input only for Other',()=>{
+test('checkbox form displays five questions and custom input only for Other',()=>{
  const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
  const {BrandPersonalityQuestions}=load('components/calendars/BrandPersonalityCard.tsx');
  const render=answers=>renderToStaticMarkup(React.createElement(BrandPersonalityQuestions,{calendarId:'workspace',answers,disabled:false,onAnswer:()=>{}}));
- const blank=render({});assert.equal((blank.match(/<fieldset/g)||[]).length,5);assert.equal((blank.match(/type="radio"/g)||[]).length,30);assert.doesNotMatch(blank,/type="text"/);
- const custom=render(makeProfile(true).answers);assert.match(custom,/type="text"/);assert.match(custom,/Curiosity and shared progress/);assert.match(custom,/name="workspace-represents"/);assert.match(custom,/maxLength="200"/i);
+ const blank=render({});assert.equal((blank.match(/<fieldset/g)||[]).length,5);assert.equal((blank.match(/type="checkbox"/g)||[]).length,30);assert.doesNotMatch(blank,/type="text"/);
+ const custom=render(brand.parseBrandPersonality(makeProfile(true)).answers);assert.match(custom,/type="text"/);assert.match(custom,/Curiosity and shared progress/);assert.match(custom,/name="workspace-represents"/);assert.match(custom,/maxLength="200"/i);
 });
 test('personality by itself never becomes factual business knowledge',async()=>{
  const db={calendarBusinessDocument:{findMany:async()=>[{id:brand.brandPersonalityDocumentId('a'),originalName:'Brand personality',extractedText:brand.serializeBrandPersonality(makeProfile())}]},socialCalendar:{findUnique:async()=>null},businessResearchRun:{findFirst:async()=>null}};
  const {getBusinessKnowledgeContext}=load('lib/knowledge/context.ts',{'@/lib/db':{db},'@/lib/openai':{}});
  const result=await getBusinessKnowledgeContext('a','What does this product cost?','reply');
  assert.match(result,/Brand personality is style only/);assert.match(result,/do not invent business facts/);assert.doesNotMatch(result,/BUSINESS SOURCE EVIDENCE/);
+});
+
+test('multiple choices and optional questions survive save, reload and AI context',async()=>{
+ const partial={version:1,answers:{personality:{choices:['Professional','Friendly','Professional'],custom:''},represents:{choices:['Community','Other'],custom:'Shared progress'}}};
+ const normalized=brand.parseBrandPersonality(partial);
+ assert.deepEqual(normalized.answers.personality.choices,['Professional','Friendly']);
+ const f=fixture();assert.equal((await f.save('multi',partial)).status,200);
+ assert.deepEqual((await (await f.get('multi')).json()).profile,normalized);
+ const context=brand.brandPersonalityContext(normalized);
+ for(const selected of ['Professional','Friendly','Community','Shared progress'])assert.ok(context.includes(selected));
+ assert.equal(brand.brandPersonalityContext(brand.parseBrandPersonality({version:1,answers:{}})),'');
+});
+test('legacy single-choice profiles remain readable as checkbox selections',()=>{
+ const old='SHOWWORK_BRAND_PERSONALITY_V1\n'+JSON.stringify(makeProfile());
+ assert.deepEqual(brand.readBrandPersonality(old).answers.personality.choices,['Fun']);
 });

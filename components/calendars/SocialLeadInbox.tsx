@@ -12,6 +12,8 @@ import ReplyDraftAssistant from "./ReplyDraftAssistant";
 import { normalizeReplyProfile, type ReplyProfile } from "@/lib/socialMessaging/replyProfile";
 import XChatInbox, { type XChatInboxState } from "./XChatInbox";
 import { mergeInboxConversations, resolveSelectedInboxConversation, type UnifiedInboxConversation } from "@/lib/xChat/inbox";
+import { announceLeadChange } from "@/lib/leadChanges";
+import { createClientRequestGate } from "@/lib/clientRequestGate";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, Minimize2, LockKeyhole, ChevronDown, BellRing, UserRound, Bot, AlertCircle, ArrowLeft, ArrowUpRight, Check, Inbox, MessageSquareText, RefreshCw, Search, Send, Settings2, Sparkles, SlidersHorizontal, X } from "lucide-react";
 
@@ -62,6 +64,7 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
   const lastThreadRef = useRef("");
   const nearBottomRef = useRef(true);
   const requestRef = useRef<AbortController | null>(null);
+  const readGate = useRef(createClientRequestGate());
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -78,13 +81,14 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
     lastThreadRef.current = "";
   }, [endpoint]);
 
-  const load = useCallback(async (quiet = false) => {
-    // Background refreshes must not cancel a slower request before it finishes.
-    if (quiet && requestRef.current) return;
-    requestRef.current?.abort();
+  const readKey = JSON.stringify([endpoint, platform, status, search, unreadOnly, attentionOnly, clientMode]);
+  const currentReadKey = useRef(readKey);
+  currentReadKey.current = readKey;
+  const load = useCallback((quiet = false, afterCurrent = false) => readGate.current.run(readKey, async () => {
+    if (currentReadKey.current !== readKey) return;
     const controller = new AbortController();
     requestRef.current = controller;
-    if (!quiet) setLoading(true);
+    setLoading(true);
     try {
       const query = new URLSearchParams();
       const linkedConversation = new URLSearchParams(window.location.search).get("conversation");
@@ -97,17 +101,17 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
       const response = await calendarMutationFetch(`${endpoint}?${query}`, { cache: "no-store", signal: controller.signal });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not load the inbox.");
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || currentReadKey.current !== readKey) return;
       setData(result);
       setPinnedConversation(current => current?.connection?.id && result.accounts.some((account: {id: string}) => account.id === current.connection?.id) ? current : null);
       setSelectedId(current => current || result.conversations[0]?.id || "");
       if (!quiet) setError("");
-    } catch (err) { if (!controller.signal.aborted && !quiet) setError(err instanceof Error ? err.message : "Could not load the inbox."); }
+    } catch (err) { if (!controller.signal.aborted && currentReadKey.current === readKey && !quiet) setError(err instanceof Error ? err.message : "Could not load the inbox."); }
     finally { if (requestRef.current === controller) { requestRef.current = null; setLoading(false); } }
-  }, [endpoint, platform, status, search, unreadOnly, attentionOnly, clientMode]);
+  }, afterCurrent), [endpoint, platform, status, search, unreadOnly, attentionOnly, clientMode, readKey]);
 
   useEffect(() => { if (!calendarId) return; return subscribeChannelChanges(calendarId, () => {
-    requestRef.current?.abort();
+    requestRef.current?.abort(); readGate.current.clear();
     setData(null); setPinnedConversation(null); setSelectedId(""); setXChats({}); setDrafts({});
     void load();
   }); }, [calendarId, load]);
@@ -117,7 +121,7 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), search.trim() ? 250 : 0);
-    return () => { window.clearTimeout(timer); requestRef.current?.abort(); };
+    return () => { window.clearTimeout(timer); requestRef.current?.abort(); readGate.current.clear(); };
   }, [load, search]);
   useEffect(() => {
     const refresh = () => { void load(true); };
@@ -185,7 +189,7 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
     if (conversation.encrypted || !inboxAccess || !canReplyFromWorkspace || clientMode || !calendarId || conversation.unreadCount === 0) return;
     try {
       const response = await calendarMutationFetch(`${endpoint}/${encodeURIComponent(conversation.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markRead: true }) });
-      if (response.ok) void latestLoadRef.current(true);
+      if (response.ok) void latestLoadRef.current(true, true);
     } catch { /* Keep the open chat usable if marking read briefly fails. */ }
   }
 
@@ -199,7 +203,7 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
       // Refresh without the attention filter so an acknowledged thread remains up to date.
       const fresh = await calendarMutationFetch(`${endpoint}`, { cache: "no-store" });
       if (fresh.ok) { const inbox = await fresh.json(); const thread = inbox.conversations.find((item: Conversation) => item.id === selected.id); if (thread) setPinnedConversation(thread); }
-      await latestLoadRef.current(true);
+      await latestLoadRef.current(true, true);
       setSuccess(aiAction === "resume" ? (data?.settings.aiAutoReplyEnabled ? "AI will handle the next incoming message. Earlier messages will not be replayed." : "Conversation pause cleared. Automatic replies remain off in workspace settings.") : "You have taken over. AI stays paused until you resume it.");
     } catch (err) { setError(err instanceof Error ? err.message : "Could not update AI handoff."); }
     finally { setChangingControl(false); }
@@ -210,8 +214,9 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
     try {
       const response = await calendarMutationFetch(`${endpoint}/${encodeURIComponent(selected.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ leadStatus: value }) });
       if (!response.ok) { const result = await response.json().catch(() => ({})); setError(result.error || "Could not update lead status."); return; }
+      announceLeadChange(calendarId);
       setPinnedConversation(current => current?.id === selected.id ? { ...current, leadStatus: value } : current);
-      void latestLoadRef.current(true);
+      void latestLoadRef.current(true, true);
     } catch { setError("Could not update lead status. Please try again."); }
   }
 
@@ -226,9 +231,9 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
     try {
       const response = await calendarMutationFetch(`${endpoint}/${encodeURIComponent(selected.id)}/reply`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: draft.trim() }) });
       const result = await response.json();
-      if (!response.ok) { if (["SEND_UNCONFIRMED", "SEND_PENDING"].includes(result.code)) await latestLoadRef.current(true); throw new Error(result.error || "Could not send reply."); }
+      if (!response.ok) { if (["SEND_UNCONFIRMED", "SEND_PENDING"].includes(result.code)) await latestLoadRef.current(true, true); throw new Error(result.error || "Could not send reply."); }
       setDraft(""); setSuccess("Reply sent to the platform.");
-      await latestLoadRef.current(true);
+      await latestLoadRef.current(true, true);
       window.setTimeout(() => setSuccess(""), 3000);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not send reply."); }
     finally { setSending(false); }
@@ -256,7 +261,7 @@ export default function SocialLeadInbox({ calendarId, slug, clientMode = false, 
       const response = await calendarMutationFetch(`${endpoint}/${encodeURIComponent(selected.id)}/delivery-check`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({operationId:unresolvedDelivery.id,confirmation:"CHECKED_PLATFORM_INBOX"})});
       if (!response.ok) throw Error("Could not record the delivery check. Refresh and try again.");
       clearCheckedInboxReply(`${endpoint}/${encodeURIComponent(selected.id)}/reply`);
-      await latestLoadRef.current(true);
+      await latestLoadRef.current(true, true);
     } catch (error) { setError(error instanceof Error ? error.message : "Could not record the check."); }
   }
   const whatsappWindowClosed = selected?.platform === "WHATSAPP" && (!selected.replyWindowExpiresAt || Date.parse(selected.replyWindowExpiresAt) <= Date.now());

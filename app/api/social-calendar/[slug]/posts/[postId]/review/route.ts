@@ -1,3 +1,4 @@
+import { clientRevisionNote } from "@/lib/clientPostReview";
 import { withoutInternalReview } from "@/lib/calendarInternalReview";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { canAccessCalendarById } from "@/lib/calendarPermissions";
@@ -104,6 +105,12 @@ export async function POST(
     );
   }
 
+  let revisionNote: string | null = null;
+  if (!approved) {
+    try { revisionNote = clientRevisionNote(note); }
+    catch (error) { return NextResponse.json({error: error instanceof Error ? error.message : "Add your feedback."}, {status:400}); }
+  }
+
   if (["PUBLISHING", "PUBLISHED"].includes(publishingStatus(post))) {
     return NextResponse.json({ error: "This post is already publishing or published and cannot be reviewed again." }, { status: 409 });
   }
@@ -119,7 +126,7 @@ export async function POST(
     where: { id: postId, internalReviewStatus: "APPROVED", updatedAt: post.updatedAt, ...statusWhere(post.platform, publishingStatus(post)), ...(canSchedule ? { calendar: { autoPublishEnabled: true } } : {}) },
     data: {
       approvalStatus: approved ? "APPROVED" : "NEEDS_REVISION",
-      approvalNote: approved ? null : typeof note === "string" ? note.trim() || null : null,
+      approvalNote: revisionNote,
       reviewedAt: new Date(),
       ...(!approved && post.platform === "TIKTOK" ? { tikTokConsentAt: null, tikTokConsentBy: null, tikTokConsentHash: null, tikTokConsentAccountId: null, tikTokConsentVersion: null } : {}),
       ...(!approved && publishingStatus(post) === "SCHEDULED" ? statusUpdate(post.platform, "NOT_SCHEDULED") : {}),

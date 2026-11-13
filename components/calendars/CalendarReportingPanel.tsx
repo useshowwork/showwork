@@ -1,10 +1,13 @@
 "use client";
 
+import { subscribeLeadChanges } from "@/lib/leadChanges";
+import { createReportingRequestGate } from "@/lib/reporting/requestGate";
 import { strategyBrief, type MonthlyStrategy } from "@/lib/reporting/monthlyStrategy";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import WorkspaceFeatureNotice from "@/components/calendars/WorkspaceFeatureNotice";
 import PlatformBrandIcon from "./PlatformBrandIcon";
+import ReportingLeadMetrics from "./ReportingLeadMetrics";
 import ReportingVisuals from "./ReportingVisuals";
 import ReportingChannels from "./ReportingChannels";
 import ReportingInsights from "./ReportingInsights";
@@ -34,7 +37,7 @@ export type Report = {
   updateUnavailable?: boolean;
   comparisonPeriod: { start: string; end: string };
   performance: Record<string, Change>;
-  leads: { total: number; acquired: Change; hotCount: number; customers: number; hottest: Array<{ id: string; name: string; company: string | null; username: string | null; status: string; source: string; updatedAt: string; socialConversation: { platform: string; participantName: string | null; participantUsername: string | null } | null }> } | null;
+  leads: { total: number; acquired: Change; hotCount: number | null; customers: number | null; historyStartedAt?: string | null; milestoneCountsAvailable?: boolean; milestoneCountsComplete?: boolean; milestoneBasis?: "period" | "tracked-period" | "current" | "unavailable"; hottest: Array<{ id: string; name: string; company: string | null; username: string | null; status: string; source: string; updatedAt: string; socialConversation: { platform: string; participantName: string | null; participantUsername: string | null } | null }> } | null;
   period: { start: string; end: string };
   facebookPageActivity: {
     pageId: string; pageName: string; followers: number | null;
@@ -78,7 +81,7 @@ function Trend({ metric, followers = false }: { metric: Change; followers?: bool
   return <div><span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${metric.delta === 0 ? "bg-slate-100 text-slate-600" : metric.delta > 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}><Icon aria-hidden="true" className="h-3.5 w-3.5" />{metric.delta > 0 ? "+" : metric.delta < 0 ? "−" : ""}{followers && metric.delta === 0 ? "No net follower change recorded" : `${metric.delta === 0 ? "0" : number(Math.abs(metric.delta))}${followers ? " followers" : ""}`}{metric.percent != null && !(followers && metric.delta === 0) && <span className="font-normal">({Math.abs(metric.percent).toFixed(1)}%)</span>}<span className="sr-only">{metric.delta > 0 ? "increase" : metric.delta < 0 ? "decrease" : "no change"}</span></span>{metric.note && <p className="mt-2 text-[10px] leading-4 text-slate-500">{renderMetricNote(metric.note)}</p>}</div>;
 }
 
-export default function CalendarReportingPanel({ calendarId, isManager, canAnalyze, canApplyRecommendations, canViewLeads = true, clientSlug, advancedAccess = true, recommendationsAccess = true }: { calendarId: string; isManager: boolean; canAnalyze: boolean; canApplyRecommendations: boolean; canViewLeads?: boolean; clientSlug?: string; advancedAccess?: boolean; recommendationsAccess?: boolean }) {
+export default function CalendarReportingPanel({ calendarId, isManager, canAnalyze, canApplyRecommendations, canViewLeads = true, clientSlug, onOpenLeads, advancedAccess = true, recommendationsAccess = true }: { calendarId: string; isManager: boolean; canAnalyze: boolean; canApplyRecommendations: boolean; canViewLeads?: boolean; clientSlug?: string; onOpenLeads?:()=>void; advancedAccess?: boolean; recommendationsAccess?: boolean }) {
   const [from, setFrom] = useState(() => dateInput(new Date(Date.now() - 29 * 86400000)));
   const [to, setTo] = useState(() => dateInput(new Date()));
   const [platform, setPlatform] = useState("");
@@ -127,7 +130,11 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   }
 
   const requestVersion = useRef(0);
-  const load = useCallback(async () => {
+  const requestGate = useRef(createReportingRequestGate());
+  const currentQueryKey = useRef(queryKey);
+  currentQueryKey.current = queryKey;
+  const load = useCallback((afterCurrent = false) => requestGate.current.run(queryKey, async () => {
+    if (currentQueryKey.current !== queryKey) return;
     const version = ++requestVersion.current;
     if (!from || !to || from > to) { setError("Choose a valid reporting date range."); setLoadedReport(null); setLoading(false); return; }
     setLoading(true); setError("");
@@ -140,14 +147,14 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
       if (version === requestVersion.current) setLoadedReport({ key: queryKey, data });
     } catch (err) { if (version === requestVersion.current) setError(err instanceof Error ? err.message : "Could not load reporting."); }
     finally { if (version === requestVersion.current) setLoading(false); }
-  }, [calendarId, clientSlug, from, to, platform, queryKey]);
+  }, afterCurrent), [calendarId, clientSlug, from, to, platform, queryKey]);
 
   const latestLoad = useRef(load);
   const mounted = useRef(false);
   useEffect(() => {
     latestLoad.current = load;
     void load();
-    return () => { ++requestVersion.current; };
+    return () => { ++requestVersion.current; requestGate.current.clear(); };
   }, [load]);
   useEffect(() => {
     mounted.current = true;
@@ -157,7 +164,7 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   }, []);
 
   useEffect(() => {
-    const invalidate = () => { ++requestVersion.current; setLoadedReport(null); void latestLoad.current(); };
+    const invalidate = () => { ++requestVersion.current; requestGate.current.clear(); setLoadedReport(null); void latestLoad.current(); };
     const onChange = (event: Event) => {
       if ((event as CustomEvent<{ calendarId: string }>).detail?.calendarId === calendarId) invalidate();
     };
@@ -168,13 +175,20 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
     const onFocus = () => { void latestLoad.current(); };
     window.addEventListener("showwork-reporting-channels-changed", onChange);
     window.addEventListener("storage", onStorage);
+    const onVisible = () => {if(!document.hidden)void latestLoad.current();};
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange",onVisible);
     return () => {
       window.removeEventListener("showwork-reporting-channels-changed", onChange);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange",onVisible);
     };
   }, [calendarId, clientSlug]);
+
+  // Manager panels know the ID; client panels know only the slug. Each refresh
+  // still reads its own authenticated endpoint and never consumes event data.
+  useEffect(()=>subscribeLeadChanges(clientSlug ? undefined : calendarId,()=>{void latestLoad.current(true);}),[calendarId,clientSlug]);
 
   const syncInFlight = useRef(false);
   async function syncReportingNow() {
@@ -187,7 +201,7 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
       if (!response.ok) throw new Error(data.error || "Could not start the update.");
       if (mounted.current) {
         setSyncNotice(data.queued ? "Updating your results in the background. You can keep exploring." : data.eligible ? "Your results are up to date. Updates run automatically." : "Connect a supported channel to start collecting results.");
-        await latestLoad.current();
+        await latestLoad.current(true);
       }
     } catch (err) { if (mounted.current) setSyncNotice(err instanceof Error ? err.message : "Could not start the update."); }
     finally { syncInFlight.current = false; if (mounted.current) setSyncing(false); }
@@ -216,7 +230,7 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not analyze reporting data.");
-      if (mounted.current) { await latestLoad.current(); setStrategyDirty(false); }
+      if (mounted.current) { await latestLoad.current(true); setStrategyDirty(false); }
     } catch (err) { setError(err instanceof Error ? err.message : "Could not analyze reporting data."); }
     finally { setAnalyzing(false); }
   }
@@ -253,7 +267,7 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   const updatedAt = activeConnections.length && activeConnections.every(connection => connection.lastSyncAt)
     ? activeConnections.map(connection => connection.lastSyncAt!).sort()[0] : null;
   const hasObservations = activeConnections.some(connection => connection.lastSyncAt);
-  const primaryCards = [cards[0], cards[1], cards[3], !clientSlug && canViewLeads && report?.leads ? cards.at(-1)! : cards[2]];
+  const primaryCards = [cards[0], cards[1], cards[3], cards[2]];
   const topPosts = [...(report?.accountPosts ?? [])].filter(post => post.engagement != null).sort((a, b) => (b.engagement ?? 0) - (a.engagement ?? 0)).slice(0, 3);
   const nextRecommendation = report?.insights.find(insight => insight.strategy || insight.recommendation?.trim());
   const openChannels = () => window.dispatchEvent(new CustomEvent("showwork-workspace-navigate", { detail: { id: "channels" } }));
@@ -279,8 +293,8 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
   return <section aria-busy={loading && !report} className={dashboardStyles.dashboard} aria-label="Social reporting">
     <header className={dashboardStyles.simpleHeader}>
       <div><p className={dashboardStyles.reportEyebrow}><ChartNoAxesCombined size={15} aria-hidden="true"/> Analytics & reporting</p><h1>See what’s working.</h1>
-        <div className={dashboardStyles.statusLine}><div className={dashboardStyles.freshness} role="status" aria-live="polite"><RefreshCw size={13} className={report?.updating || syncing ? "animate-spin" : ""} aria-hidden="true"/>
-          {report?.updating || syncing ? "Updating your results…" : updatedAt ? `Results last updated ${new Date(updatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : connected ? "Collecting your first results" : report ? "Connect a channel to get started" : "Loading your results…"}
+        <div className={dashboardStyles.statusLine}><div className={dashboardStyles.freshness} role="status" aria-live="polite"><RefreshCw size={13} className={report?.updating || syncing || loading ? "animate-spin" : ""} aria-hidden="true"/>
+          {report?.updating || syncing || (loading && report) ? "Updating your results…" : updatedAt ? `Results last updated ${new Date(updatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : connected ? "Collecting your first results" : report ? "Connect a channel to get started" : "Loading your results…"}
         </div>
         </div>
       </div>
@@ -318,6 +332,7 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
       {connected > 0 && !hasObservations && <div className={dashboardStyles.firstResults} role="status"><RefreshCw size={24} aria-hidden="true"/><h2>{report.updating ? "Preparing your analytics" : "Your first results are on their way"}</h2><p>Available results will appear automatically. Some metrics need additional channel permissions.</p></div>}
       <div id="analytics-panel-performance" tabIndex={-1} role="tabpanel" aria-labelledby="analytics-tab-performance" hidden={reportSection !== "performance"} className={dashboardStyles.tabPanel}>
         <div className={dashboardStyles.metricGrid}>{primaryCards.map(({ title, metric, icon: Icon, tint }) => <article key={title} className={dashboardStyles.metricCard} data-unavailable={metric.value == null}><div className="flex items-start justify-between gap-2"><p className="text-xs font-semibold text-slate-600">{title}</p><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tint}`}><Icon className="h-4 w-4" aria-hidden="true"/></span></div><p className="mt-3 text-3xl font-semibold tracking-tight">{number(metric.value)}</p><p className="mt-1 text-xs leading-5 text-slate-500">{metric.basis}</p><div className="mt-3"><Trend metric={metric} followers={title.includes("followers") || title === "Followers"}/></div></article>)}</div>
+        {canViewLeads && report.leads && <ReportingLeadMetrics leads={report.leads} onOpen={onOpenLeads || (!clientSlug ? navigateToLeads : undefined)} />}
         <ReportingVisuals timeline={timeline} posts={report.accountPosts} compact />
         <div className={dashboardStyles.overviewBottom}>
           <section className={dashboardStyles.topPosts}><div><h2>Top posts</h2><button type="button" onClick={() => showSection("channel-detail", true)}>View all <ArrowUpRight size={14}/></button></div><p>Ranked by available lifetime engagements.</p>{topPosts.length ? topPosts.map(post => <article key={post.id}><PlatformBrandIcon platform={post.platform} size={21}/><div><p>{post.caption || post.postType || "Published post"}</p><span>{new Date(post.publishedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · {number(post.engagement)} engagements</span></div>{post.permalink && <a href={post.permalink} target="_blank" rel="noopener noreferrer" aria-label={`Open ${label[post.platform] || post.platform} post`}><ArrowUpRight size={17}/></a>}</article>) : <p className={dashboardStyles.empty}>No post metrics for this period yet.</p>}</section>
@@ -330,8 +345,8 @@ export default function CalendarReportingPanel({ calendarId, isManager, canAnaly
           </section>
         </div>
         <details className={dashboardStyles.supportingDetail}><summary>Channel status & data availability</summary><div className={dashboardStyles.statusList}>{report.connections.map(connection => <div key={connection.id}><PlatformBrandIcon platform={connection.platform} size={18}/><strong>{label[connection.platform] || connection.platform}</strong><span>{connection.status === "NEEDS_REAUTH" ? "Reconnect required" : connection.status !== "CONNECTED" ? "Disconnected" : connection.platform === "YOUTUBE" ? "Reporting not available yet" : connection.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString() : "Waiting for first update"}</span>{!clientSlug && (connection.status === "NEEDS_REAUTH" || connection.lastSyncError) && <button type="button" onClick={openChannels}>Check access</button>}</div>)}</div></details>
-        {!clientSlug && canViewLeads && report.leads && <details className={dashboardStyles.supportingDetail}><summary>Lead opportunities · {number(report.leads.acquired.value)} new this period</summary>
-        {!clientSlug && canViewLeads && report.leads && <section id="lead-opportunities" className="scroll-mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-label="Top five hottest leads"><div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6"><div><p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-orange-600"><Flame className="h-3.5 w-3.5" /> Opportunity radar</p><h4 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">Your 5 hottest leads</h4><p className="mt-1 text-xs text-slate-500">Hot leads acquired in this period, most recently updated first.</p></div><button type="button" onClick={navigateToLeads} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800">Open leads <ArrowUpRight className="h-3.5 w-3.5" /></button></div><div className="mx-5 mb-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center"><div><p className="text-lg font-semibold text-slate-900">{number(report.leads?.acquired.value)}</p><p className="text-[10px] text-slate-500">New this period</p></div><div><p className="text-lg font-semibold text-orange-600">{number(report.leads?.hotCount)}</p><p className="text-[10px] text-slate-500">Hot & open now</p></div><div><p className="text-lg font-semibold text-emerald-700">{number(report.leads?.customers)}</p><p className="text-[10px] text-slate-500">Now customers</p></div></div>{report.leads?.hottest.length ? <div className="overflow-x-auto"><table className="w-full text-left text-xs"><caption className="sr-only">Top five hot open leads created in the selected period, ordered by most recent update</caption><thead className="border-y border-slate-100 bg-slate-50/70 text-[10px] uppercase tracking-wide text-slate-500"><tr><th scope="col" className="px-5 py-3">Lead</th><th scope="col" className="px-3 py-3">Source</th><th scope="col" className="px-3 py-3">Stage</th><th scope="col" className="px-5 py-3">Activity</th></tr></thead><tbody className="divide-y divide-slate-100">{report.leads.hottest.map((lead, index) => <tr key={lead.id} className="transition hover:bg-orange-50/40"><td className="px-5 py-3"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 font-bold text-orange-600">{index + 1}</span><div><p className="font-semibold text-slate-900">{lead.socialConversation?.participantName || lead.name}</p><p className="mt-0.5 text-[10px] text-slate-500">{lead.company || lead.username || lead.socialConversation?.participantUsername || "Hot lead"}</p></div></div></td><td className="px-3 py-3 text-slate-500">{lead.socialConversation ? label[lead.socialConversation.platform] || lead.socialConversation.platform : lead.source === "IMPORT" ? "Import" : "Manual"}</td><td className="px-3 py-3"><span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-semibold capitalize text-indigo-700">{lead.status.toLowerCase()}</span></td><td className="whitespace-nowrap px-5 py-3 text-slate-500">{new Date(lead.updatedAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <div className="mx-5 mb-5 rounded-xl border border-dashed border-orange-200 bg-orange-50/40 p-5 text-center"><Flame className="mx-auto h-6 w-6 text-orange-400" /><p className="mt-2 text-sm font-semibold text-slate-700">No hot open leads in this period</p><p className="mt-1 text-xs leading-5 text-slate-500">Qualify leads as Hot in your lead pipeline to surface your next opportunities here.</p></div>}<p className="px-5 pb-5 pt-3 text-[10px] leading-4 text-slate-400">Stages reflect current qualification. Customers and lost leads are excluded from the shortlist.{platform && " Platform filtering includes leads linked to the selected social channels."}</p></section>}
+        {!clientSlug && canViewLeads && report.leads && report.leads.milestoneCountsAvailable !== false && <details className={dashboardStyles.supportingDetail}><summary>Lead opportunities · {number(report.leads.acquired.value)} new this period</summary>
+        {!clientSlug && canViewLeads && report.leads && <section id="lead-opportunities" className="scroll-mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-label="Top five hottest leads"><div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6"><div><p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-orange-600"><Flame className="h-3.5 w-3.5" /> Opportunity radar</p><h4 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">Your 5 hottest leads</h4><p className="mt-1 text-xs text-slate-500">Leads marked hot in this period that are still open, most recently updated first.</p></div><button type="button" onClick={navigateToLeads} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800">Open leads <ArrowUpRight className="h-3.5 w-3.5" /></button></div><div className="mx-5 mb-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center"><div><p className="text-lg font-semibold text-slate-900">{number(report.leads?.acquired.value)}</p><p className="text-[10px] text-slate-500">New this period</p></div><div><p className="text-lg font-semibold text-orange-600">{number(report.leads?.hotCount)}</p><p className="text-[10px] text-slate-500">Marked hot this period</p></div><div><p className="text-lg font-semibold text-emerald-700">{number(report.leads?.customers)}</p><p className="text-[10px] text-slate-500">Converted this period</p></div></div>{report.leads?.hottest.length ? <div className="overflow-x-auto"><table className="w-full text-left text-xs"><caption className="sr-only">Top five currently hot open leads qualified in the selected period, ordered by most recent update</caption><thead className="border-y border-slate-100 bg-slate-50/70 text-[10px] uppercase tracking-wide text-slate-500"><tr><th scope="col" className="px-5 py-3">Lead</th><th scope="col" className="px-3 py-3">Source</th><th scope="col" className="px-3 py-3">Stage</th><th scope="col" className="px-5 py-3">Activity</th></tr></thead><tbody className="divide-y divide-slate-100">{report.leads.hottest.map((lead, index) => <tr key={lead.id} className="transition hover:bg-orange-50/40"><td className="px-5 py-3"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 font-bold text-orange-600">{index + 1}</span><div><p className="font-semibold text-slate-900">{lead.socialConversation?.participantName || lead.name}</p><p className="mt-0.5 text-[10px] text-slate-500">{lead.company || lead.username || lead.socialConversation?.participantUsername || "Hot lead"}</p></div></div></td><td className="px-3 py-3 text-slate-500">{lead.socialConversation ? label[lead.socialConversation.platform] || lead.socialConversation.platform : lead.source === "IMPORT" ? "Import" : "Manual"}</td><td className="px-3 py-3"><span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-semibold capitalize text-indigo-700">{lead.status.toLowerCase()}</span></td><td className="whitespace-nowrap px-5 py-3 text-slate-500">{new Date(lead.updatedAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <div className="mx-5 mb-5 rounded-xl border border-dashed border-orange-200 bg-orange-50/40 p-5 text-center"><Flame className="mx-auto h-6 w-6 text-orange-400" /><p className="mt-2 text-sm font-semibold text-slate-700">No hot open leads in this period</p><p className="mt-1 text-xs leading-5 text-slate-500">Qualify leads as Hot in your lead pipeline to surface your next opportunities here.</p></div>}<p className="px-5 pb-5 pt-3 text-[10px] leading-4 text-slate-400">Stages reflect current qualification. Customers and lost leads are excluded from the shortlist.{platform && " Platform filtering includes leads linked to the selected social channels."}</p></section>}
         </details>}
         <details className={dashboardStyles.supportingDetail}><summary>How these numbers are calculated</summary><p>Comparisons use {report.comparisonPeriod.start.slice(0, 10)}–{report.comparisonPeriod.end.slice(0, 10)}. Missing observations remain gaps, never zeroes. Post counters are current lifetime totals for posts published in this period. Daily reach may count the same person on different days. Metrics depend on channel access and availability.</p></details>
       </div>

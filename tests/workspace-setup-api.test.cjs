@@ -23,7 +23,7 @@ test('manual publishing is an explicit saved choice, not an unfinished step',asy
 });
 test('cannot finish setup before knowledge and content are ready',async()=>{
  const h=harness();assert.equal((await h.api.PATCH(h.request({action:'complete'}),h.context)).status,409);assert.equal(h.writes.length,0);
- const ready=harness({state:{...fresh,publishingChosen:true,hasKnowledge:true,hasBrandVoice:true,hasChannels:false,hasContent:true}});assert.equal((await ready.api.PATCH(ready.request({action:'complete'}),ready.context)).status,200);assert.ok(ready.writes[0].data.setupCompletedAt instanceof Date);
+ const ready=harness({state:{...fresh,publishingChosen:true,hasKnowledge:true,hasBrandVoice:false,hasChannels:false,hasContent:true}});assert.equal((await ready.api.PATCH(ready.request({action:'complete'}),ready.context)).status,200);assert.ok(ready.writes[0].data.setupCompletedAt instanceof Date);
 });
 test('first-time generation is blocked before enqueueing or canonical dispatch',async()=>{
  const api=load('app/api/calendars/[id]/ai-generate/route.ts',{
@@ -36,4 +36,18 @@ test('first-time generation is blocked before enqueueing or canonical dispatch',
  });
  const req=new NextRequest('http://localhost:3000/api/calendars/work/ai-generate',{method:'POST',body:'{}'});
  assert.equal((await api.POST(req,{params:Promise.resolve({id:'work'})})).status,409);
+});
+
+test('generation proceeds with business sources and no brand voice',async()=>{
+ let enqueued=false;
+ const api=load('app/api/calendars/[id]/ai-generate/route.ts',{
+ '@/lib/knowledge/generationPreflight':{generationPreflight:async req=>req},
+ '@/lib/auth':{getCurrentCreator:async()=>({id:'owner'})},
+ '@/lib/calendarPermissions':{hasCalendarPermission:async()=>true},
+ '@/lib/workspaceSetupServer':{getWorkspaceSetup:async()=>({...fresh,hasKnowledge:true})},
+ '@/lib/aiGenerationJobs':{enqueueAiGeneration:async()=>{enqueued=true;return Response.json({queued:true});}},
+ '@/lib/publishing/applicationBoundary':{publishingIntegrationInstalled:()=>false},
+ });
+ const response=await api.POST(new NextRequest('http://localhost:3000/api/calendars/work/ai-generate',{method:'POST',body:'{}'}),{params:Promise.resolve({id:'work'})});
+ assert.equal(response.status,200);assert.equal(enqueued,true);
 });
