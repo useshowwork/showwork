@@ -32,7 +32,7 @@ function resolveBillingCycle(
 
 // POST — upgrades a Marketing Workspace account to Studio or Agency.
 //
-// If the account is still inside its valid 7-day trial, the switch can
+// If the account is still inside its valid 3-day trial, the switch can
 // happen without immediate payment unless `payNow` is true.
 //
 // If the account is already paying, has an expired trial, is pending
@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
 
-  const targetPlan: ContentWorkspacePlan = body?.plan === "UNLIMITED" ? "UNLIMITED" : "STUDIO";
+  if (body?.plan !== undefined && !["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"].includes(body.plan)) return NextResponse.json({ error: "Choose a Marketing Workspace plan." }, { status: 400 });
+  const targetPlan: ContentWorkspacePlan = body?.plan ?? "STUDIO";
 
   const payNow =
     body?.payNow === true;
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
     );
 
   const trialStillValid =
-    creator.contentWorkspaceBillingStatus === "TRIAL" &&
+    creator.contentWorkspacePlan !== "ENGAGE" && creator.contentWorkspaceBillingStatus === "TRIAL" &&
     !!creator.contentWorkspaceTrialEndsAt &&
     creator.contentWorkspaceTrialEndsAt.getTime() >
       Date.now();

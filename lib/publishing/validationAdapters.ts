@@ -1,3 +1,4 @@
+import { packagePermissions } from "../engagePolicy";
 /** Inactive Stage 4C.2. Same-tx policy reads; no global DB/auth/provider imports. */
 import { randomUUID } from 'node:crypto';
 import { effectiveTeamPermissions, type TeamPermission } from '../calendarTeamPolicy';
@@ -47,11 +48,12 @@ export function createPublishingValidationAdapters(deps:ValidationDependencies){
   const assets=(await tx.query(`SELECT * FROM "CalendarPostAsset" WHERE "postId"=$1 ORDER BY "displayOrder",id`,[postId])).rows;
   return {post,...w,assets};
  }
- function entitlement(s:Awaited<ReturnType<typeof workspace>>,now:Date){
-  ensure(!s.billingRevocationPending,'BILLING_RECONCILIATION_REQUIRED');ensure(!s.owner.isDeactivated,'OWNER_DEACTIVATED');ensure(workspaceEligibility(s.owner as any,s.ordinal,now).allowed,'WORKSPACE_ENTITLEMENT_DENIED');
+ function entitlement(s:Awaited<ReturnType<typeof workspace>>,now:Date,purpose:"PUBLISHING"|"WORKSPACE"="PUBLISHING"){
+  ensure(!s.billingRevocationPending,'BILLING_RECONCILIATION_REQUIRED');ensure(!s.owner.isDeactivated,'OWNER_DEACTIVATED');ensure(workspaceEligibility(s.owner as any,s.ordinal,now,purpose).allowed,'WORKSPACE_ENTITLEMENT_DENIED');
  }
  async function creator(tx:Tx,s:Awaited<ReturnType<typeof workspace>>,principalId:string,permission:TeamPermission){
   id(principalId);const actor=(await tx.query(`SELECT id,"isDeactivated" FROM "Creator" WHERE id=$1`,[principalId])).rows[0];ensure(actor,'CREATOR_MISSING');ensure(!actor.isDeactivated,'ACTOR_DEACTIVATED');
+  ensure(packagePermissions(s.owner.contentWorkspacePlan,[permission]).includes(permission),'WORKSPACE_PERMISSION_DENIED');
   if(principalId===s.owner.id)return actor;
   const m=(await tx.query(`SELECT * FROM "CalendarCollaborator" WHERE "calendarId"=$1 AND "creatorId"=$2`,[s.calendar.id,principalId])).rows[0];
   ensure(m&&effectiveTeamPermissions(m.role,m.permissions,m.customPermissions).includes(permission),'WORKSPACE_PERMISSION_DENIED');return actor;
@@ -145,7 +147,7 @@ export function createPublishingValidationAdapters(deps:ValidationDependencies){
    await fence(tx);const w=await workspace(tx,input.calendarId);
    const p:TeamPermission=input.permission==='VIEW_ONLY'?'calendar.view':input.permission==='ADD_CONTENT'?'creatives.upload':input.permission==='EDIT_CALENDAR'?'calendar.edit':input.permission;
    await creator(tx,w,input.actor,p);
-   if(!p.endsWith('.view')&&p!=='people.manage')entitlement(w,await clock(tx));
+   if(!p.endsWith('.view')&&p!=='people.manage')entitlement(w,await clock(tx),'WORKSPACE');
    return {permission:p,calendarId:w.calendar.id,actor:input.actor,maySend:false as const};
   },
   intentActions:(applyEdit:IntentActionDependencies['applyEdit'])=>createCanonicalIntentActions({database:deps.database,lockAndValidatePost:validateAction,captureRevision,applyEdit,

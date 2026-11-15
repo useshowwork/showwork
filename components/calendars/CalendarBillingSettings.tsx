@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
+type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED" | "ENGAGE";
 type BillingCycle = "MONTHLY" | "ANNUAL";
 type BillingStatus =
   | "PENDING_SETUP"
@@ -181,7 +181,7 @@ function ShieldIcon({
   );
 }
 
-const PLAN_DETAILS = Object.fromEntries(CONTENT_WORKSPACE_PLAN_ORDER.map(key => {
+const PLAN_DETAILS = Object.fromEntries((Object.keys(CONTENT_WORKSPACE_PLANS) as ContentWorkspacePlan[]).map(key => {
  const plan = CONTENT_WORKSPACE_PLANS[key];
  return [key, {
   name: plan.name, monthlyPrice: plan.priceNgnMonthly, annualPrice: plan.priceNgnAnnual,
@@ -246,7 +246,7 @@ export default function CalendarBillingSettings({
   const isActive = billingStatus === "ACTIVE";
 
   const isStillInTrial =
-    billingStatus === "TRIAL" &&
+    plan !== "ENGAGE" && billingStatus === "TRIAL" &&
     !!trialEndsAt &&
     new Date(trialEndsAt).getTime() > Date.now();
 

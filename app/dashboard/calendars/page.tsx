@@ -41,6 +41,10 @@ export default async function CalendarsPage({
 }) {
   const creator = await getCurrentCreator();
   if (!creator) redirect("/login?next=/dashboard/calendars");
+  if (creator.contentWorkspacePlan === "ENGAGE") {
+    const callback = (await searchParams as Record<string, string>).subscriptionPayment === "callback";
+    redirect(`/dashboard/engage${callback ? "?subscriptionPayment=callback" : ""}`);
+  }
   const params = await searchParams;
   const query = params.q?.trim() ?? "";
   const requestedPage = Number(params.page);
@@ -118,7 +122,7 @@ export default async function CalendarsPage({
     : null;
 
   const planName = billing?.contentWorkspacePlan
-    ? { CREATOR: "Creator", GROWTH: "Growth", STUDIO: "Studio", UNLIMITED: "Agency" }[
+    ? { ENGAGE: "Showwork Engage", CREATOR: "Creator", GROWTH: "Growth", STUDIO: "Studio", UNLIMITED: "Agency" }[
         billing.contentWorkspacePlan
       ]
     : "No plan";

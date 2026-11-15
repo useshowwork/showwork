@@ -90,7 +90,10 @@ export default async function BillingPage({
    *
    * work correctly.
    */
+  if (productParam === "engage" || selectedTierParam === "ENGAGE") redirect("/dashboard/engage");
   let creator = await getCurrentCreator();
+
+  if (creator?.contentWorkspacePlan === "ENGAGE" && productParam !== "content-workspace") redirect("/dashboard/engage?billing=1");
 
   if (!creator) {
     const params = new URLSearchParams();

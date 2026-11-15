@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!creator) return NextResponse.redirect(`${appUrl()}/login`);
   const { id } = await params;
   const calendar = await db.socialCalendar.findUnique({ where: { id }, select: { managerId: true, tikTokOpenId: true } });
-  if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage")) || !(await canAccessCalendarById(id))) return NextResponse.json({ error: "Only the active workspace owner can connect TikTok messaging." }, { status: 403 });
+  if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage", "TIKTOK")) || !(await canAccessCalendarById(id))) return NextResponse.json({ error: "Only the active workspace owner can connect TikTok messaging." }, { status: 403 });
   const featureLock = await calendarFeatureGate(id, "socialInbox");
   if (featureLock) return featureLock;
   const connection = calendar.tikTokOpenId ? await db.socialConnection.findFirst({ where: { calendarId: id, platform: "TIKTOK", platformAccountId: calendar.tikTokOpenId, status: "CONNECTED" } }) : null;

@@ -55,7 +55,7 @@ const homepageNavigation = [
 
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4D9EFF]";
 
-export default function SiteFooter({ homepage = false }: { homepage?: boolean }) {
+export default function SiteFooter({ homepage = false, compact = false }: { homepage?: boolean; compact?: boolean }) {
   return (
     <footer
       className="relative z-10 isolate overflow-hidden border-t border-white/10 bg-[#07080A] px-5 text-white sm:px-8 lg:px-16"
@@ -63,7 +63,7 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
     >
       <div aria-hidden="true" className="pointer-events-none absolute -right-48 -top-48 h-[600px] w-[600px] rounded-full bg-[#2478FF]/10 blur-[120px]" />
       <div className="relative mx-auto max-w-7xl">
-        <div className={homepage ? "hidden" : "flex flex-col gap-8 border-b border-white/10 py-12 sm:py-16 md:flex-row md:items-end md:justify-between"}>
+        <div className={homepage || compact ? "hidden" : "flex flex-col gap-8 border-b border-white/10 py-12 sm:py-16 md:flex-row md:items-end md:justify-between"}>
           <div>
             <p className="mb-5 flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-300">
               <span className="h-1.5 w-1.5 rounded-full bg-[#4D9EFF]" aria-hidden="true" />
@@ -155,7 +155,7 @@ export default function SiteFooter({ homepage = false }: { homepage?: boolean })
           </div>
         </div>
         {homepage && <p className="border-t border-white/10 py-7 text-sm text-slate-300">Great creative work deserves a better system.</p>}
-        <div hidden={homepage} aria-hidden="true" className="pointer-events-none select-none overflow-hidden border-t border-white/[0.06] pt-4 text-center text-[clamp(4rem,17vw,14rem)] font-semibold leading-[0.85] tracking-[-0.07em] text-white/[0.045]">
+        <div hidden={homepage || compact} aria-hidden="true" className="pointer-events-none select-none overflow-hidden border-t border-white/[0.06] pt-4 text-center text-[clamp(4rem,17vw,14rem)] font-semibold leading-[0.85] tracking-[-0.07em] text-white/[0.045]">
           showwork
         </div>
       </div>

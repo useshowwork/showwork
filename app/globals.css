@@ -119,3 +119,6 @@ body:has([data-marketing-workspace]) { overflow-x: clip; }
 /* Brand-owned client surfaces keep only their own contact controls. */
 body:has([data-showwork-client-view]) [data-randy-assistant] { display:none !important; }
 body:has([data-workspace-panel]:not([hidden]) [data-mobile-chat-open="true"]) [data-showwork-whatsapp] { display:none; }
+
+/* Auth pages fill the canvas; their photo size does not expose the dark app background. */
+html:has([data-showwork-auth]), body:has([data-showwork-auth]) { background: #fff; }

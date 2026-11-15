@@ -1,4 +1,5 @@
 "use client";
+import { ENGAGE_PERMISSIONS, packagePermissions } from "@/lib/engagePolicy";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import { useRouter } from 'next/navigation';
@@ -14,8 +15,17 @@ type Team = { owner: { name: string | null; email: string }; actorRole: TeamRole
 const ROLE_ICONS = { OWNER: ShieldCheck, MANAGER: BriefcaseBusiness, SOCIAL_MEDIA_MANAGER: Users, CREATIVE_CONTRIBUTOR: Palette, INBOX_AGENT: Headset, VIEWER: Eye };
 const ACTIONS: Record<string, string> = { INVITATION_CREATED: 'invited', INVITATION_RESENT: 'resent an invitation to', INVITATION_CANCELLED: 'cancelled the invitation for', ACCESS_CHANGED: 'changed access for', MEMBER_REMOVED: 'removed', MEMBER_JOINED: 'joined as' };
 
-export default function WorkspaceTeamPanel({ calendarId }: { calendarId: string }) {
+export default function WorkspaceTeamPanel({ calendarId, engage = false }: { calendarId: string; engage?: boolean }) {
   const router = useRouter();
+  const roleDefaults = (value: TeamRole): TeamPermission[] => {
+    if (engage && value === "VIEWER") return ["inbox.view", "leads.view", "channels.view", "knowledge.view"];
+    const permissions = packagePermissions(engage ? "ENGAGE" : null, [...TEAM_ROLES[value].defaults]);
+    // Stored role assignments retain this legacy dependency. The package mask
+    // still removes calendar access when permissions are evaluated server-side.
+    if (engage && permissions.includes("workspace.manage")) permissions.push("calendar.view");
+    return permissions;
+  };
+  const visiblePermission = (value: string) => !engage || ENGAGE_PERMISSIONS.includes(value as TeamPermission);
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
@@ -71,10 +81,10 @@ export default function WorkspaceTeamPanel({ calendarId }: { calendarId: string 
   }
   function openInvite(member?: Member) {
     setEditing(member || null); setEmail(member?.email || '');
-    const nextRole = member?.role === 'OWNER' ? 'MANAGER' : member?.role || 'CREATIVE_CONTRIBUTOR';
-    const defaults = [...TEAM_ROLES[nextRole].defaults];
+    const nextRole = member?.role === 'OWNER' ? 'MANAGER' : member?.role || (engage ? 'INBOX_AGENT' : 'CREATIVE_CONTRIBUTOR');
+    const defaults = roleDefaults(nextRole);
     const delegated = team?.actorRole === "OWNER" ? defaults : defaults.filter(permission => team?.actorPermissions.includes(permission));
-    setRole(nextRole); setPermissions(member?.permissions || delegated); setCustomPermissions(member?.customPermissions || delegated.length !== defaults.length);
+    setRole(nextRole); setPermissions(member?.permissions || delegated); setCustomPermissions(member?.customPermissions || engage || delegated.length !== defaults.length);
     setError(''); setNotice(''); setFormOpen(true);
   }
   const filtered = (team?.collaborators || []).filter(member => [member.name, member.email, TEAM_ROLES[member.role]?.label].some(value => value?.toLowerCase().includes(query.trim().toLowerCase())));
@@ -91,24 +101,24 @@ export default function WorkspaceTeamPanel({ calendarId }: { calendarId: string 
       <div className={styles.teamMetrics}>
         <div><Users size={18}/><strong>{team.collaborators.length + 1}</strong><span>People in this workspace</span></div>
         <div><Mail size={18}/><strong>{team.pendingInvites.filter(invite => !invite.expired).length}</strong><span>Invitations awaiting acceptance</span></div>
-        <div><UserRoundCheck size={18}/><strong>{1 + team.collaborators.filter(member => member.permissions.includes('internal_review.manage')).length}</strong><span>Can review & approve internally</span></div>
+        {!engage && <div><UserRoundCheck size={18}/><strong>{1 + team.collaborators.filter(member => member.permissions.includes('internal_review.manage')).length}</strong><span>Can review & approve internally</span></div>}
       </div>
-      <div className={styles.summary}><div className={styles.owner}><span className={styles.ownerIcon}><ShieldCheck size={21} aria-hidden="true" /></span><div><p>{team.owner.name || team.owner.email}<span className={styles.badge}>Owner</span></p><small>{team.owner.email}</small></div><LockKeyhole size={14} className={styles.ownerLock} aria-label="Ownership stays with this account" /></div><div className={styles.usage}><span>Team slots across all owned workspaces</span><strong>{team.usage.members + team.usage.pending} <small>/ {team.usage.limit === Number.MAX_SAFE_INTEGER ? 'Unlimited' : team.usage.limit}</small></strong><p>{team.usage.pending} active invitations · Each workspace membership uses one slot.</p>{team.actorRole === "OWNER" && <a href="/dashboard/billing?product=content-workspace#content-workspace-plans" className={styles.textButton}>Manage team allowance <ArrowUpRight size={12} aria-hidden="true"/></a>}</div></div>
+      <div className={styles.summary}><div className={styles.owner}><span className={styles.ownerIcon}><ShieldCheck size={21} aria-hidden="true" /></span><div><p>{team.owner.name || team.owner.email}<span className={styles.badge}>Owner</span></p><small>{team.owner.email}</small></div><LockKeyhole size={14} className={styles.ownerLock} aria-label="Ownership stays with this account" /></div><div className={styles.usage}><span>Team slots across all owned workspaces</span><strong>{team.usage.members + team.usage.pending} <small>/ {team.usage.limit === Number.MAX_SAFE_INTEGER ? 'Unlimited' : team.usage.limit}</small></strong><p>{team.usage.pending} active invitations · Each workspace membership uses one slot.</p>{team.actorRole === "OWNER" && <a href={engage ? "/dashboard/engage?billing=1" : "/dashboard/billing?product=content-workspace#content-workspace-plans"} className={styles.textButton}>Manage team allowance <ArrowUpRight size={12} aria-hidden="true"/></a>}</div></div>
       {!team.active && <p className={styles.readOnly}>Workspace access is paused. You can still remove teammates and cancel invitations.</p>}
       {formOpen && <form ref={formRef} onSubmit={async event => { event.preventDefault(); if (await perform(editing ? `collaborators/${editing.id}` : 'invites', editing ? 'PATCH' : 'POST', { email, role, permissions, customPermissions }, editing ? 'Access updated.' : 'Invitation email sent.')) { setFormOpen(false); setEditing(null); } }} className={styles.form}>
         <div className={styles.formHeading}><div><h3>{editing ? 'Shape their access.' : 'Make room for someone great.'}</h3><p>{editing ? editing.email : 'Choose a role, then refine the features they can use.'}</p></div><button type="button" className={styles.iconButton} aria-label="Close access editor" disabled={!!busy} onClick={() => setFormOpen(false)}><X size={17} aria-hidden="true" /></button></div>
         {!editing && <label className={styles.field}>Email address<input type="email" required maxLength={254} value={email} disabled={!!busy} onChange={event => setEmail(event.target.value)} placeholder="teammate@company.com" autoComplete="email" /></label>}
-        <fieldset><legend className={styles.legend}>Choose their role</legend><div className={styles.roles}>{INVITABLE_TEAM_ROLES.map(value => {
+        <fieldset><legend className={styles.legend}>Choose their role</legend><div className={styles.roles}>{INVITABLE_TEAM_ROLES.filter(value => !engage || ["MANAGER", "INBOX_AGENT", "VIEWER"].includes(value)).map(value => {
           const RoleIcon = ROLE_ICONS[value];
           const ownerOnly = value === 'MANAGER' && team.actorRole !== 'OWNER';
           const planLocked = !team.advancedPermissionsAccess && !['CREATIVE_CONTRIBUTOR', 'VIEWER'].includes(value);
-          return <button type="button" key={value} disabled={!!busy || ownerOnly || planLocked} aria-pressed={role === value} onClick={() => { const defaults = [...TEAM_ROLES[value].defaults]; const delegated = team.actorRole === "OWNER" ? defaults : defaults.filter(permission => team.actorPermissions.includes(permission)); setRole(value); setPermissions(delegated); setCustomPermissions(delegated.length !== defaults.length); }} className={`${styles.role} ${role === value ? styles.roleSelected : ''}`}><span><RoleIcon size={17} aria-hidden="true"/>{TEAM_ROLES[value].label}{role === value ? <Check size={14} aria-hidden="true" /> : ownerOnly || planLocked ? <LockKeyhole size={13} aria-hidden="true" /> : null}</span><p>{TEAM_ROLES[value].description}</p>{ownerOnly && <small>Owner appoints managers</small>}{planLocked && <small>Studio & Agency</small>}</button>;
+          return <button type="button" key={value} disabled={!!busy || ownerOnly || planLocked} aria-pressed={role === value} onClick={() => { const defaults = roleDefaults(value); const delegated = team.actorRole === "OWNER" ? defaults : defaults.filter(permission => team.actorPermissions.includes(permission)); setRole(value); setPermissions(delegated); setCustomPermissions(engage || delegated.length !== defaults.length); }} className={`${styles.role} ${role === value ? styles.roleSelected : ''}`}><span><RoleIcon size={17} aria-hidden="true"/>{TEAM_ROLES[value].label}{role === value ? <Check size={14} aria-hidden="true" /> : ownerOnly || planLocked ? <LockKeyhole size={13} aria-hidden="true" /> : null}</span><p>{engage && value === "INBOX_AGENT" ? "Reads customer messages and sends replies." : engage && value === "MANAGER" ? "Manages conversations, leads, channels, knowledge and the team." : TEAM_ROLES[value].description}</p>{ownerOnly && <small>Owner appoints managers</small>}{planLocked && <small>Studio & Agency</small>}</button>;
         })}</div></fieldset>
-        <div className={styles.permissionHeader}><div><h4>Feature access</h4><p>Internal review allows feedback and approval. Owners always have it; managers have it by default. You can deselect it for managers or grant it to other roles except Viewer. Managers can delegate only their own feature access.</p></div>{customPermissions && <button type="button" className={styles.textButton} disabled={!!busy} onClick={() => { setPermissions([...TEAM_ROLES[role].defaults]); setCustomPermissions(false); }}>Reset to role defaults</button>}</div>
+        <div className={styles.permissionHeader}><div><h4>Feature access</h4><p>{engage ? "Choose the customer care tools this teammate can use. Managers can delegate only their own access." : "Internal review allows feedback and approval. Owners always have it; managers have it by default. You can deselect it for managers or grant it to other roles except Viewer. Managers can delegate only their own feature access."}</p></div>{customPermissions && <button type="button" className={styles.textButton} disabled={!!busy} onClick={() => { setPermissions(roleDefaults(role)); setCustomPermissions(engage); }}>Reset to role defaults</button>}</div>
         {!team.advancedPermissionsAccess && <p className={styles.hint}>Custom feature access is available on Studio and Agency plans.</p>}
-        <div className={styles.permissions}>{groups.filter(group => Object.entries(TEAM_PERMISSIONS).some(([permission, item]) => item.group === group && TEAM_ROLES[role].allowed.includes(permission as TeamPermission))).map(group => <fieldset key={group}><legend>{group}</legend>{(Object.entries(TEAM_PERMISSIONS) as [TeamPermission, { label: string; group: string }][]).filter(([permission, item]) => item.group === group && TEAM_ROLES[role].allowed.includes(permission)).map(([permission, item]) => {
+        <div className={styles.permissions}>{groups.filter(group => Object.entries(TEAM_PERMISSIONS).some(([permission, item]) => item.group === group && visiblePermission(permission) && TEAM_ROLES[role].allowed.includes(permission as TeamPermission))).map(group => <fieldset key={group}><legend>{group}</legend>{(Object.entries(TEAM_PERMISSIONS) as [TeamPermission, { label: string; group: string }][]).filter(([permission, item]) => item.group === group && visiblePermission(permission) && TEAM_ROLES[role].allowed.includes(permission)).map(([permission, item]) => {
           const allowed = TEAM_ROLES[role].allowed.includes(permission) && (team.actorRole === "OWNER" || team.actorPermissions.includes(permission));
-          return <label key={permission} className={!allowed ? styles.lockedPermission : ''}><input type="checkbox" checked={permissions.includes(permission)} disabled={!!busy || !allowed || !team.advancedPermissionsAccess} onChange={event => { setPermissions(toggleTeamPermission(permissions, permission, event.target.checked)); setCustomPermissions(true); }} /><span>{item.label}</span>{!allowed && <LockKeyhole size={11} aria-hidden="true" />}</label>;
+          return <label key={permission} className={!allowed ? styles.lockedPermission : ''}><input type="checkbox" checked={permissions.includes(permission)} disabled={!!busy || !allowed || !team.advancedPermissionsAccess} onChange={event => { setPermissions(toggleTeamPermission(permissions, permission, event.target.checked)); setCustomPermissions(true); }} /><span>{engage && permission === "workspace.manage" ? "Manage conversation settings" : item.label}</span>{!allowed && <LockKeyhole size={11} aria-hidden="true" />}</label>;
         })}</fieldset>)}</div>
         <div className={styles.formFooter}><p>Billing, ownership, destructive reset, and encrypted X keys stay owner-only.</p><button type="submit" className={styles.primary} disabled={!!busy || !permissions.length}>{busy ? 'Saving…' : editing ? 'Save access' : 'Send invitation'}</button></div>
       </form>}

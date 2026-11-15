@@ -10,7 +10,7 @@ import {
   formatWorkspaceLimit,
 } from "@/lib/contentWorkspaceEntitlements";
 
-type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
+type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED" | "ENGAGE";
 type Step = "closed" | "choose-plan" | "form";
 
 export default function CreateCalendarForm({
@@ -114,7 +114,7 @@ export default function CreateCalendarForm({
           </h2>
           <p className="mt-1 text-sm text-[#667085]">
             {step === "choose-plan"
-              ? "Pick the space and tools you need. Start with 7 days of full Agency feature access."
+              ? "Pick the space and tools you need. Start with 3 days of full Agency feature access."
               : "Enter a client name to create their workspace."}
           </p>
         </div>
@@ -227,7 +227,7 @@ export default function CreateCalendarForm({
           <p className="mt-2 text-xs text-[#667085]">
             {hasExistingPlan
               ? `${PLAN_CONFIG[contentWorkspacePlan!].name} plan · covered by your existing subscription`
-              : `${PLAN_CONFIG[chosenPlan!].name} plan · your 7-day Agency trial starts when you create this workspace`}
+              : `${PLAN_CONFIG[chosenPlan!].name} plan · your 3-day Agency trial starts when you create this workspace`}
           </p>
           {error && (
             <p

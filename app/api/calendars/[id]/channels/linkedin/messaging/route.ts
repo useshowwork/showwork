@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (req.headers.get("origin") !== req.nextUrl.origin) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const creator = await getCurrentCreator();
   const { id } = await context.params;
-  if (!creator || !(await hasCalendarPermission(creator.id, id, "channels.manage")) || !(await canAccessCalendarById(id))) return NextResponse.json({ error: "Only a workspace owner or authorized manager can enable messaging." }, { status: 403 });
+  if (!creator || !(await hasCalendarPermission(creator.id, id, "channels.manage", "LINKEDIN")) || !(await canAccessCalendarById(id))) return NextResponse.json({ error: "Only a workspace owner or authorized manager can enable messaging." }, { status: 403 });
   if (!linkedInMessagingConfigured()) return NextResponse.json({ error: "LinkedIn partner approval and the approved Page Messaging adapter are required." }, { status: 409 });
   try {
     const stored = await db.socialConnection.findFirst({ where: { calendarId: id, platform: "LINKEDIN", status: "CONNECTED" } });

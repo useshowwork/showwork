@@ -2,7 +2,7 @@
  * Marketing Workspace subscription entitlements.
  *
  * IMPORTANT:
- * - This is ONLY for the Marketing Workspace / Calendar product.
+ * - Engage is a separate package and is deliberately excluded from the Marketing plan ranking.
  * - Portfolio billing uses lib/subscriptionTiers.ts and is completely separate.
  * - AI is included in these plans; there is no separate AI subscription.
  *
@@ -10,7 +10,7 @@
  * without rewriting billing or feature-enforcement logic.
  */
 
-export type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED";
+export type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED" | "ENGAGE";
 
 export type ContentWorkspaceBillingCycle = "MONTHLY" | "ANNUAL";
 
@@ -61,6 +61,7 @@ export const CONTENT_WORKSPACE_FEATURES: Record<ContentWorkspaceFeature, { name:
 };
 
 export function planIncludesWorkspaceFeature(plan: ContentWorkspacePlan | null, feature: ContentWorkspaceFeature): boolean {
+  if (plan === "ENGAGE") return ["socialInbox", "leadManagement", "advancedTeamPermissions", "aiInboxReplies", "aiAutoReplies"].includes(feature);
   return !!plan && CONTENT_WORKSPACE_PLAN_ORDER.indexOf(plan) >= CONTENT_WORKSPACE_PLAN_ORDER.indexOf(CONTENT_WORKSPACE_FEATURES[feature].minimumPlan);
 }
 
@@ -70,6 +71,7 @@ export function workspaceFeatureUpgradeMessage(feature: ContentWorkspaceFeature)
 }
 
 export function getContentWorkspaceFeatureList(plan: ContentWorkspacePlan): string[] {
+  if (plan === "ENGAGE") return ["Conversations", "Leads", "Facebook, Instagram & WhatsApp", "Business knowledge", "3 users including you", "1,000 AI replies per month"];
   return ["Content planning & calendar", "AI content generation", "Client approvals", "Social publishing", "Basic analytics",
     ...Object.entries(CONTENT_WORKSPACE_FEATURES).filter(([feature]) => planIncludesWorkspaceFeature(plan, feature as ContentWorkspaceFeature)).map(([, config]) => config.name)];
 }
@@ -96,6 +98,7 @@ export interface ContentWorkspacePlanConfig
  * actual uploaded media rather than relying on rounded GB values.
  */
 export const STORAGE_GB = {
+  ENGAGE: 1,
   CREATOR: 5,
   GROWTH: 20,
   STUDIO: 50,
@@ -108,6 +111,12 @@ export const CONTENT_WORKSPACE_PLANS: Record<
   ContentWorkspacePlan,
   ContentWorkspacePlanConfig
 > = {
+  ENGAGE: {
+    name: "Showwork Engage", priceNgnMonthly: 14_900, priceNgnAnnual: 149_000,
+    activeWorkspaces: 1, collaborators: 2, storageBytes: GB,
+    aiGenerations: 1_000, aiRegenerations: 0,
+    planCodeEnv: { MONTHLY: "PAYSTACK_ENGAGE_MONTHLY_PLAN_CODE", ANNUAL: "PAYSTACK_ENGAGE_ANNUAL_PLAN_CODE" },
+  },
   CREATOR: {
     name: "Creator",
 
@@ -189,6 +198,7 @@ export const CONTENT_WORKSPACE_PLAN_DISPLAY_NAME: Record<
   ContentWorkspacePlan,
   string
 > = {
+  ENGAGE: "Showwork Engage",
   CREATOR: "Creator",
   GROWTH: "Growth",
   STUDIO: "Studio",
@@ -200,7 +210,7 @@ export const CONTENT_WORKSPACE_PLAN_DISPLAY_NAME: Record<
  *
  * No payment method is required to start the trial.
  */
-export const CONTENT_WORKSPACE_TRIAL_DAYS = 7;
+export const CONTENT_WORKSPACE_TRIAL_DAYS = 3;
 
 /**
  * Returns the configured entitlements for a plan.
@@ -280,7 +290,7 @@ export function contentWorkspacePlanFromPaystackPlanCode(
   plan: ContentWorkspacePlan;
   cycle: ContentWorkspaceBillingCycle;
 } | null {
-  for (const plan of CONTENT_WORKSPACE_PLAN_ORDER) {
+  for (const plan of Object.keys(CONTENT_WORKSPACE_PLANS) as ContentWorkspacePlan[]) {
     const config = CONTENT_WORKSPACE_PLANS[plan];
 
     if ([process.env[config.planCodeEnv.MONTHLY], process.env[`${config.planCodeEnv.MONTHLY}_LEGACY`]].includes(planCode)) {
@@ -310,6 +320,7 @@ export function contentWorkspacePlanFromPaystackPlanCode(
 export function getNextContentWorkspacePlan(
   plan: ContentWorkspacePlan
 ): ContentWorkspacePlan | null {
+  if (plan === "ENGAGE") return "STUDIO";
   const index = CONTENT_WORKSPACE_PLAN_ORDER.indexOf(plan);
 
   if (index === -1 || index === CONTENT_WORKSPACE_PLAN_ORDER.length - 1) {
@@ -326,6 +337,8 @@ export function isHigherContentWorkspacePlan(
   candidate: ContentWorkspacePlan,
   current: ContentWorkspacePlan
 ): boolean {
+  if (candidate === "ENGAGE") return false;
+  if (current === "ENGAGE") return true;
   return (
     CONTENT_WORKSPACE_PLAN_ORDER.indexOf(candidate) >
     CONTENT_WORKSPACE_PLAN_ORDER.indexOf(current)

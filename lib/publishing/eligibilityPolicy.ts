@@ -7,7 +7,8 @@ export interface PublishingPolicyOwner extends ComplimentaryAccount {
   id:string;isDeactivated:boolean;contentWorkspacePlan:ContentWorkspacePlan|null;
   contentWorkspaceBillingStatus:string;contentWorkspaceTrialEndsAt:Date|null;
 }
-export function workspaceEligibility(owner:PublishingPolicyOwner,ordinal:number,now:Date) {
+export function workspaceEligibility(owner:PublishingPolicyOwner,ordinal:number,now:Date,purpose:"PUBLISHING"|"WORKSPACE"="PUBLISHING") {
+  if(owner.contentWorkspacePlan==='ENGAGE')return {allowed:purpose==='WORKSPACE'&&(owner.contentWorkspaceBillingStatus==='ACTIVE'||owner.contentWorkspaceBillingStatus==='TRIAL'&&!!owner.contentWorkspaceTrialEndsAt&&owner.contentWorkspaceTrialEndsAt>now)&&ordinal===1,plan:'ENGAGE' as ContentWorkspacePlan};
   const trial=['TRIAL','ACTIVE'].includes(owner.contentWorkspaceBillingStatus)&&!!owner.contentWorkspaceTrialEndsAt&&owner.contentWorkspaceTrialEndsAt>now;
   const complimentary=workspaceComplimentaryPlan(owner,now);
   const access=!!complimentary||owner.contentWorkspaceBillingStatus==='ACTIVE'&&!!owner.contentWorkspacePlan||owner.contentWorkspaceBillingStatus==='TRIAL'&&!!owner.contentWorkspacePlan&&trial;

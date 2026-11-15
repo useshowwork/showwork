@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const creator = await getCurrentCreator();
   if (!creator) return redirect("/login");
   const connection = await db.socialConnection.findUnique({ where: { id: connectionId }, include: { calendar: { select: { managerId: true, tikTokOpenId: true } } } });
-  if (!connection || connection.platform !== "TIKTOK" || connection.status !== "CONNECTED" || connection.platformAccountId !== connection.calendar.tikTokOpenId || !(await hasCalendarPermission(creator.id, connection.calendarId, "channels.manage")) || !(await canAccessCalendarById(connection.calendarId))) return redirect("/dashboard/calendars?tiktokError=not_found");
+  if (!connection || connection.platform !== "TIKTOK" || connection.status !== "CONNECTED" || connection.platformAccountId !== connection.calendar.tikTokOpenId || !(await hasCalendarPermission(creator.id, connection.calendarId, "channels.manage", "TIKTOK")) || !(await canAccessCalendarById(connection.calendarId))) return redirect("/dashboard/calendars?tiktokError=not_found");
   const path = `/dashboard/calendars/${connection.calendarId}?view=channels`;
   const code = req.nextUrl.searchParams.get("code");
   if (req.nextUrl.searchParams.has("error") || !code) return redirect(`${path}&tiktokError=denied`);

@@ -23,7 +23,7 @@ export async function GET(
 
   const { id } = await params;
   const calendar = await db.socialCalendar.findUnique({ where: { id }, select: { managerId: true } });
-  if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage"))) {
+  if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage", "TIKTOK"))) {
     return NextResponse.redirect(`${appUrl()}/dashboard/calendars/${id}?view=channels&tiktokError=not_found`);
   }
 

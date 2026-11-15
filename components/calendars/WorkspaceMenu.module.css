@@ -193,3 +193,48 @@
 .navigationDrawer .clientLink small { color:#bcd0ed; }
 .navigationDrawer .clientIcon { background:#ffffff12; color:#c3dcff; }
 .navigationDrawer :focus-visible { outline-color:#b8d6ff; }
+
+/* Engage has four destinations: give each one a comfortable place in the rail. */
+.engageNavigation {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  padding: 28px 16px 36px;
+}
+.engageNavigation .cluster { margin: 0; }
+.engageNavigation .clusterHeading { padding: 0 14px; margin-bottom: 24px; }
+.engageNavigation .clusterHeading p { font-size: 11px; letter-spacing: .12em; }
+.engageNavigation .items { gap: 18px; }
+.engageNavigation .navItem {
+  min-height: 84px;
+  padding: 16px 14px;
+  gap: 14px;
+  border-radius: 18px;
+}
+.engageNavigation .iconWell { width: 44px; height: 44px; border-radius: 14px; }
+.engageNavigation .iconWell svg { width: 22px; height: 22px; }
+.engageNavigation .navLabel strong { display: block; font-size: 15px; font-weight: 600; line-height: 1.4; }
+.engageNavigation .navLabel small { display: block; margin-top: 6px; font-size: 11px; font-weight: 400; line-height: 1.55; color: #b8cce8; }
+.engageNavigation .navItem[aria-current=page] .navLabel small { color: #e1edff; }
+.engageNavigation .activeArrow { width: 22px; height: 22px; flex-shrink: 0; }
+.engageRail .railHeader { min-height: 112px; padding: 28px 24px; }
+.engageRail .workspaceBrand { gap: 12px; }
+.engageRail .workspaceBrand small { font-size: 13px; line-height: 1.5; }
+.engageRail .footer,.engageDrawer .footer { padding: 20px 18px; }
+.engageRail .helpLink,.engageDrawer .helpLink { min-height: 44px; padding: 10px 12px; gap: 12px; font-size: 13px; }
+.engageRail .iconNavigation { display: flex; flex-direction: column; justify-content: safe center; padding-block: 24px; }
+.engageRail .iconCluster { gap: 18px; }
+.engageRail .iconItem { min-height: 56px; }
+.engageRail[data-collapsed=true] .railHeader { min-height: 96px; padding: 24px 0; }
+.engageDrawer .engageNavigation { padding: 28px 18px; }
+.engageDock.bottomNav { height: 76px; padding: 7px; border-radius: 22px; }
+.engageDock .dockItem { height: 60px; min-height: 60px; gap: 6px; padding: 7px 3px; font-size: 11px; border-radius: 16px; }
+.engageDock .dockItem > svg { width: 23px; height: 23px; }
+@media (min-width: 1024px) {
+  .desktopFrame[data-workspace-product=engage]:not([data-sidebar-collapsed=true]) { grid-template-columns: 296px minmax(0,1fr); }
+}
+@media (max-height: 720px) {
+  .engageNavigation { justify-content: flex-start; padding-block: 20px; }
+  .engageNavigation .items { gap: 12px; }
+  .engageRail .railHeader { min-height: 96px; padding-block: 20px; }
+}

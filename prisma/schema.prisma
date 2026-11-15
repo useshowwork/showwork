@@ -37,6 +37,7 @@ enum BillingCycle {
 }
 
 enum ContentWorkspacePlan {
+  ENGAGE
   CREATOR
   GROWTH
   STUDIO

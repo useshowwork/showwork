@@ -7,7 +7,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const creator = await getCurrentCreator();
   if (!creator) return NextResponse.json({ error: "Sign in to continue." }, { status: 401 });
   const { id } = await params;
-  if (!(await hasCalendarPermission(creator.id, id, "channels.manage"))) return NextResponse.json({ error: "Channel access required." }, { status: 403 });
+  if (!(await hasCalendarPermission(creator.id, id, "channels.manage", "TIKTOK"))) return NextResponse.json({ error: "Channel access required." }, { status: 403 });
   const connection = await db.socialConnection.findFirst({
     where: { calendarId: id, platform: "TIKTOK", status: "CONNECTED" },
     select: { tokenScopes: true },

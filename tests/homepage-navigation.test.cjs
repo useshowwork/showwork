@@ -77,15 +77,15 @@ test('process is a connected five-step accordion and team photography is restore
  assert.ok(!html.includes('/images/landing/product/'));
 });
 
-test('after-hours enquiry solution leads to the highest workspace plan without starting payment',()=>{
+test('after-hours enquiry solution leads directly to Engage signup without starting payment',()=>{
  const html=renderToStaticMarkup(React.createElement(component));
  assert.match(html,/Enquiries go unanswered/);
  const section=html.match(/<section[^>]*id="customer-replies"[\s\S]*?<\/section>/)?.[0];
- assert.ok(section);assert.match(section,/Your next customer/);assert.match(section,/Get started with Agency/);assert.match(section,/Book a demo/);
- assert.match(section,/href="\/signup\?next=%2Fdashboard%2Fbilling%3Fproduct%3Dcontent-workspace%26tier%3DUNLIMITED%26cycle%3DMONTHLY%23workspace-plan-UNLIMITED"/);
- assert.match(section,/59,900/);assert.match(section,/reply windows apply/);
+ assert.ok(section);assert.match(section,/Your next customer/);assert.match(section,/Try Customer Messaging free/);assert.match(section,/Book a demo/);
+ assert.match(section,/href="\/signup\?next=%2Fdashboard%2Fengage"/);
+ assert.match(section,/14,900/);assert.match(section,/1,000 AI replies included/);assert.match(section,/reply windows apply/);
  assert.match(section,/Automatic reply · example/);
  for(const platform of ["whatsapp","instagram","facebook"])assert.ok(section.includes(`/images/integrations/${platform}.svg`));
- assert.match(section,/Three channels. One place for your team/);
+ assert.match(section,/Connect your channels. One place for your team/);
  assert.match(html,/data-scroll-panel="replies"/);
 });

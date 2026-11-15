@@ -68,7 +68,7 @@ export default function CalendarPaymentCallbackHandler() {
         "Confirming your payment..."}
 
       {status === "done" &&
-        "Payment confirmed — your Marketing Workspace is now active."}
+        "Payment confirmed — your subscription is now active."}
 
       {status === "failed" &&
         "We couldn't confirm this payment yet. If it went through, refresh this page in a moment."}

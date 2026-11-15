@@ -1,3 +1,7 @@
+import { ENGAGE_CHANNEL_PLATFORMS } from "@/lib/engagePolicy";
+import EngageReplyAllowance from "@/components/engage/EngageReplyAllowance";
+import EngageSettings from "@/components/engage/EngageSettings";
+import { getContentWorkspacePlan } from "@/lib/contentWorkspacePolicy";
 import { getWorkspaceSetup } from "@/lib/workspaceSetupServer";
 import { canGenerateDuringSetup } from "@/lib/workspaceSetup";
 import ReportingProductionSummary from "@/components/calendars/ReportingProductionSummary";
@@ -201,6 +205,7 @@ compedUntil: true,
   if (!access && !isAdmin) notFound();
   const permissions: TeamPermission[] = access?.permissions ?? ["calendar.view", "analytics.view"];
   const can = (permission: TeamPermission) => permissions.includes(permission);
+  const isEngage = getContentWorkspacePlan(calendar.manager) === "ENGAGE";
   const isOwner = calendar.managerId === creator.id;
   const setup = await getWorkspaceSetup(calendar.id);
   const isManager = isOwner || access?.role === "MANAGER";
@@ -209,7 +214,8 @@ compedUntil: true,
   const totalMembers = 1 + calendar._count.collaborators;
 
   const workspaceActive = await canAccessCalendarById(calendar.id);
-  const agencyTrial = isContentWorkspaceTrialActive(calendar.manager);
+  const connectedAccounts = isEngage ? await db.socialConnection.count({ where: { calendarId: calendar.id, platform: { in: [...ENGAGE_CHANNEL_PLATFORMS] }, status: { not: "DISCONNECTED" } } }) : 0;
+  const agencyTrial = !isEngage && isContentWorkspaceTrialActive(calendar.manager);
   const featureAccess = (feature: Parameters<typeof canUseContentWorkspaceFeature>[1]) => workspaceActive && canUseContentWorkspaceFeature(calendar.manager, feature);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -362,13 +368,14 @@ contentIdea: p.contentIdea,
     },
     {
       id: "inbox",
-      label: "Inbox",
+      label: isEngage ? "Conversations" : "Inbox",
       eyebrow: "Social inbox",
       title: "Manage conversations in one inbox.",
       description: "Read connected social and WhatsApp conversations, reply where supported and prepare AI replies using business knowledge.",
       group: "Leads & Messages",
       content: (
         <div>
+        {isEngage && <EngageReplyAllowance calendarId={calendar.id} />}
         <SocialLeadInbox
           key={calendar.id}
           calendarId={calendar.id}
@@ -403,13 +410,13 @@ contentIdea: p.contentIdea,
           {
             id: "channels" as const,
             label: "Channels",
-            eyebrow: "Publishing",
+            eyebrow: isEngage ? "Channels" : "Publishing",
             title: "Connect the channels behind the work.",
             description:
               "Connect this client’s social and messaging accounts and manage their access here.",
             group: "Publishing" as const,
             content: (
-              <ChannelsWorkspace>
+              <ChannelsWorkspace engage={isEngage} connectedAccounts={connectedAccounts}>
                 <InstagramConnectionCard
   calendarId={calendar.id}
   username={calendar.instagramUsername}
@@ -417,12 +424,12 @@ contentIdea: p.contentIdea,
   isManager={can("channels.manage")}
 />
 
-<TikTokConnectionCard
+{!isEngage && (<TikTokConnectionCard
   calendarId={calendar.id}
   username={calendar.tikTokUsername}
   connectedAt={calendar.tikTokConnectedAt?.toISOString() ?? null}
   isManager={can("channels.manage")}
-/>
+/>)}
                 <AdditionalChannelCard
                   channel="facebook"
                   calendarId={calendar.id}
@@ -430,21 +437,21 @@ contentIdea: p.contentIdea,
                   connectedAt={calendar.facebookConnectedAt?.toISOString() ?? null}
                   isManager={can("channels.manage")}
                 />
-                <AdditionalChannelCard
+                {!isEngage && (<AdditionalChannelCard
                   channel="linkedin"
                   calendarId={calendar.id}
                   accountName={calendar.linkedinName}
                   connectedAt={calendar.linkedinConnectedAt?.toISOString() ?? null}
                   isManager={can("channels.manage")}
-                />
+                />)}
                 <WhatsAppConnectionCard calendarId={calendar.id} isManager={can("channels.manage")} />
-                <AdditionalChannelCard
+                {!isEngage && (<AdditionalChannelCard
                   channel="x"
                   calendarId={calendar.id}
                   accountName={calendar.xUsername}
                   connectedAt={calendar.xConnectedAt?.toISOString() ?? null}
                   isManager={can("channels.manage")}
-                />
+                />)}
               </ChannelsWorkspace>
             ),
           },
@@ -452,9 +459,9 @@ contentIdea: p.contentIdea,
             id: "knowledge" as const,
             label: "Business knowledge",
             eyebrow: "AI Studio · context",
-            title: "Give AI the context this client deserves.",
+            title: isEngage ? "Teach AI about your business." : "Give AI the context this client deserves.",
             description:
-              "Keep the client's brand, products, voice and source material close to every generation.",
+              isEngage ? "Add products, policies and your brand voice so AI can prepare useful customer replies." : "Keep the client's brand, products, voice and source material close to every generation.",
             group: "AI Studio" as const,
             content: (
               <KnowledgeSetupPanel calendarId={calendar.id} hasKnowledge={setup?.hasKnowledge ?? false} hasBrandVoice={setup?.hasBrandVoice ?? false} sourceCount={calendar.businessDocuments.filter(doc => doc.id !== brandPersonalityDocumentId(calendar.id)).length} nextSection={setup?.hasChannels ? (can("ai.generate") ? "generate" : undefined) : (can("channels.view") ? "channels" : undefined)} knowledge={<BusinessKnowledgeCard
@@ -510,12 +517,13 @@ contentIdea: p.contentIdea,
     <>
     <CalendarPaymentCallbackHandler />
     <CalendarWorkspaceShell
+      product={isEngage ? "engage" : "marketing"}
       clientName={calendar.clientName}
       calendarId={calendar.id}
-      setup={isOwner && setup?.enabled ? setup : undefined}
+      setup={!isEngage && isOwner && setup?.enabled ? setup : undefined}
       clientUrl={can("delivery.manage") ? clientUrl : ""}
       isManager={isManager}
-      settings={can("workspace.manage") ?
+      settings={isEngage ? <EngageSettings calendarId={calendar.id} canManageTeam={can("people.manage")} isOwner={isOwner} /> : can("workspace.manage") ?
         <CalendarSettingsMenu
           onBrand
           calendarId={calendar.id}
@@ -525,10 +533,11 @@ contentIdea: p.contentIdea,
         /> : undefined
       }
       sections={sections.filter(section => {
+        if (isEngage && !["inbox", "leads", "channels", "knowledge"].includes(section.id)) return false;
         const required: Record<string, TeamPermission> = { overview: "workspace.manage", content: "calendar.view", team: "people.view", analytics: "analytics.view", inbox: "inbox.view", leads: "leads.view", access: "delivery.manage", channels: "channels.view", knowledge: "knowledge.view", research: "knowledge.view", generate: "ai.generate" };
         if (section.id === "overview") return can("workspace.manage") && can("calendar.view") && can("analytics.view") && can("inbox.view") && can("leads.view");
         return can(required[section.id]);
-      }).map(section => ({ ...section, content: (
+      }).sort((a,b) => isEngage ? ["inbox", "leads", "channels", "knowledge"].indexOf(a.id) - ["inbox", "leads", "channels", "knowledge"].indexOf(b.id) : 0).map(section => ({ ...section, content: (
         <>
           {agencyTrial && <WorkspaceFeatureNotice trial paidPlan={calendar.manager.contentWorkspaceBillingStatus === "ACTIVE" ? calendar.manager.contentWorkspacePlan : null} trialEndsAt={calendar.manager.contentWorkspaceTrialEndsAt} />}
           {!workspaceActive && <WorkspaceFeatureNotice />}

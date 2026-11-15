@@ -1,8 +1,8 @@
 /** Product choice travels inside the auth return URL, including OTP and login/signup switches. */
-export type EntryProduct = "workspace" | "delivery" | "portfolio";
+export type EntryProduct = "workspace" | "delivery" | "portfolio" | "engage";
 type Query = { get(name: string): string | null };
-const homes: Record<EntryProduct, string> = { workspace: "/dashboard/calendars", delivery: "/dashboard/projects", portfolio: "/dashboard/portfolio" };
-const workspacePlans = ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"];
+const homes: Record<EntryProduct, string> = { engage: "/dashboard/engage", workspace: "/dashboard/calendars", delivery: "/dashboard/projects", portfolio: "/dashboard/portfolio" };
+const workspacePlans = ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED", "ENGAGE"];
 const deliveryPlans = ["STARTER", "GROWTH", "UNLIMITED"];
 
 export function safeAuthReturn(value: string | null): string | null {
@@ -14,9 +14,10 @@ export function safeAuthReturn(value: string | null): string | null {
 }
 function productName(value: string | null): EntryProduct | null {
   if (value === "workspace" || value === "content-workspace") return "workspace";
-  return value === "delivery" || value === "portfolio" ? value : null;
+  return value === "delivery" || value === "portfolio" || value === "engage" ? value : null;
 }
 export function productDestination(product: EntryProduct, plan?: string | null, cycle?: string | null): string {
+  if (plan === "ENGAGE" || product === "engage") return cycle ? `${homes.engage}?cycle=${cycle.toUpperCase() === "ANNUAL" ? "ANNUAL" : "MONTHLY"}` : homes.engage;
   const paid = product === "workspace" ? workspacePlans : product === "delivery" ? deliveryPlans : [];
   if (!plan || !paid.includes(plan)) return homes[product];
   const params = new URLSearchParams({ product: product === "workspace" ? "content-workspace" : "delivery", tier: plan, cycle: cycle?.toUpperCase() === "ANNUAL" ? "ANNUAL" : "MONTHLY" });
@@ -30,7 +31,7 @@ export function readProductJourney(params: Query): { product: EntryProduct | nul
   const next = safeAuthReturn(params.get("next"));
   const url = next ? new URL(next, "https://showwork.invalid") : null;
   const product = productName(params.get("product")) ?? productName(url?.searchParams.get("product") ?? null)
-    ?? (url?.pathname.startsWith("/dashboard/calendars") ? "workspace" : url?.pathname.startsWith("/dashboard/projects") ? "delivery" : url?.pathname.startsWith("/dashboard/portfolio") ? "portfolio" : null);
+    ?? (url?.pathname.startsWith("/dashboard/engage") ? "engage" : url?.pathname.startsWith("/dashboard/calendars") ? "workspace" : url?.pathname.startsWith("/dashboard/projects") ? "delivery" : url?.pathname.startsWith("/dashboard/portfolio") ? "portfolio" : null);
   const plan = params.get("plan") ?? params.get("tier") ?? url?.searchParams.get("tier") ?? url?.searchParams.get("plan");
   const cycle = params.get("cycle") ?? url?.searchParams.get("cycle");
   if (product && plan) return { product, destination: productDestination(product, plan, cycle) };

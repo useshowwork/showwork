@@ -2,13 +2,18 @@
 
 import { productEntryHref } from "@/lib/productJourney";
 import { TIERS } from "@/lib/subscriptionTiers";
-import { CONTENT_WORKSPACE_PLANS, CONTENT_WORKSPACE_PLAN_ORDER, formatWorkspaceLimit, getContentWorkspaceFeatureList } from "@/lib/contentWorkspaceEntitlements";
+import {
+  CONTENT_WORKSPACE_PLANS,
+  CONTENT_WORKSPACE_PLAN_ORDER,
+  formatWorkspaceLimit,
+  getContentWorkspaceFeatureList,
+} from "@/lib/contentWorkspaceEntitlements";
 
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-type Product = "delivery" | "workspace";
+type Product = "delivery" | "workspace" | "engage";
 type BillingCycle = "monthly" | "annual";
 
 type PricingPlan = {
@@ -21,6 +26,27 @@ type PricingPlan = {
   href: string;
   popular?: boolean;
 };
+
+const ENGAGE_PLANS: PricingPlan[] = [
+  {
+    name: "Showwork Engage",
+    monthly: CONTENT_WORKSPACE_PLANS.ENGAGE.priceNgnMonthly,
+    annual: CONTENT_WORKSPACE_PLANS.ENGAGE.priceNgnAnnual,
+    description:
+      "Bring your Facebook, Instagram and WhatsApp messages into one inbox. Reply with AI, follow up with leads and keep your team in sync.",
+    features: [
+      "1 business",
+      "Facebook, Instagram & WhatsApp",
+      "3 users including you",
+      "1,000 AI replies per month",
+      "Business knowledge for AI responses",
+      "Conversations and lead management",
+      "Human replies and team handoff",
+    ],
+    cta: "Start 3-day free trial",
+    href: productEntryHref("engage"),
+  },
+];
 
 const DELIVERY_PLANS: PricingPlan[] = [
   {
@@ -81,26 +107,41 @@ const DELIVERY_PLANS: PricingPlan[] = [
   },
 ];
 
-const WORKSPACE_PLANS: PricingPlan[] = CONTENT_WORKSPACE_PLAN_ORDER.map((key) => {
-  const plan = CONTENT_WORKSPACE_PLANS[key];
-  return {
-    name: plan.name,
-    monthly: plan.priceNgnMonthly,
-    annual: plan.priceNgnAnnual,
-    description: key === "CREATOR" ? "For independent social media managers." : key === "GROWTH" ? "For social media managers growing their client base." : key === "STUDIO" ? "For small marketing teams and agencies." : "For businesses and agencies coordinating larger teams.",
-    features: [
-      key === "UNLIMITED" ? "Unlimited active marketing workspaces" : `${formatWorkspaceLimit(plan.activeWorkspaces)} active marketing workspace${plan.activeWorkspaces === 1 ? "" : "s"}`,
-      key === "UNLIMITED" ? "Unlimited collaborators" : `Up to ${plan.collaborators} collaborators`,
-      `${plan.storageBytes / 1_000_000_000} GB storage`,
-      `${plan.aiGenerations.toLocaleString("en-NG")} AI generations / month`,
-      ...(key !== "CREATOR" ? ["Randy in AI Studio"] : []),
-      ...getContentWorkspaceFeatureList(key).filter(feature => feature !== "Randy in AI Studio"),
-    ],
-    cta: "Start 7-day trial",
-    href: `/signup?next=/dashboard/calendars&plan=${key}&cycle=MONTHLY`,
-    popular: key === "UNLIMITED",
-  };
-});
+const WORKSPACE_PLANS: PricingPlan[] = CONTENT_WORKSPACE_PLAN_ORDER.map(
+  (key) => {
+    const plan = CONTENT_WORKSPACE_PLANS[key];
+    return {
+      name: plan.name,
+      monthly: plan.priceNgnMonthly,
+      annual: plan.priceNgnAnnual,
+      description:
+        key === "CREATOR"
+          ? "For independent social media managers."
+          : key === "GROWTH"
+            ? "For social media managers growing their client base."
+            : key === "STUDIO"
+              ? "For small marketing teams and agencies."
+              : "For businesses and agencies coordinating larger teams.",
+      features: [
+        key === "UNLIMITED"
+          ? "Unlimited active marketing workspaces"
+          : `${formatWorkspaceLimit(plan.activeWorkspaces)} active marketing workspace${plan.activeWorkspaces === 1 ? "" : "s"}`,
+        key === "UNLIMITED"
+          ? "Unlimited collaborators"
+          : `Up to ${plan.collaborators} collaborators`,
+        `${plan.storageBytes / 1_000_000_000} GB storage`,
+        `${plan.aiGenerations.toLocaleString("en-NG")} AI generations / month`,
+        ...(key !== "CREATOR" ? ["Randy in AI Studio"] : []),
+        ...getContentWorkspaceFeatureList(key).filter(
+          (feature) => feature !== "Randy in AI Studio",
+        ),
+      ],
+      cta: "Start 3-day trial",
+      href: `/signup?next=/dashboard/calendars&plan=${key}&cycle=MONTHLY`,
+      popular: key === "UNLIMITED",
+    };
+  },
+);
 
 function formatNaira(amount: number) {
   if (amount === 0) {
@@ -114,15 +155,12 @@ function buildHref(
   product: Product,
   cycle: BillingCycle,
   tier?: string,
-  plan?: string
+  plan?: string,
 ) {
   const params = new URLSearchParams();
 
   params.set("product", product);
-  params.set(
-    "cycle",
-    cycle === "monthly" ? "MONTHLY" : "ANNUAL"
-  );
+  params.set("cycle", cycle === "monthly" ? "MONTHLY" : "ANNUAL");
 
   if (tier) {
     params.set("tier", tier);
@@ -132,7 +170,10 @@ function buildHref(
     params.set("plan", plan);
   }
 
-  return productEntryHref(product, { plan: tier ?? plan, cycle: params.get("cycle") });
+  return productEntryHref(product, {
+    plan: tier ?? plan,
+    cycle: params.get("cycle"),
+  });
 }
 
 function CheckIcon() {
@@ -156,12 +197,7 @@ function CheckIcon() {
 
 function ArrowRightIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-4 w-4"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
       <path
         d="M5 12h14M14 7l5 5-5 5"
         stroke="currentColor"
@@ -173,19 +209,31 @@ function ArrowRightIcon() {
   );
 }
 
-function ProductIcon({
-  product,
-}: {
-  product: Product;
-}) {
-  if (product === "delivery") {
+function ProductIcon({ product }: { product: Product }) {
+  if (product === "engage")
     return (
       <svg
         viewBox="0 0 24 24"
         fill="none"
         className="h-5 w-5"
-        aria-hidden
+        aria-hidden="true"
       >
+        <path
+          d="M20 11.5a8 8 0 0 1-8 8H5l-3 2v-10a9 9 0 0 1 18 0Z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="m13 6-3 6h4l-3 5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  if (product === "delivery") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
         <rect
           x="3"
           y="4"
@@ -215,12 +263,7 @@ function ProductIcon({
   }
 
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-5 w-5"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
       <rect
         x="3"
         y="5"
@@ -248,17 +291,21 @@ function ProductIcon({
   );
 }
 
-export default function PricingSection({ compact = false }: { compact?: boolean }) {
-  const [product, setProduct] =
-    useState<Product>("workspace");
+export default function PricingSection({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
+  const [product, setProduct] = useState<Product>("workspace");
 
-  const [cycle, setCycle] =
-    useState<BillingCycle>("monthly");
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
 
   const plans =
     product === "delivery"
       ? DELIVERY_PLANS
-      : WORKSPACE_PLANS;
+      : product === "engage"
+        ? ENGAGE_PLANS
+        : WORKSPACE_PLANS;
 
   return (
     <section
@@ -299,16 +346,25 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
             <span className="h-px w-8 bg-[#155FC7]" />
           </div>
 
-          <h2 className={compact ? "mt-5 text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.18] tracking-[-0.045em] text-[#294669]" : "mt-6 font-[var(--font-fraunces)] text-[clamp(3rem,6vw,6rem)] font-normal leading-[0.92] tracking-[-0.05em] text-[#101216]"}>
+          <h2
+            className={
+              compact
+                ? "mt-5 text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.18] tracking-[-0.045em] text-[#294669]"
+                : "mt-6 font-[var(--font-fraunces)] text-[clamp(3rem,6vw,6rem)] font-normal leading-[0.92] tracking-[-0.05em] text-[#101216]"
+            }
+          >
             {compact ? "A plan for every" : "One connected platform."}
             <br />
             <span className="text-[#155FC7]">
-              {compact ? "stage of your work." : "Plans for different ways of working."}
+              {compact
+                ? "stage of your work."
+                : "Plans for different ways of working."}
             </span>
           </h2>
 
           <p className="mx-auto mt-7 max-w-[590px] text-sm leading-7 text-[#626974] sm:text-base">
-            Choose the client capacity, AI allowance and tools that fit your team.
+            Choose the client capacity, AI allowance and tools that fit your
+            team.
           </p>
         </div>
 
@@ -317,6 +373,7 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
         <div className="mx-auto mt-12 flex w-fit max-w-full flex-wrap justify-center rounded-full border border-[#E1E4E9] bg-[#F7F8FA] p-1.5">
           <button
             type="button"
+            aria-pressed={product === "workspace"}
             onClick={() => setProduct("workspace")}
             className={`flex items-center gap-2 rounded-full px-3 py-3 text-[11px] font-semibold transition-all sm:px-5 sm:text-xs ${
               product === "workspace"
@@ -330,6 +387,7 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
 
           <button
             type="button"
+            aria-pressed={product === "delivery"}
             onClick={() => setProduct("delivery")}
             className={`flex items-center gap-2 rounded-full px-3 py-3 text-[11px] font-semibold transition-all sm:px-5 sm:text-xs ${
               product === "delivery"
@@ -339,6 +397,15 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
           >
             <ProductIcon product="delivery" />
             Project Delivery
+          </button>
+          <button
+            type="button"
+            aria-pressed={product === "engage"}
+            onClick={() => setProduct("engage")}
+            className={`flex items-center gap-2 rounded-full px-3 py-3 text-[11px] font-semibold transition-all sm:px-5 sm:text-xs ${product === "engage" ? "bg-[#111317] text-white shadow-sm" : "text-[#626974] hover:text-[#111317]"}`}
+          >
+            <ProductIcon product="engage" />
+            Customer Messaging
           </button>
         </div>
 
@@ -354,13 +421,17 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#155FC7]">
             {product === "delivery"
               ? "For delivering creative work"
-              : "For planning work with clients"}
+              : product === "engage"
+                ? "For customer conversations and AI responses"
+                : "For planning work with clients"}
           </p>
 
           <p className="mt-2 text-sm text-[#626974]">
             {product === "delivery"
               ? "Present, collaborate, collect feedback and hand off projects beautifully."
-              : "Manage client content, approvals, publishing, conversations, leads and analytics."}
+              : product === "engage"
+                ? "Showwork Engage brings customer messages, AI replies, leads and business knowledge together."
+                : "Manage client content, approvals, publishing, conversations, leads and analytics."}
           </p>
         </motion.div>
 
@@ -394,7 +465,7 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
           </div>
 
           <span className="rounded-full bg-[#EAF7EF] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#1E6B3B]">
-            Save 5%
+            {product === "engage" ? "2 months free annually" : "Save 5%"}
           </span>
         </div>
 
@@ -406,47 +477,49 @@ export default function PricingSection({ compact = false }: { compact?: boolean 
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
           className={`mt-12 grid gap-4 ${
-            product === "delivery"
-              ? "lg:grid-cols-4"
-              : "mx-auto max-w-[1440px] md:grid-cols-2 xl:grid-cols-4"
+            product === "engage"
+              ? "mx-auto max-w-lg"
+              : product === "delivery"
+                ? "lg:grid-cols-4"
+                : "mx-auto max-w-[1440px] md:grid-cols-2 xl:grid-cols-4"
           }`}
         >
           {plans.map((plan) => {
-            const amount =
-              cycle === "monthly"
-                ? plan.monthly
-                : plan.annual;
+            const amount = cycle === "monthly" ? plan.monthly : plan.annual;
 
             let href = plan.href;
 
-if (product === "delivery") {
-  if (plan.name === "Free") {
-    href = productEntryHref("delivery");
-  } else {
-    const tierMap: Record<string, string> = {
-      Starter: "STARTER",
-      Growth: "GROWTH",
-      Unlimited: "UNLIMITED",
-    };
+            if (product === "engage") {
+              href = productEntryHref("engage", {
+                cycle: cycle === "monthly" ? "MONTHLY" : "ANNUAL",
+              });
+            } else if (product === "delivery") {
+              if (plan.name === "Free") {
+                href = productEntryHref("delivery");
+              } else {
+                const tierMap: Record<string, string> = {
+                  Starter: "STARTER",
+                  Growth: "GROWTH",
+                  Unlimited: "UNLIMITED",
+                };
 
-    href = buildHref(
-      "delivery",
-      cycle,
-      tierMap[plan.name]
-    );
-  }
-} else {
-  const workspacePlanMap: Record<string, string> = {
-    Creator: "CREATOR",
-    Growth: "GROWTH",
-    Studio: "STUDIO",
-    Agency: "UNLIMITED",
-  };
+                href = buildHref("delivery", cycle, tierMap[plan.name]);
+              }
+            } else {
+              const workspacePlanMap: Record<string, string> = {
+                Creator: "CREATOR",
+                Growth: "GROWTH",
+                Studio: "STUDIO",
+                Agency: "UNLIMITED",
+              };
 
-  const workspacePlan = workspacePlanMap[plan.name];
+              const workspacePlan = workspacePlanMap[plan.name];
 
-  href = productEntryHref("workspace", { plan: workspacePlan, cycle: cycle === "monthly" ? "MONTHLY" : "ANNUAL" });
-}
+              href = productEntryHref("workspace", {
+                plan: workspacePlan,
+                cycle: cycle === "monthly" ? "MONTHLY" : "ANNUAL",
+              });
+            }
             return (
               <motion.div
                 key={plan.name}
@@ -467,7 +540,9 @@ if (product === "delivery") {
                 <div className="mb-4 flex min-h-7 items-center">
                   {plan.popular && (
                     <span className="inline-flex max-w-full items-center rounded-full bg-[#155FC7] px-3 py-1.5 text-[9px] font-bold uppercase leading-4 tracking-[0.08em] text-white">
-                      {product === "workspace" ? "Recommended for teams" : "Most popular"}
+                      {product === "workspace"
+                        ? "Recommended for teams"
+                        : "Most popular"}
                     </span>
                   )}
                 </div>
@@ -477,21 +552,19 @@ if (product === "delivery") {
                 <div>
                   <p
                     className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
-                      plan.popular
-                        ? "text-[#7EAAFF]"
-                        : "text-[#155FC7]"
+                      plan.popular ? "text-[#7EAAFF]" : "text-[#155FC7]"
                     }`}
                   >
                     {product === "delivery"
                       ? "Project Delivery"
-                      : "Marketing Workspace"}
+                      : product === "engage"
+                        ? "Customer Messaging"
+                        : "Marketing Workspace"}
                   </p>
 
                   <h3
                     className={`mt-4 text-2xl font-semibold tracking-[-0.035em] ${
-                      plan.popular
-                        ? "text-white"
-                        : "text-[#101216]"
+                      plan.popular ? "text-white" : "text-[#101216]"
                     }`}
                   >
                     {plan.name}
@@ -499,9 +572,7 @@ if (product === "delivery") {
 
                   <p
                     className={`mt-3 min-h-[48px] text-sm leading-6 ${
-                      plan.popular
-                        ? "text-white/50"
-                        : "text-[#626974]"
+                      plan.popular ? "text-white/50" : "text-[#626974]"
                     }`}
                   >
                     {plan.description}
@@ -514,9 +585,7 @@ if (product === "delivery") {
                   <div className="flex items-end gap-1">
                     <span
                       className={`font-[var(--font-fraunces)] text-[42px] leading-none tracking-[-0.05em] ${
-                        plan.popular
-                          ? "text-white"
-                          : "text-[#101216]"
+                        plan.popular ? "text-white" : "text-[#101216]"
                       }`}
                     >
                       {formatNaira(amount)}
@@ -525,15 +594,10 @@ if (product === "delivery") {
                     {amount > 0 && (
                       <span
                         className={`mb-1 text-[11px] ${
-                          plan.popular
-                            ? "text-white/70"
-                            : "text-[#626974]"
+                          plan.popular ? "text-white/70" : "text-[#626974]"
                         }`}
                       >
-                        /
-                        {cycle === "monthly"
-                          ? "month"
-                          : "year"}
+                        /{cycle === "monthly" ? "month" : "year"}
                       </span>
                     )}
                   </div>
@@ -541,15 +605,11 @@ if (product === "delivery") {
                   {cycle === "annual" && amount > 0 && (
                     <p
                       className={`mt-2 text-[10px] ${
-                        plan.popular
-                          ? "text-white/70"
-                          : "text-[#626974]"
+                        plan.popular ? "text-white/70" : "text-[#626974]"
                       }`}
                     >
                       Equivalent to ₦
-                      {Math.round(
-                        amount / 12
-                      ).toLocaleString("en-NG")}
+                      {Math.round(amount / 12).toLocaleString("en-NG")}
                       /month
                     </p>
                   )}
@@ -559,9 +619,7 @@ if (product === "delivery") {
 
                 <div
                   className={`my-8 h-px ${
-                    plan.popular
-                      ? "bg-white/10"
-                      : "bg-[#E4E6EA]"
+                    plan.popular ? "bg-white/10" : "bg-[#E4E6EA]"
                   }`}
                 />
 
@@ -570,9 +628,7 @@ if (product === "delivery") {
                 <div className="flex-1">
                   <p
                     className={`text-[9px] font-bold uppercase tracking-[0.14em] ${
-                      plan.popular
-                        ? "text-white/70"
-                        : "text-[#626974]"
+                      plan.popular ? "text-white/70" : "text-[#626974]"
                     }`}
                   >
                     Includes
@@ -584,16 +640,12 @@ if (product === "delivery") {
                         <li
                           key={feature}
                           className={`flex items-start gap-3 text-xs leading-5 ${
-                            plan.popular
-                              ? "text-white/65"
-                              : "text-[#555B65]"
+                            plan.popular ? "text-white/65" : "text-[#555B65]"
                           }`}
                         >
                           <span
                             className={`mt-0.5 ${
-                              plan.popular
-                                ? "text-[#7EAAFF]"
-                                : "text-[#155FC7]"
+                              plan.popular ? "text-[#7EAAFF]" : "text-[#155FC7]"
                             }`}
                           >
                             <CheckIcon />
@@ -601,10 +653,30 @@ if (product === "delivery") {
 
                           {feature}
                         </li>
-                      )
+                      ),
                     )}
                   </ul>
-                  {compact && plan.features.length > 5 && <details className="mt-5 text-xs leading-6"><summary className={`cursor-pointer rounded-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${plan.popular ? "text-blue-200" : "text-[#155FC7]"}`}>See all included features</summary><ul className="mt-3 space-y-2">{plan.features.slice(5).map(feature => <li key={feature} className={plan.popular ? "text-white/80" : "text-slate-600"}>{feature}</li>)}</ul></details>}
+                  {compact && plan.features.length > 5 && (
+                    <details className="mt-5 text-xs leading-6">
+                      <summary
+                        className={`cursor-pointer rounded-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${plan.popular ? "text-blue-200" : "text-[#155FC7]"}`}
+                      >
+                        See all included features
+                      </summary>
+                      <ul className="mt-3 space-y-2">
+                        {plan.features.slice(5).map((feature) => (
+                          <li
+                            key={feature}
+                            className={
+                              plan.popular ? "text-white/80" : "text-slate-600"
+                            }
+                          >
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </div>
 
                 {/* CTA */}
@@ -624,16 +696,15 @@ if (product === "delivery") {
 
                 {/* Trial note */}
 
-                {product === "workspace" && (
+                {(product === "workspace" || product === "engage") && (
                   <p
                     className={`mt-3 text-center text-[9px] ${
-                      plan.popular
-                        ? "text-white/70"
-                        : "text-[#626974]"
+                      plan.popular ? "text-white/70" : "text-[#626974]"
                     }`}
                   >
-                    7-day Agency trial · no payment
-                    required to start
+                    {product === "engage"
+                      ? "3-day free trial · no card required"
+                      : "3-day Agency trial · no payment required to start"}
                   </p>
                 )}
               </motion.div>
@@ -687,10 +758,9 @@ if (product === "delivery") {
                 </p>
 
                 <p className="mt-1 max-w-[650px] text-xs leading-5 text-[#626974]">
-                  Build a professional home for your
-                  work without paying for a subscription.
-                  Your paid plans are for the tools that
-                  power your workflow.
+                  Build a professional home for your work without paying for a
+                  subscription. Your paid plans are for the tools that power
+                  your workflow.
                 </p>
               </div>
             </div>

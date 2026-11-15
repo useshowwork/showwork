@@ -92,6 +92,7 @@ function SparkMark({ className = "h-4 w-4" }: { className?: string }) {
 
 export default function CalendarWorkspaceShell({
   calendarId,
+  product = "marketing",
   clientName,
   clientUrl,
   isManager,
@@ -100,6 +101,7 @@ export default function CalendarWorkspaceShell({
   setup,
   sections,
 }: {
+  product?: "marketing" | "engage";
   calendarId?: string;
   clientName: string;
   clientUrl: string;
@@ -202,6 +204,7 @@ export default function CalendarWorkspaceShell({
     const compact = (items: Array<WorkspaceSection | undefined>) =>
       items.filter(Boolean) as WorkspaceSection[];
 
+    if (product === "engage") return [{ label: "Showwork Engage", items: compact([byId("inbox"), byId("leads"), byId("channels"), byId("knowledge")]) }];
     return [
   {
     label: "Workspace",
@@ -251,7 +254,7 @@ export default function CalendarWorkspaceShell({
     items: compact([byId("overview")]),
   },
 ].filter((cluster) => cluster.items.length > 0);
-  }, [visibleSections]);
+  }, [visibleSections, product]);
 
   if (!active) return null;
 
@@ -271,16 +274,17 @@ export default function CalendarWorkspaceShell({
   };
 
   const aiSections = (["knowledge", "generate", "research"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
-  const primaryMobile = (["content", "generate", "inbox"] as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
+  const primaryMobile = ((product === "engage" ? ["inbox", "leads", "channels", "knowledge"] : ["content", "generate", "inbox"]) as WorkspaceSectionId[]).map(id => visibleSections.find(section => section.id === id)).filter(Boolean) as WorkspaceSection[];
   const moreSections = visibleSections.filter(section => !["content", "inbox", "analytics", "knowledge", "research", "generate"].includes(section.id)).sort((a, b) => Number(a.id === "overview") - Number(b.id === "overview"));
   const openSheet = (sheet: "more" | "ai") => { setMobileSheet(sheet); setMobileOpen(true); };
+  const engageDescriptions: Partial<Record<WorkspaceSectionId, string>> = { inbox: "Messages & AI replies", leads: "Contacts & follow-ups", channels: "Facebook, Instagram & WhatsApp", knowledge: "Your business & brand voice" };
   const sidebar = <>
-    <nav className={menuStyles.navigation} aria-label="Workspace sections">
+    <nav className={`${menuStyles.navigation} ${product === "engage" ? menuStyles.engageNavigation : ""}`} aria-label="Workspace sections">
       {nav.map(cluster => <div key={cluster.label} className={menuStyles.cluster} data-featured={cluster.featured || undefined}>
         <div className={menuStyles.clusterHeading}><p>{cluster.label}</p>{cluster.featured && <Sparkles size={12} aria-hidden="true"/>}</div>
         <div className={menuStyles.items}>{cluster.items.map(item => <div key={item.id}>
           <button type="button" data-tour-target={item.id} data-section={item.id} aria-current={item.id === active.id ? "page" : undefined} onClick={() => select(item.id)} className={menuStyles.navItem}>
-            <span className={menuStyles.iconWell}><SectionIcon name={item.id}/></span><span className={menuStyles.navLabel}>{item.label}</span>
+            <span className={menuStyles.iconWell}><SectionIcon name={item.id}/></span><span className={menuStyles.navLabel}>{product === "engage" ? <><strong>{item.label}</strong><small>{engageDescriptions[item.id]}</small></> : item.label}</span>
             {item.id === active.id && <span className={menuStyles.activeArrow} aria-hidden="true"><ChevronRight size={12}/></span>}
           </button><div data-tour-slot={item.id}/>
         </div>)}</div>
@@ -294,14 +298,14 @@ export default function CalendarWorkspaceShell({
   </>;
 
   return (
-    <div data-marketing-workspace="true" data-sidebar-collapsed={sidebarCollapsed} className={`${menuStyles.desktopFrame} min-h-screen w-full min-w-0 bg-[#F7F8FA] text-[#101828]`}>
+    <div data-marketing-workspace="true" data-workspace-product={product} data-sidebar-collapsed={sidebarCollapsed} className={`${menuStyles.desktopFrame} min-h-screen w-full min-w-0 bg-[#F7F8FA] text-[#101828]`}>
       {calendarId && <WorkspaceUploadTray workspaceId={calendarId} />}
       <header className={headerStyles.header}>
         <div className={headerStyles.inner}>
           <button type="button" className={menuStyles.headerMenu} onClick={() => openSheet("more")} aria-label="Open workspace menu" aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog"><Menu size={21}/></button>
-          <Link href="/dashboard/calendars" aria-label="Back to workspaces" title="All workspaces" className={headerStyles.back}><ArrowLeft size={16}/><span>All workspaces</span></Link>
+          <Link href={product === "engage" ? "/dashboard/engage?billing=1" : "/dashboard/calendars"} aria-label={product === "engage" ? "Subscription" : "Back to workspaces"} title={product === "engage" ? "Subscription" : "All workspaces"} className={headerStyles.back}><ArrowLeft size={16}/><span>{product === "engage" ? "Subscription" : "All workspaces"}</span></Link>
           <span className={headerStyles.divider} aria-hidden="true"/>
-          <div className={headerStyles.identity}><span className={headerStyles.monogram} aria-hidden="true">{clientName.slice(0, 2).toUpperCase()}</span><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>Marketing workspace</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
+          <div className={headerStyles.identity}><span className={headerStyles.monogram} aria-hidden="true">{clientName.slice(0, 2).toUpperCase()}</span><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>{product === "engage" ? "Showwork Engage" : "Marketing workspace"}</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
           <span className={headerStyles.location}><SectionIcon name={active.id} className="h-3.5 w-3.5"/>{active.label}</span>
           <div className={headerStyles.actions}>
             {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={headerStyles.client}>Preview client page <ArrowUpRight className="h-3.5 w-3.5"/></a>}
@@ -310,7 +314,7 @@ export default function CalendarWorkspaceShell({
           {settings}
         </div>
       </header>
-      <MobileDrawer motion="slide" placement={mobileSheet === "more" ? "left" : "bottom"} open={mobileOpen} onClose={() => { setMobileOpen(false); if (tourId && window.innerWidth < 1024) window.dispatchEvent(new Event("showwork-workspace-tour-dismiss")); }} label={mobileSheet === "ai" ? "AI Studio" : "Showwork navigation"} heading={mobileSheet === "more" ? <ShowworkLogo tone="white" width={120} /> : undefined} panelClassName={mobileSheet === "more" ? menuStyles.navigationDrawer : menuStyles.mobilePanel} className={mobileSheet === "more" ? "bg-[#123568] text-white" : "bg-white text-slate-800"}>
+      <MobileDrawer motion="slide" placement={mobileSheet === "more" ? "left" : "bottom"} open={mobileOpen} onClose={() => { setMobileOpen(false); if (tourId && window.innerWidth < 1024) window.dispatchEvent(new Event("showwork-workspace-tour-dismiss")); }} label={mobileSheet === "ai" ? "AI Studio" : "Showwork navigation"} heading={mobileSheet === "more" ? <ShowworkLogo tone="white" width={120} /> : undefined} panelClassName={mobileSheet === "more" ? `${menuStyles.navigationDrawer} ${product === "engage" ? menuStyles.engageDrawer : ""}` : menuStyles.mobilePanel} className={mobileSheet === "more" ? "bg-[#123568] text-white" : "bg-white text-slate-800"}>
         {tourId || mobileSheet === "more" ? <><div className={menuStyles.drawerBrand}><p>{clientName}</p></div>{sidebar}<Link href="/dashboard/calendars" className={menuStyles.helpLink}><ArrowLeft size={16}/>All workspaces</Link></> : <div className={menuStyles.sheetBody}>
           {mobileSheet === "ai" && <p className={menuStyles.sheetIntro}>Build your knowledge, explore ideas and create content.</p>}
           <nav aria-label={mobileSheet === "ai" ? "AI Studio tools" : "More workspace sections"} className={menuStyles.sheetGrid}>
@@ -318,14 +322,14 @@ export default function CalendarWorkspaceShell({
           </nav>
         </div>}
       </MobileDrawer>
-      <nav aria-label="Mobile workspace navigation" data-workspace-bottom-nav hidden={keyboardOpen} className={`${menuStyles.bottomNav} lg:hidden`}>
-        {primaryMobile.map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/><span>{item.id === "content" ? "Calendar" : item.id === "generate" ? "Generate calendar" : "Inbox"}</span></button>)}
-        <button onClick={() => openSheet("more")} aria-current={!primaryMobile.some(item => item.id === active.id) ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog" className={menuStyles.dockItem}><Menu size={20}/>Menu</button>
+      <nav aria-label="Mobile workspace navigation" data-workspace-bottom-nav hidden={keyboardOpen} className={`${menuStyles.bottomNav} ${product === "engage" ? menuStyles.engageDock : ""} lg:hidden`}>
+        {primaryMobile.map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/><span>{product === "engage" ? (item.id === "inbox" ? "Inbox" : item.id === "knowledge" ? "Knowledge" : item.label) : item.id === "content" ? "Calendar" : item.id === "generate" ? "Generate calendar" : "Inbox"}</span></button>)}
+        {product !== "engage" && <button onClick={() => openSheet("more")} aria-current={!primaryMobile.some(item => item.id === active.id) ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog" className={menuStyles.dockItem}><Menu size={20}/>Menu</button>}
       </nav>
 
       <div className={`${menuStyles.desktopLayout} mx-auto grid max-w-[1800px] ${sidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[224px_minmax(0,1fr)]"}`}>
         {/* WORKSPACE NAVIGATION */}
-        <aside className={`${menuStyles.rail} sticky top-[72px] hidden h-[calc(100dvh-72px)] flex-col lg:flex`} data-collapsed={sidebarCollapsed}>
+        <aside className={`${menuStyles.rail} ${product === "engage" ? menuStyles.engageRail : ""} sticky top-[72px] hidden h-[calc(100dvh-72px)] flex-col lg:flex`} data-collapsed={sidebarCollapsed}>
           <div className={menuStyles.railHeader}>
             {!sidebarCollapsed && <div className={menuStyles.workspaceIdentity}><Link href="/dashboard" className={menuStyles.workspaceBrand}><ShowworkLogo tone="white" width={104}/><small title={clientName}>{clientName}</small></Link></div>}
             <button type="button" onClick={toggleSidebar} aria-expanded={!sidebarCollapsed} aria-controls="workspace-desktop-navigation"
@@ -397,7 +401,7 @@ export default function CalendarWorkspaceShell({
             })}
 
             {active.id !== "inbox" && <div className="mt-8 flex items-center justify-between border-t border-[#E4E9F0] pt-5 text-[9px] font-semibold uppercase tracking-[0.13em] text-[#A0A8B4]">
-              <span className="inline-flex items-center gap-3"><ShowworkLogo width={80}/><span>Marketing Workspace</span></span>
+              <span className="inline-flex items-center gap-3"><ShowworkLogo width={80}/><span>{product === "engage" ? "Showwork Engage" : "Marketing Workspace"}</span></span>
               <span className="hidden sm:inline">{clientName}</span>
             </div>}
           </div>

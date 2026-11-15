@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {load}=require('./helpers/load-typescript.cjs');
 const journey=load('lib/productJourney.ts');
-for(const [product,home] of Object.entries({workspace:'/dashboard/calendars',delivery:'/dashboard/projects',portfolio:'/dashboard/portfolio'})) {
+for(const [product,home] of Object.entries({workspace:'/dashboard/calendars',delivery:'/dashboard/projects',portfolio:'/dashboard/portfolio',engage:'/dashboard/engage'})) {
  test(`${product} retains its destination through signup and login`,()=>{
   const href=journey.productEntryHref(product);
   const query=new URL(href,'https://example.com').searchParams;
@@ -50,7 +50,7 @@ function nodes(tree,predicate,result=[]) {
  if(predicate(tree))result.push(tree);
  nodes(tree.props?.children,predicate,result);return result;
 }
-for(const product of ['workspace','delivery','portfolio'])test(`${product} verification and login navigate directly to the requested app or plan`,async()=>{
+for(const product of ['workspace','delivery','portfolio','engage'])test(`${product} verification and login navigate directly to the requested app or plan`,async()=>{
  const destination=journey.productDestination(product,product==='portfolio'?null:'GROWTH','ANNUAL');
  for(const screen of ['signup','login']) {
   const states=[];let index=0;const pushes=[];
@@ -94,4 +94,30 @@ for(const screen of ['signup','login'])test(`${screen} auth switch preserves the
  const Form=Component().props.children.type;const tree=Form();
  const crosslink=nodes(tree,n=>typeof n.props?.href==='string'&&n.props.href.startsWith(screen==='signup'?'/login?':'/signup?'))[0];
  const params=new URL(crosslink.props.href,'https://example.com').searchParams;assert.equal(params.get('ref'),'ABCDEF1234');assert.equal(params.get('next'),destination);
+});
+
+for (const cycle of ['monthly','annual']) test(`Customer Messaging pricing sends only the Engage package and retains ${cycle} billing`,()=>{
+ let hook=0;
+ const Pricing=load('components/landing/PricingSection.tsx',{react:{...React,useState:()=>[hook++===0?'engage':cycle,()=>{}]}}).default;
+ const tree=Pricing({compact:true});
+ const buttons=nodes(tree,n=>n.type==='button');
+ const words=node=>typeof node==='string'?node:Array.isArray(node)?node.map(words).join(''):node?.props?words(node.props.children):'';
+ const engageButton=buttons.find(node=>words(node)==='Customer Messaging');
+ assert.ok(engageButton);assert.equal(engageButton.props['aria-pressed'],true);
+ const cta=nodes(tree,n=>typeof n.props?.href==='string'&&words(n).includes('Start 3-day free trial'))[0];
+ assert.ok(cta);
+ const result=journey.readProductJourney(new URL(cta.props.href,'https://example.test').searchParams);
+ assert.equal(result.product,'engage');
+ assert.equal(result.destination,`/dashboard/engage?cycle=${cycle==='annual'?'ANNUAL':'MONTHLY'}`);
+ const allText=words(tree);
+ assert.match(allText,/1,000 AI replies per month/);
+ assert.match(allText,cycle==='annual'?/149,000/:/14,900/);
+ assert.doesNotMatch(allText,/Start 7-day trial|7-day Agency trial/);
+ assert.match(allText,/2 months free annually/);
+});
+
+test('Engage checkout opens with the annual cycle selected after authentication',()=>{
+ const tree=load('components/engage/EngageStart.tsx',{react:{...React,useState:initial=>[initial,()=>{}]}}).default({active:false,existingSubscription:false,billingCycle:'ANNUAL'});
+ const checkout=nodes(tree,node=>node.props?.plan==='ENGAGE')[0];
+ assert.ok(checkout);assert.equal(checkout.props.cycle,'ANNUAL');
 });

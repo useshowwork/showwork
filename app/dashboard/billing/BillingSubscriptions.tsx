@@ -1026,7 +1026,7 @@ function ContentWorkspaceSubscription({
 
                 <div className="mt-6 flex flex-wrap gap-x-5 gap-y-3">
                   {[
-                    "7-day free trial",
+                    "3-day free trial",
                     "No payment to start",
                     "AI Studio included",
                     "Client collaboration",
@@ -1055,7 +1055,7 @@ function ContentWorkspaceSubscription({
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-[#667085]">
-                  You can start with 7 days of full Agency feature access.
+                  You can start with 3 days of full Agency feature access.
                   No payment is required to begin.
                 </p>
 
@@ -1083,7 +1083,7 @@ function ContentWorkspaceSubscription({
 
   const planDetails =
     CONTENT_WORKSPACE_PLANS[plan];
-  const agencyTrial = ["TRIAL", "ACTIVE"].includes(billingStatus) && !!workspaceBilling?.contentWorkspaceTrialEndsAt && new Date(workspaceBilling.contentWorkspaceTrialEndsAt).getTime() > Date.now();
+  const agencyTrial = plan !== "ENGAGE" && ["TRIAL", "ACTIVE"].includes(billingStatus) && !!workspaceBilling?.contentWorkspaceTrialEndsAt && new Date(workspaceBilling.contentWorkspaceTrialEndsAt).getTime() > Date.now();
   const accessDetails = agencyTrial ? CONTENT_WORKSPACE_PLANS.UNLIMITED : planDetails;
 
   return (
@@ -1258,7 +1258,7 @@ function ContentWorkspaceSubscription({
         </div>
       </div>
 
-      {workspaceBilling &&
+      {workspaceBilling && plan !== "ENGAGE" &&
         (workspaceBilling.isComped || billingStatus === "TRIAL" || billingStatus === "OFFLINE") && (
           <TrialCountdownBanner
             plan={plan}

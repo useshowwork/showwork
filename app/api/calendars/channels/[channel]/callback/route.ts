@@ -109,7 +109,7 @@ export async function GET(
     select: { id: true, managerId: true, instagramPageId: true, facebookPageId: true },
   });
 
-  if (!calendar || !(await hasCalendarPermission(creator.id, calendar.id, "channels.manage"))) {
+  if (!calendar || !(await hasCalendarPermission(creator.id, calendar.id, "channels.manage", channel))) {
     return makeRedirect(`${settingsPath}&${channel}Error=not_found`);
   }
 

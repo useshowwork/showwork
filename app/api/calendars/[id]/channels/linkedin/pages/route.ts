@@ -13,7 +13,7 @@ type Context = { params: Promise<{ id: string }> };
 async function account(context: Context) {
   const creator = await getCurrentCreator();
   const { id } = await context.params;
-  if (!creator || !(await hasCalendarPermission(creator.id, id, "channels.manage"))) throw new Error("Only a workspace owner or authorized manager can manage LinkedIn Pages.");
+  if (!creator || !(await hasCalendarPermission(creator.id, id, "channels.manage", "LINKEDIN"))) throw new Error("Only a workspace owner or authorized manager can manage LinkedIn Pages.");
   const stored = await db.socialConnection.findFirst({ where: { calendarId: id, platform: "LINKEDIN", status: "CONNECTED" } });
   if (!stored) throw new Error("Connect LinkedIn before choosing a Page.");
   return freshConnection(stored);

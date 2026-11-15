@@ -31,8 +31,8 @@ test('Creator and Studio features are gated independently and Agency adds opt-in
     assert.equal(entitlements.canUseContentWorkspaceFeature(account('UNLIMITED'), feature), true);
   }
 });
-test('every intended plan gets full Agency access during its original seven-day trial', () => {
-  assert.equal(plans.CONTENT_WORKSPACE_TRIAL_DAYS, 7);
+test('every intended plan gets full Agency access during its original three-day trial', () => {
+  assert.equal(plans.CONTENT_WORKSPACE_TRIAL_DAYS, 3);
   for (const plan of plans.CONTENT_WORKSPACE_PLAN_ORDER) {
     const owner = account(plan, 'TRIAL', future());
     assert.equal(entitlements.getContentWorkspacePlan(owner), 'UNLIMITED');

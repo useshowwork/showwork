@@ -230,7 +230,7 @@ export async function getContentWorkspaceUsage(
  *
  * A creator who has never used their Marketing Workspace trial may
  * create their first workspace. The creation route starts the
- * 7-day trial immediately after the workspace is created.
+ * 3-day trial immediately after the workspace is created.
  */
 export async function canCreateContentWorkspace(
   account: ContentWorkspaceAccount

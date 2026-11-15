@@ -34,7 +34,7 @@ export async function GET(
     select: { managerId: true },
   });
   const settingsPath = `/dashboard/calendars/${id}?view=channels`;
-  if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage"))) {
+  if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage", channel))) {
     return NextResponse.redirect(`${appUrl()}${settingsPath}&${channel}Error=not_found`);
   }
 

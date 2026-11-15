@@ -86,7 +86,7 @@ export async function POST(
     tone: body.tone,
   };
   const quota = await consumeCalendarAiGeneration(calendarId);
-  if (!quota.allowed) return NextResponse.json({ error: `Your monthly AI allowance of ${quota.limit} is unavailable or used up. Upgrade your plan or wait for your next monthly allowance.`, code: "AI_GENERATION_LIMIT_REACHED" }, { status: 403 });
+  if (!quota.allowed) return NextResponse.json({ error: `Your monthly AI allowance of ${quota.limit} is unavailable or used up. Your allowance resets monthly; you can still send human replies.`, code: "AI_GENERATION_LIMIT_REACHED" }, { status: 403 });
   try {
     const draft = await generateSocialInboxAutoReply({
       clientName: conversation.calendar.clientName,

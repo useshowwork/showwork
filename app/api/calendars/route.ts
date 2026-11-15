@@ -110,7 +110,7 @@ export async function GET() {
 // - Creator: 1 active workspace
 // - Studio: 10 active workspaces
 //
-// Every account gets one 7-day trial, ever.
+// Every account gets one 3-day trial, ever.
 // The trial is attached to the Marketing Workspace subscription,
 // not to an individual calendar/workspace.
 //
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
   if (!plan) {
     if (
       body.plan === "CREATOR" ||
-      body.plan === "GROWTH" || body.plan === "STUDIO" || body.plan === "UNLIMITED"
+      body.plan === "GROWTH" || body.plan === "STUDIO" || body.plan === "UNLIMITED" || body.plan === "ENGAGE"
     ) {
       plan = body.plan;
     } else {
@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
     const owner = await tx.creator.findUniqueOrThrow({ where: { id: creator.id } });
     const selectedPlan = owner.contentWorkspacePlan ?? plan!;
     const startsTrial = !owner.contentWorkspaceTrialUsedAt && !isComplimentaryAccessActive(owner);
-    const effectivePlan = startsTrial ? "UNLIMITED" : getContentWorkspacePlan(owner);
+    const effectivePlan = startsTrial ? (selectedPlan === "ENGAGE" ? "ENGAGE" : "UNLIMITED") : getContentWorkspacePlan(owner);
     if ((!startsTrial && !canAccessContentWorkspace(owner)) || !effectivePlan) return null;
     const count = await tx.socialCalendar.count({ where: { managerId: creator.id } });
     if (count >= CONTENT_WORKSPACE_PLANS[effectivePlan].activeWorkspaces) return null;
@@ -358,7 +358,7 @@ if (
   /*
    * FIRST-EVER MARKETING WORKSPACE:
    *
-   * Start the 7-day free trial.
+   * Start the 3-day free trial.
    *
    * No payment is requested.
    * No Paystack subscription is created.

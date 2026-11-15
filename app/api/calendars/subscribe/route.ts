@@ -18,7 +18,7 @@ import {
 function resolvePlan(
   value: unknown
 ): ContentWorkspacePlan | null {
-  if (value === "CREATOR" || value === "GROWTH" || value === "STUDIO" || value === "UNLIMITED") {
+  if (value === "CREATOR" || value === "GROWTH" || value === "STUDIO" || value === "UNLIMITED" || value === "ENGAGE") {
     return value;
   }
 
@@ -168,6 +168,14 @@ export async function POST(req: NextRequest) {
     const quote = await offerQuote(creator.id, "CONTENT_WORKSPACE", plan, billingCycle);
     if (!quote.offer) return NextResponse.json({ error: "This offer is no longer available. Refresh billing to see your current options." }, { status: 409 });
     if (creator.contentWorkspaceBillingStatus === "ACTIVE" && creator.contentWorkspacePlan !== plan) return NextResponse.json({ error: "Switch to the selected plan from billing to activate this offer." }, { status: 409 });
+  }
+
+  if (plan === "ENGAGE") {
+    const [businesses, teammates] = await Promise.all([
+      db.socialCalendar.count({ where: { managerId: creator.id } }),
+      db.calendarCollaborator.count({ where: { calendar: { managerId: creator.id } } }),
+    ]);
+    if (businesses > 1 || teammates > 2) return NextResponse.json({ error: "Engage includes one business and two teammates. Reduce your existing usage before switching, or keep a Marketing Workspace plan.", code: "ENGAGE_LIMIT_REACHED" }, { status: 409 });
   }
 
   const planConfig =

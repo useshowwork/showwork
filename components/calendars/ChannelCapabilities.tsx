@@ -1,3 +1,6 @@
+"use client";
+import { useContext } from "react";
+import { ChannelProductContext } from "./ChannelProductContext";
 import { CalendarClock, ChartNoAxesCombined, MessagesSquare, ContactRound } from "lucide-react";
 import styles from "./ChannelsStudio.module.css";
 const capabilities: Record<string, { label: string; detail: string; icon: typeof CalendarClock }[]> = {
@@ -33,5 +36,6 @@ const capabilities: Record<string, { label: string; detail: string; icon: typeof
   ],
 };
 export default function ChannelCapabilities({ platform }: { platform: string }) {
-  return <section className={styles.capabilities} aria-label={`${platform} connection capabilities`}><p>What this connection supports</p><ul>{(capabilities[platform] ?? []).map(({label,detail,icon:Icon}) => <li key={label}><span><Icon size={15}/></span><div><strong>{label}</strong><p>{detail}</p></div></li>)}</ul></section>;
+  const engage = useContext(ChannelProductContext);
+  return <section className={styles.capabilities} aria-label={`${platform} connection capabilities`}><p>What this connection supports</p><ul>{(capabilities[platform] ?? []).filter(item => !engage || !["Publishing", "Analytics"].includes(item.label)).map(({label,detail,icon:Icon}) => <li key={label}><span><Icon size={15}/></span><div><strong>{label}</strong><p>{detail}</p></div></li>)}</ul></section>;
 }
