@@ -1,5 +1,7 @@
 "use client";
 
+import CollapsibleMobileDock from "@/components/navigation/CollapsibleMobileDock";
+
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { CircleHelp, Menu, Sparkles, ArrowLeft, LayoutDashboard, CalendarRange, UsersRound, ChartNoAxesCombined, MessagesSquare, ContactRound, PanelsTopLeft, Cable, BrainCircuit, BookOpenText, WandSparkles, SendHorizontal, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
 import menuStyles from "./WorkspaceMenu.module.css";
@@ -322,10 +324,12 @@ export default function CalendarWorkspaceShell({
           </nav>
         </div>}
       </MobileDrawer>
+      <CollapsibleMobileDock hidden={keyboardOpen}>
       <nav aria-label="Mobile workspace navigation" data-workspace-bottom-nav hidden={keyboardOpen} className={`${menuStyles.bottomNav} ${product === "engage" ? menuStyles.engageDock : ""} lg:hidden`}>
         {primaryMobile.map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} className={menuStyles.dockItem}><SectionIcon name={item.id} className="h-5 w-5"/><span>{product === "engage" ? (item.id === "inbox" ? "Inbox" : item.id === "knowledge" ? "Knowledge" : item.label) : item.id === "content" ? "Calendar" : item.id === "generate" ? "Generate calendar" : "Inbox"}</span></button>)}
         {product !== "engage" && <button onClick={() => openSheet("more")} aria-current={!primaryMobile.some(item => item.id === active.id) ? "true" : undefined} aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog" className={menuStyles.dockItem}><Menu size={20}/>Menu</button>}
       </nav>
+      </CollapsibleMobileDock>
 
       <div className={`${menuStyles.desktopLayout} mx-auto grid max-w-[1800px] ${sidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[224px_minmax(0,1fr)]"}`}>
         {/* WORKSPACE NAVIGATION */}

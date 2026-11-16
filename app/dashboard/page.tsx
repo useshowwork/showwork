@@ -1,3 +1,4 @@
+import { MessagesSquare } from "lucide-react";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { TOOL_COPY } from "@/components/dashboard/toolCopy";
 import WorkspaceCard from "@/components/dashboard/WorkspaceCard";
@@ -425,10 +426,14 @@ export default async function DashboardPage() {
           </div>
           <div className={workspaceStyles.grid}>
             <WorkspaceCard variant="workspace" product={TOOL_COPY.workspace.product} description={TOOL_COPY.workspace.description} href="/dashboard/calendars" action={calendar ? TOOL_COPY.workspace.openAction : TOOL_COPY.workspace.createAction} icon={<WorkspaceIcon />} />
+            <WorkspaceCard variant="engage" product="Showwork Engage" description="Bring Facebook, Instagram and WhatsApp messages into one inbox. Reply with AI, track leads and turn conversations into customers." href="/dashboard/engage" action="Explore Engage" icon={<MessagesSquare />} />
             <WorkspaceCard variant="delivery" product={TOOL_COPY.delivery.product} description={TOOL_COPY.delivery.description} href={projectCount > 0 ? "/dashboard/projects" : "/dashboard/start"} action={projectCount > 0 ? TOOL_COPY.delivery.openAction : TOOL_COPY.delivery.createAction} icon={<DeliveryIcon />} />
-            <WorkspaceCard variant="portfolio" product={TOOL_COPY.portfolio.product} description={TOOL_COPY.portfolio.description} href="/dashboard/portfolio" action={portfolio ? TOOL_COPY.portfolio.openAction : TOOL_COPY.portfolio.createAction} icon={<PortfolioIcon />} />
           </div>
-          <Link href="/dashboard/engage" className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950"><span><strong>Showwork Engage</strong><span className="mt-1 block text-sm">Conversations, leads and AI replies for your business.</span></span><span className="shrink-0 text-sm font-semibold">Explore →</span></Link>
+          <Link href="/dashboard/portfolio" className={workspaceStyles.portfolioStrip}>
+            <span className={workspaceStyles.stripIcon} aria-hidden="true"><PortfolioIcon /></span>
+            <span className={workspaceStyles.stripCopy}><strong>Portfolio</strong><span>A beautiful home for your creative work. Share your projects and make your next impression count.</span></span>
+            <span className={workspaceStyles.stripAction}>{portfolio ? TOOL_COPY.portfolio.openAction : TOOL_COPY.portfolio.createAction}<ArrowUpRightIcon /></span>
+          </Link>
         </section>
         <section className={`${workspaceStyles.hero} mt-7`} aria-labelledby="dashboard-welcome">
           <svg className={workspaceStyles.heroLines} viewBox="0 0 800 600" fill="none" aria-hidden="true">

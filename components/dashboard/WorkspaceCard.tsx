@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import styles from "./WorkspaceCard.module.css";
 
@@ -9,7 +9,7 @@ type Props = {
   href: string;
   action: string;
   icon: ReactNode;
-  variant: "workspace" | "delivery" | "portfolio";
+  variant: "workspace" | "delivery" | "portfolio" | "engage";
 };
 
 export default function WorkspaceCard({ product, description, href, action, icon, variant }: Props) {
@@ -21,6 +21,10 @@ export default function WorkspaceCard({ product, description, href, action, icon
         {featured && <span className={styles.flagship}>Our flagship tool</span>}
         {!featured && <span className={styles.arrow}><ArrowUpRight size={20} aria-hidden="true" /></span>}
       </div>
+      {variant === "engage" && <div className={styles.comms} aria-hidden="true">
+        <span className={styles.channels}>{["facebook", "instagram", "whatsapp"].map(channel => <img key={channel} src={`/images/integrations/${channel}.svg`} alt="" width={14} height={14} />)}</span>
+        <span className={styles.aiReply}><Sparkles size={12} /> AI replies</span>
+      </div>}
       <div className={styles.copy}>
         <h3 className={styles.title}>{product}</h3>
         <p className={styles.description}>{description}</p>

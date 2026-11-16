@@ -37,3 +37,53 @@
 .contentSurface .hero h1{font-size:32px;line-height:1.15}
 .contentSurface .pageBody{padding:24px}
 }
+
+/* Match the creator workspace's floating mobile glass navigation. */
+@media (max-width:1023px) {
+  .mobileDock {
+    inset: auto 20px calc(12px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    width: calc(100% - 40px);
+    max-width: 520px;
+    height: 72px;
+    gap: 2px;
+    padding: 6px;
+    border: 1px solid #ffffff38;
+    border-radius: 999px;
+    background: linear-gradient(115deg, #102441ed, #141b26e6);
+    -webkit-backdrop-filter: blur(28px) saturate(145%);
+    backdrop-filter: blur(28px) saturate(145%);
+    box-shadow: 0 12px 32px #08172c38, inset 0 1px 0 #ffffff24;
+  }
+  .mobileDock button {
+    height: 58px;
+    min-height: 58px;
+    gap: 5px;
+    padding: 5px 2px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: #f1f5ff;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobileDock button > svg { width: 24px; height: 24px; stroke-width: 1.8; flex-shrink: 0; }
+  .mobileDock button[aria-current], .mobileDock button[aria-expanded=true] {
+    background: #ffffff24;
+    border-color: #ffffff2b;
+    color: #fff;
+    box-shadow: inset 0 1px 0 #ffffff21;
+  }
+  .mobileDock button[aria-current] > svg, .mobileDock button[aria-expanded=true] > svg {
+    width: 30px;
+    height: 30px;
+    margin-block: -3px;
+    padding: 4px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: #2478ff;
+    box-shadow: 0 0 0 1.5px #ffffffdb, 0 2px 8px #07152d38;
+  }
+  .mobileDock button:focus-visible { outline: 2px solid #a9ceff; outline-offset: -2px; }
+}

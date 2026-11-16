@@ -1,5 +1,7 @@
 "use client";
 
+import CollapsibleMobileDock from "@/components/navigation/CollapsibleMobileDock";
+
 import PlatformBrandIcon from "./PlatformBrandIcon";
 import styles from "./ClientWorkspace.module.css";
 import HelpLink from "@/components/help/HelpLink";
@@ -630,7 +632,9 @@ export default function ClientCalendarWorkspace({
         </section>
       </div>
 
+      <CollapsibleMobileDock>
       <nav className={styles.mobileDock} aria-label="Client workspace navigation">{([{id:"calendar",label:"Calendar",icon:CalendarDays},{id:"analytics",label:"Analytics",icon:ChartNoAxesCombined},{id:"leads",label:"Leads",icon:ContactRound},{id:"overview",label:"Overview",icon:LayoutDashboard}] as const).map(item => <button key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={activeView === item.id ? "page" : undefined}><item.icon size={20}/><span>{item.label}</span></button>)}<button type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobileOpen} aria-current={["calendar","analytics","leads","overview"].includes(activeView) ? undefined : "true"} aria-haspopup="dialog"><MoreHorizontal size={20}/><span>More</span></button></nav>
+      </CollapsibleMobileDock>
 
     </main>
   );

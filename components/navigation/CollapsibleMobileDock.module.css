@@ -1,0 +1,47 @@
+.root { display: none; }
+@media (max-width: 1023px) {
+  .root:not([hidden]) { display: contents; }
+  .root[hidden], .menu[hidden] { display: none; }
+  .menu > nav {
+    background: linear-gradient(115deg, #13243a75, #19223066) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+    backdrop-filter: blur(24px) saturate(160%) !important;
+    border-color: #ffffff59 !important;
+    box-shadow: 0 10px 32px #09182d26, inset 0 1px 0 #ffffff30 !important;
+  }
+  .toggle {
+    position: fixed;
+    z-index: 41;
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .grip { width: 22px; height: 3px; border-radius: 999px; background: #ffffffb3; box-shadow: 0 1px 3px #09182d35; }
+  .toggle:hover .grip { background: #fff; }
+  .root[data-collapsed=true] .toggle { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .root[data-collapsed=true] .toggle::before {
+    content: "";
+    position: absolute;
+    width: 36px;
+    height: 18px;
+    border: 1px solid #ffffff59;
+    border-radius: 999px;
+    background: #17283e80;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 2px 8px #09182d20;
+  }
+  .toggle > svg { position: relative; }
+  .toggle:focus-visible { outline: 2px solid #2478ff; outline-offset: -4px; }
+}
