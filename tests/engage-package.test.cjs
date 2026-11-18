@@ -458,3 +458,24 @@ test("an Engage to Marketing switch requires payment without replacing business 
   );
   assert.ok(updates.every((data) => !("contentWorkspacePlan" in data)));
 });
+
+test("an Engage account can open the All tools dashboard", async () => {
+  const Dashboard = load("app/dashboard/page.tsx", {
+    "next/navigation": { redirect: (href) => assert.fail(`Unexpected redirect to ${href}`) },
+    "@/lib/auth": { getCurrentCreator: async () => ({ ...owner(), name: "Owner", email: "owner@example.test" }) },
+    "@/lib/admin": { isAdminEmail: () => false },
+    "@/lib/db": { db: {
+      portfolio: { findFirst: async () => null },
+      socialCalendar: { findFirst: async () => ({ id: "engage-workspace" }) },
+      project: { count: async () => 0 },
+    } },
+    "@/components/billing/BillingBenefits": { __esModule: true, default: () => null },
+    "@/components/LogoutButton": { __esModule: true, default: () => null },
+  }).default;
+
+  const html = renderToStaticMarkup(await Dashboard());
+  assert.match(html, /Choose the right tool for your work/);
+  assert.match(html, /href="\/dashboard\/engage"/);
+  assert.match(html, /href="\/dashboard\/portfolio"/);
+  assert.match(html, /href="\/dashboard\/billing\?product=content-workspace"/);
+});

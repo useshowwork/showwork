@@ -189,7 +189,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  if (creator.contentWorkspacePlan === "ENGAGE") redirect("/dashboard/engage");
+  const usesEngage = creator.contentWorkspacePlan === "ENGAGE";
 
   const [portfolio, calendar, projectCount] = await Promise.all([
     db.portfolio.findFirst({
@@ -425,7 +425,7 @@ export default async function DashboardPage() {
             <div><h2 id="workspace-actions">Choose the right tool for your work</h2><p>Click a tool to get started.</p></div>
           </div>
           <div className={workspaceStyles.grid}>
-            <WorkspaceCard variant="workspace" product={TOOL_COPY.workspace.product} description={TOOL_COPY.workspace.description} href="/dashboard/calendars" action={calendar ? TOOL_COPY.workspace.openAction : TOOL_COPY.workspace.createAction} icon={<WorkspaceIcon />} />
+            <WorkspaceCard variant="workspace" product={TOOL_COPY.workspace.product} description={TOOL_COPY.workspace.description} href={usesEngage ? "/dashboard/billing?product=content-workspace" : "/dashboard/calendars"} action={usesEngage ? "View plans" : calendar ? TOOL_COPY.workspace.openAction : TOOL_COPY.workspace.createAction} icon={<WorkspaceIcon />} />
             <WorkspaceCard variant="engage" product="Showwork Engage" description="Bring Facebook, Instagram and WhatsApp messages into one inbox. Reply with AI, track leads and turn conversations into customers." href="/dashboard/engage" action="Explore Engage" icon={<MessagesSquare />} />
             <WorkspaceCard variant="delivery" product={TOOL_COPY.delivery.product} description={TOOL_COPY.delivery.description} href={projectCount > 0 ? "/dashboard/projects" : "/dashboard/start"} action={projectCount > 0 ? TOOL_COPY.delivery.openAction : TOOL_COPY.delivery.createAction} icon={<DeliveryIcon />} />
           </div>
@@ -450,7 +450,7 @@ export default async function DashboardPage() {
           </div>
           <div className={workspaceStyles.heroAside}>
             <p className={workspaceStyles.asideLabel}>Your workspace at a glance</p>
-            <div className={workspaceStyles.statusRow}><span>Marketing Workspace</span><b>{calendar ? "Ready to open" : "Ready to create"}</b></div>
+            <div className={workspaceStyles.statusRow}><span>Marketing Workspace</span><b>{usesEngage ? "Plans available" : calendar ? "Ready to open" : "Ready to create"}</b></div>
             <div className={workspaceStyles.statusRow}><span>Project Delivery</span><b>{projectCount} {projectCount === 1 ? "project" : "projects"}</b></div>
             <div className={workspaceStyles.statusRow}><span>Portfolio</span><b>{portfolio ? "Created" : "Free to create"}</b></div>
             <p className={workspaceStyles.asideFoot}>Start where you need us.<br />The rest is here when you’re ready.</p>

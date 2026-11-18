@@ -652,3 +652,30 @@
     transition: none;
   }
 }
+
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.headerActions .toolsLink {
+  padding-inline: 12px;
+  border-radius: 10px;
+  background: #e7effc;
+  color: #254d86;
+}
+.headerActions .toolsLink:hover { background: #dce9fc; }
+
+@media (max-width: 700px) {
+  .headerActions { gap: 4px 8px; }
+  .headerActions .toolsLink,
+  .headerActions .headerTextLink {
+    width: auto;
+    padding-inline: 10px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+}
