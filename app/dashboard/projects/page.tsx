@@ -17,7 +17,7 @@ import { TIERS, PLAN_DISPLAY_NAME, NEXT_TIER } from "@/lib/subscriptionTiers";
 import { isAdminEmail } from "@/lib/admin";
 const PAGE_SIZE = 12;
 const SHARED_DISPLAY_LIMIT = 12;
-const BILLING_HREF = "/dashboard/billing?product=delivery#project-delivery-plans";
+const BILLING_HREF = "/dashboard/billing?product=delivery";
 
 export default async function ProjectDeliveryPage() {
   const initialTheme = (await cookies()).get("showwork-projects-theme")?.value === "dark" ? "dark" : "light";

@@ -3,7 +3,7 @@
 import CollapsibleMobileDock from "@/components/navigation/CollapsibleMobileDock";
 
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
-import { CircleHelp, Menu, Sparkles, ArrowLeft, LayoutDashboard, CalendarRange, UsersRound, ChartNoAxesCombined, MessagesSquare, ContactRound, PanelsTopLeft, Cable, BrainCircuit, BookOpenText, WandSparkles, SendHorizontal, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
+import { CircleHelp, Menu, Sparkles, ArrowLeft, LayoutDashboard, CalendarRange, UsersRound, ChartNoAxesCombined, MessagesSquare, ContactRound, PanelsTopLeft, Cable, BrainCircuit, BookOpenText, WandSparkles, SendHorizontal, ChevronsLeft, ChevronsRight, ChevronRight, CreditCard } from "lucide-react";
 import menuStyles from "./WorkspaceMenu.module.css";
 import AccountAvatarLink from "@/components/identity/AccountAvatarLink";
 import WorkspaceLogo from "@/components/identity/WorkspaceLogo";
@@ -100,6 +100,7 @@ export default function CalendarWorkspaceShell({
   clientName,
   logoUrl,
   canEditLogo,
+  canViewBilling = false,
   account,
   clientUrl,
   isManager,
@@ -113,6 +114,7 @@ export default function CalendarWorkspaceShell({
   clientName: string;
   logoUrl?: string | null;
   canEditLogo?: boolean;
+  canViewBilling?: boolean;
   account?: { name: string; avatarUrl: string | null };
   clientUrl: string;
   isManager: boolean;
@@ -288,6 +290,7 @@ export default function CalendarWorkspaceShell({
   const moreSections = visibleSections.filter(section => !["content", "inbox", "analytics", "knowledge", "research", "generate"].includes(section.id)).sort((a, b) => Number(a.id === "overview") - Number(b.id === "overview"));
   const openSheet = (sheet: "more" | "ai") => { setMobileSheet(sheet); setMobileOpen(true); };
   const engageDescriptions: Partial<Record<WorkspaceSectionId, string>> = { inbox: "Messages & AI replies", leads: "Contacts & follow-ups", channels: "Facebook, Instagram & WhatsApp", knowledge: "Your business & brand voice" };
+  const billingHref = product === "engage" ? "/dashboard/billing?product=engage" : "/dashboard/billing?product=content-workspace";
   const sidebar = <>
     <nav className={`${menuStyles.navigation} ${product === "engage" ? menuStyles.engageNavigation : ""}`} aria-label="Workspace sections">
       {nav.map(cluster => <div key={cluster.label} className={menuStyles.cluster} data-featured={cluster.featured || undefined}>
@@ -301,6 +304,7 @@ export default function CalendarWorkspaceShell({
       </div>)}
     </nav>
     <div className={menuStyles.footer}>
+      {canViewBilling && <Link href={billingHref} className={menuStyles.helpLink}><CreditCard size={16} aria-hidden="true" /><span>Billing</span><ArrowUpRight className="h-3.5 w-3.5" /></Link>}
       <a href="/help/workspace" target="_blank" rel="noopener noreferrer" className={menuStyles.helpLink}><CircleHelp size={16}/><span>Help & guides</span><span className="sr-only"> (opens in a new tab)</span><ArrowUpRight className="h-3.5 w-3.5"/></a>
       {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={menuStyles.clientLink}><span className={menuStyles.clientIcon}><PanelsTopLeft size={17}/></span><span><strong>Preview client page</strong><small>See what your client sees</small></span><ArrowUpRight/></a>}
       {publishAction}
@@ -313,7 +317,7 @@ export default function CalendarWorkspaceShell({
       <header className={headerStyles.header}>
         <div className={headerStyles.inner}>
           <button type="button" className={menuStyles.headerMenu} onClick={() => openSheet("more")} aria-label="Open workspace menu" aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog"><Menu size={21}/></button>
-          <Link href={product === "engage" ? "/dashboard/engage?billing=1" : "/dashboard/calendars"} aria-label={product === "engage" ? "Subscription" : "Back to workspaces"} title={product === "engage" ? "Subscription" : "All workspaces"} className={headerStyles.back}><ArrowLeft size={16}/><span>{product === "engage" ? "Subscription" : "All workspaces"}</span></Link>
+          <Link href={product === "engage" ? billingHref : "/dashboard/calendars"} aria-label={product === "engage" ? "Subscription" : "Back to workspaces"} title={product === "engage" ? "Subscription" : "All workspaces"} className={headerStyles.back}><ArrowLeft size={16}/><span>{product === "engage" ? "Subscription" : "All workspaces"}</span></Link>
           <span className={headerStyles.divider} aria-hidden="true"/>
           <div className={headerStyles.identity}><WorkspaceLogo name={clientName} src={logoUrl} editableWorkspaceId={canEditLogo ? calendarId : undefined} className={headerStyles.monogram} /><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>{product === "engage" ? "Showwork Engage" : "Marketing workspace"}</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
           <span className={headerStyles.location}><SectionIcon name={active.id} className="h-3.5 w-3.5"/>{active.label}</span>
@@ -358,6 +362,7 @@ export default function CalendarWorkspaceShell({
                     className={menuStyles.iconItem}><SectionIcon name={item.id} className="h-5 w-5"/>{item.id === active.id && <span className={menuStyles.iconActiveDot} aria-hidden="true"/>}</button>)}
                 </div>)}
               </nav>
+              {canViewBilling && <Link href={billingHref} title="Billing" aria-label="Billing" className={menuStyles.collapsedHelp}><CreditCard size={19} /></Link>}
               <a href="/help/workspace" target="_blank" rel="noopener noreferrer" title="Workspace help (opens in a new tab)" aria-label="Workspace help (opens in a new tab)" className={menuStyles.collapsedHelp}><CircleHelp size={19}/></a>
               {clientUrl && <div className={menuStyles.collapsedFooter}>
                 <a href={clientUrl} target="_blank" rel="noopener noreferrer" title="Preview client page" aria-label="Preview client page"

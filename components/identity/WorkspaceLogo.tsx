@@ -17,9 +17,9 @@ export default function WorkspaceLogo({ name, src, editableWorkspaceId, classNam
 
   return (
     <>
-      <button type="button" onClick={() => dialog.current?.showModal()} aria-label="Edit workspace logo"
-        title="Edit workspace logo"
-        className="relative inline-grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">
+      <button type="button" onClick={() => dialog.current?.showModal()} aria-label={`Edit logo for ${name}`}
+        title={src ? "Change workspace logo" : "Upload workspace logo"}
+        className="relative inline-grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">
         {image}
         <span className="absolute bottom-0 right-0 grid h-4 w-4 place-items-center rounded-full bg-blue-700 text-white" aria-hidden="true"><Pencil size={9} /></span>
       </button>

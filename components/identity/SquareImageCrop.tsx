@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
-import { IDENTITY_IMAGE_CROP_SIZE as SIZE } from "@/lib/identityImageLimits";
+import { IDENTITY_IMAGE_CROP_SIZE as SIZE, WORKSPACE_LOGO_DISPLAY_SCALE } from "@/lib/identityImageLimits";
 
 const STAGE_SIZE = 704;
 const FRAME_PERCENT = `${SIZE / STAGE_SIZE * 100}%`;
@@ -97,7 +97,7 @@ export default function SquareImageCrop({ image, logo, pending, onSave, onCancel
     <div className="mt-4 max-w-sm space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div>
         <p className="text-sm font-semibold text-slate-900">Crop {logo ? "workspace logo" : "profile photo"}</p>
-        <p id={controlsId} className="mt-1 text-sm text-slate-600">Drag the image to reposition it. Drag a corner out to enlarge or in to shrink. Only what’s inside the square will be saved.</p>
+        <p id={controlsId} className="mt-1 text-sm text-slate-600">Drag the image to reposition it. Drag a corner out to enlarge or in to shrink. {logo ? "The circle shows how your logo will appear." : "Only what’s inside the square will be saved."}</p>
       </div>
       <div className="relative mx-auto aspect-square w-full max-w-72 overflow-hidden rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-700 focus-within:ring-offset-2"
         style={{ backgroundImage: "conic-gradient(#e2e8f0 25%, white 0 50%, #e2e8f0 0 75%, white 0)", backgroundSize: "16px 16px" }}>
@@ -121,6 +121,12 @@ export default function SquareImageCrop({ image, logo, pending, onSave, onCancel
         />
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-2 border-white"
           style={{ width: FRAME_PERCENT, height: FRAME_PERCENT, boxShadow: "0 0 0 100vmax rgb(15 23 42 / 65%)" }}>
+          {logo && (
+            <div aria-hidden="true" className="absolute inset-0 grid place-items-center overflow-hidden">
+              <div className="rounded-full border border-white/90"
+                style={{ width: `${100 / WORKSPACE_LOGO_DISPLAY_SCALE}%`, aspectRatio: 1, boxShadow: "0 0 0 100vmax rgb(15 23 42 / 42%)" }} />
+            </div>
+          )}
           <div aria-hidden="true" className="absolute inset-0 grid grid-cols-3 grid-rows-3 drop-shadow-[0_0_1px_rgba(15,23,42,0.9)]">
             {Array.from({ length: 9 }, (_, index) => (
               <span key={index} className={`${index % 3 < 2 ? "border-r" : ""} ${index < 6 ? "border-b" : ""} border-white/75`} />

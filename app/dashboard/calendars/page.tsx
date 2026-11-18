@@ -161,7 +161,7 @@ export default async function CalendarsPage({
             <HelpLink className={styles.helpLink}/>
             <DashboardTourButton />
             <Link
-              href={BILLING_HREF}
+              href="/dashboard/billing?product=content-workspace"
               data-dashboard-tour="billing"
               className={styles.billingLink}
             >

@@ -58,7 +58,7 @@ export default function EngageSettings({
             </div>
             {isOwner && (
               <Link
-                href="/dashboard/engage?billing=1"
+                href="/dashboard/billing?product=engage"
                 className="mb-5 inline-flex rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
               >
                 Subscription & AI replies →

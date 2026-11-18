@@ -87,9 +87,11 @@ export default async function BillingPage({
    */
   let creator = await getCurrentCreator();
   const selectedProduct =
-    productParam === "content-workspace" ? "content-workspace"
-      : productParam === "engage" || selectedTierParam === "ENGAGE" ||
-        (!productParam && creator?.contentWorkspacePlan === "ENGAGE") ? "engage"
+    productParam === "delivery" || productParam === "content-workspace" ||
+    productParam === "engage" || productParam === "portfolio"
+      ? productParam
+      : selectedTierParam === "ENGAGE" || creator?.contentWorkspacePlan === "ENGAGE"
+        ? "engage"
         : "delivery";
 
   if (!creator) {

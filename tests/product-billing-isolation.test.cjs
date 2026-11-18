@@ -26,7 +26,12 @@ const View = load('app/dashboard/billing/BillingSubscriptions.tsx', {
   '@/components/calendars/TrialCountdownBanner': load('components/calendars/TrialCountdownBanner.tsx', { '@/lib/contentWorkspaceEntitlements': plans }),
   '@/components/calendars/CalendarBillingSettings': { default: () => null, __esModule: true },
 }).default;
-for (const product of ['delivery', 'content-workspace']) {
+for (const [product, sectionText] of Object.entries({
+  delivery: '1 project per 30 days',
+  'content-workspace': 'Start Marketing Workspace',
+  engage: '1,000 AI replies per month',
+  portfolio: 'Manage Portfolio',
+})) {
   test(`${product} billing shows every product with the selected management controls`, () => {
     const html = renderToStaticMarkup(React.createElement(View, {
       creator: { name: 'Test', email: 'test@example.com' },
@@ -34,9 +39,10 @@ for (const product of ['delivery', 'content-workspace']) {
       workspaceBilling: null, selectedProduct: product, selectedTier: null, selectedCycle: 'MONTHLY',
     }));
     assert.match(html, /Billing &amp; subscriptions/);
-    for (const name of ['Project Delivery', 'Marketing Workspace', 'Portfolio', 'No subscription required']) assert.ok(html.includes(name));
-    assert.match(html, /href="\/dashboard\/portfolio"/);
-    assert.match(html, new RegExp(product === 'delivery' ? '1 project per 30 days' : 'Start Marketing Workspace'));
+    for (const name of ['Project Delivery', 'Marketing Workspace', 'Showwork Engage', 'Portfolio', 'No subscription required']) assert.ok(html.includes(name));
+    assert.match(html, new RegExp(`href="/dashboard/billing\\?product=${product}&amp;cycle=MONTHLY" aria-current="page"`));
+    assert.match(html, new RegExp(sectionText));
+    if (product === 'portfolio') assert.doesNotMatch(html, /aria-label="Billing cycle"/);
     assert.doesNotMatch(html, /role="tablist"/);
   });
   test(`${product} billing loads both paid products`, async () => {

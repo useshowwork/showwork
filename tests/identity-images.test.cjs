@@ -87,3 +87,22 @@ test("workspace logo updates require workspace management permission", async () 
     assert.equal(result.status, 403);
   }
 });
+
+test("workspace cards offer logo editing separately from opening the workspace", () => {
+  const React = require("react");
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const Card = load("components/calendars/CalendarCard.tsx", {
+    "next/navigation": { useRouter: () => ({}) },
+    "next/link": { __esModule: true, default: (props) => React.createElement("a", props) },
+    "./CalendarPeopleManager": { __esModule: true, default: () => null },
+  }).default;
+
+  const html = renderToStaticMarkup(React.createElement(Card, {
+    id: "workspace", clientName: "Sample Company", logoUrl: publicUrlFor(oldKey),
+    postCount: 0, collaboratorCount: 0,
+  }));
+  assert.match(html, /href="\/dashboard\/calendars\/workspace"[^>]+aria-label="Open Sample Company"/);
+  assert.match(html, /<button[^>]+aria-label="Edit logo for Sample Company"/);
+  assert.match(html, /rounded-full monogram/);
+  assert.match(html, /transform:scale\(1\.2\)/);
+});

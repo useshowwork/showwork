@@ -22,7 +22,7 @@ import {
   type ContentWorkspacePlan,
 } from "@/lib/contentWorkspaceEntitlements";
 
-type Product = "delivery" | "content-workspace" | "engage";
+type Product = "delivery" | "content-workspace" | "engage" | "portfolio";
 
 type BillingCycle = "MONTHLY" | "ANNUAL";
 
@@ -1005,6 +1005,12 @@ export default function BillingSubscriptions({
       icon: <UiSymbol name="message" />,
       status: workspacePlan === "ENGAGE" ? workspaceStatus : "Conversations & AI replies",
     },
+    {
+      key: "portfolio",
+      title: "Portfolio",
+      icon: <PortfolioIcon />,
+      status: "No subscription required",
+    },
   ];
   const selected = products.find((product) => product.key === selectedProduct);
   const activeMarketing = workspacePlan && workspacePlan !== "ENGAGE" && workspaceBilling?.contentWorkspaceBillingStatus === "ACTIVE";
@@ -1042,7 +1048,7 @@ export default function BillingSubscriptions({
       </header>
 
       <div className="mx-auto max-w-[1280px] px-5 pb-12 pt-6 sm:px-8">
-        <nav aria-label="Billing products" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-2 sm:grid-cols-3">
+        <nav aria-label="Billing products" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-2 sm:grid-cols-2 lg:grid-cols-4">
           {products.map((product) => (
             <Link key={product.key} href={`/dashboard/billing?product=${product.key}&cycle=${selectedCycle}`}
               aria-current={selectedProduct === product.key ? "page" : undefined}
@@ -1059,7 +1065,7 @@ export default function BillingSubscriptions({
         <section id="subscription-details" aria-labelledby="billing-product-title" className="mt-7 scroll-mt-6">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
             <h2 id="billing-product-title" className="text-2xl font-semibold tracking-tight">{selected?.title}</h2>
-            <nav aria-label="Billing cycle" className="inline-flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
+            {selectedProduct !== "portfolio" && <nav aria-label="Billing cycle" className="inline-flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
               {(["MONTHLY", "ANNUAL"] as const).map((cycle) => (
                 <Link key={cycle} aria-current={selectedCycle === cycle ? "true" : undefined}
                   href={`/dashboard/billing?product=${selectedProduct}&cycle=${cycle}${selectedTier ? `&tier=${encodeURIComponent(selectedTier)}` : ""}#subscription-details`}
@@ -1067,12 +1073,22 @@ export default function BillingSubscriptions({
                   {cycle === "MONTHLY" ? "Monthly" : "Annual"}
                 </Link>
               ))}
-            </nav>
+            </nav>}
           </div>
           {selectedProduct === "delivery" ? (
             <DeliverySubscription offerPrices={offerPrices} usage={usage} selectedTier={selectedTier} selectedCycle={selectedCycle} />
           ) : selectedProduct === "content-workspace" ? (
             <ContentWorkspaceSubscription selectedTier={selectedTier} offerPrices={offerPrices} workspaceBilling={workspaceBilling} selectedCycle={selectedCycle} />
+          ) : selectedProduct === "portfolio" ? (
+            <div className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+              <div>
+                <h3 className="text-lg font-semibold">Free plan</h3>
+                <p className="mt-1 text-sm text-slate-600">Your Portfolio is free to use and has no recurring charges.</p>
+              </div>
+              <Link href="/dashboard/portfolio" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                Manage Portfolio <ArrowUpRightIcon />
+              </Link>
+            </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid md:grid-cols-[1.3fr_1fr]">
               <div className="p-6 sm:p-8">
@@ -1098,10 +1114,6 @@ export default function BillingSubscriptions({
         </section>
 
         {benefits && <div className="mt-8">{benefits}</div>}
-        <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-sm text-slate-600">
-          <span className="inline-flex items-center gap-2"><PortfolioIcon /> Portfolio is free · No subscription required</span>
-          <Link href="/dashboard/portfolio" className="inline-flex items-center gap-2 font-semibold text-blue-700 hover:underline">Manage Portfolio <ArrowUpRightIcon /></Link>
-        </div>
       </div>
     </main>
   );

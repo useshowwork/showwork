@@ -1,6 +1,6 @@
 "use client";
 
-import IdentityImage from "@/components/identity/IdentityImage";
+import WorkspaceLogo from "@/components/identity/WorkspaceLogo";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import { X, CalendarDays } from "lucide-react";
@@ -128,7 +128,9 @@ export default function CalendarCard({
         <Link href={href} className={styles.cardLink} aria-label={`Open ${clientName}`} />
         <div className={styles.cover}>
           <div className={styles.coverTop}>
-            <IdentityImage name={clientName} src={logoUrl} logo className={styles.monogram} />
+            <div className="relative z-20">
+              <WorkspaceLogo name={clientName} src={logoUrl} editableWorkspaceId={id} className={styles.monogram} />
+            </div>
           </div>
           <h3 className={styles.cardTitle} title={clientName}>{clientName}</h3>
           <p className={styles.cardSubtitle}>Marketing workspace</p>

@@ -103,11 +103,13 @@ export default async function EngagePage({
             <span>Engage</span>
           </Link>
           <div className="flex min-w-0 items-center gap-2">
-          <Link href={home} className={styles.back}>
-            <ArrowLeft size={16} />
-            {workspace ? "Back to conversations" : "Back to dashboard"}
-          </Link>
-          <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
+            <Link href={`/dashboard/billing?product=engage&cycle=${cycle}`} className={styles.back}>Billing</Link>
+            <Link href={home} className={styles.back} aria-label={workspace ? "Back to conversations" : "Back to dashboard"}>
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">{workspace ? "Back to conversations" : "Back to dashboard"}</span>
+              <span className="sm:hidden">Back</span>
+            </Link>
+            <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
           </div>
         </header>
         <Suspense>

@@ -18,13 +18,13 @@
 .card { position: relative; min-width: 0; border-radius: 20px; background: #fff; border: 1px solid #dce5f0; box-shadow: 0 7px 18px -15px #224b83; transition: transform .25s, box-shadow .25s; }
 .cardLink { position: absolute; inset: 0; z-index: 10; border-radius: 20px; }
 .cardLink:focus-visible { outline: 3px solid #3478ec; outline-offset: 4px; }
-.cover { position: relative; isolation: isolate; overflow: hidden; border-radius: 19px 19px 0 0; padding: 23px 23px 20px; min-height: 154px; background: radial-gradient(ellipse at 100% 0, #e5efff, transparent 70%), #fff; color: #193554; }
+.cover { position: relative; overflow: hidden; border-radius: 19px 19px 0 0; padding: 23px 23px 20px; min-height: 154px; background: radial-gradient(ellipse at 100% 0, #e5efff, transparent 70%), #fff; color: #193554; }
 .card:nth-child(3n + 2) .cover { background: radial-gradient(ellipse at 100% 0, #e8edf6, transparent 70%), #fff; }
 .card:nth-child(3n) .cover { background: radial-gradient(ellipse at 100% 0, #e1f1f3, transparent 70%), #fff; }
 .coverTop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.monogram { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #286de3; border-radius: 14px; background: linear-gradient(145deg, #347cf0, #1754b5); color: white; box-shadow: 0 6px 14px -8px #1768e8aa; font-size: 16px; font-weight: 550; }
-.card:nth-child(3n + 2) .monogram { background: linear-gradient(145deg, #50749f, #203e66); border-color: #50749f; }
-.card:nth-child(3n) .monogram { background: linear-gradient(145deg, #4e919c, #286273); border-color: #4e919c; }
+.monogram { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(145deg, #347cf0, #1754b5); color: white; font-size: 16px; font-weight: 550; }
+.card:nth-child(3n + 2) .monogram { background: linear-gradient(145deg, #50749f, #203e66); }
+.card:nth-child(3n) .monogram { background: linear-gradient(145deg, #4e919c, #286273); }
 .activeBadge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; background: #eaf5ef; border: 1px solid #deeee4; border-radius: 7px; font-size: 9px; font-weight: 550; color: #48836a; }
 .cardTitle { margin-top: 21px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 24px; font-weight: 550; letter-spacing: -.04em; }
 .cardSubtitle { font-size: 10px; color: #8596ad; margin-top: 4px; }

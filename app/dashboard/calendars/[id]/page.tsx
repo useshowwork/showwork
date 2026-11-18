@@ -519,6 +519,7 @@ contentIdea: p.contentIdea,
     <CalendarWorkspaceShell
       product={isEngage ? "engage" : "marketing"}
       logoUrl={calendar.logoUrl}
+      canViewBilling={isOwner}
       canEditLogo={workspaceActive && can("workspace.manage")}
       account={{ name: creator.name || creator.email, avatarUrl: creator.avatarUrl }}
       clientName={calendar.clientName}

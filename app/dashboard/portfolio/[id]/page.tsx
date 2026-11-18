@@ -361,7 +361,9 @@ export default async function PortfolioDetailPage({
             <span className="sm:hidden">Apps</span>
           </Link>
 
-          <div className="flex min-w-0 items-center gap-3"><PortfolioHelpLink className="max-sm:px-2 max-sm:text-[10px]"/>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link href="/dashboard/billing?product=portfolio" className="min-h-11 shrink-0 px-1 py-3 text-xs font-semibold text-white/70 hover:text-white">Billing</Link>
+            <PortfolioHelpLink className="max-sm:px-2 max-sm:text-[10px]"/>
             <div className="hidden min-w-0 items-center gap-3 md:flex">
               <span className="max-w-[260px] truncate text-xs font-medium text-white/55">
                 {portfolio.companyName}

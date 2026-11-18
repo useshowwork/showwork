@@ -130,7 +130,10 @@ export default async function PortfolioEntryPage() {
 
                 <ShowworkLogo width={96}/>
 
-                <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
+                <div className="flex items-center gap-2">
+                  <Link href="/dashboard/billing?product=portfolio" className="px-2 py-3 text-xs font-semibold text-slate-600 hover:text-blue-700">Billing</Link>
+                  <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
+                </div>
               </div>
             </header>
 
@@ -272,7 +275,10 @@ export default async function PortfolioEntryPage() {
 
             <ShowworkLogo width={96}/>
 
-            <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
+            <div className="flex items-center gap-2">
+              <Link href="/dashboard/billing?product=portfolio" className="px-2 py-3 text-xs font-semibold text-slate-600 hover:text-blue-700">Billing</Link>
+              <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
+            </div>
           </div>
         </header>
 
