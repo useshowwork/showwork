@@ -25,7 +25,8 @@
   .header { grid-column:2; grid-row:1; position:sticky; top:12px; min-width:0; border:1px solid #e4e9f1; border-radius:16px; background:#fff; color:#26466d; box-shadow:0 8px 24px -6px #1632570a; }
   .header::after { display:none; }
   .inner { height:54px; max-width:none; padding:0 18px; gap:12px; }
-  .divider,.monogram { display:none; }
+  .divider { display:none; }
+  .monogram { width:34px; height:34px; border-radius:9px; }
   .back { display:inline-flex; order:-1; min-height:36px; border:1px solid #dce5f0; border-radius:999px; background:#f5f8fd; color:#34567f; }
   .back:hover { background:#eaf2ff; border-color:#b9d0f0; color:#1768e8; }
   .back > span { display:inline; }
@@ -35,7 +36,7 @@
   .location { order:0; border:0; border-radius:0; padding:0 14px 0 0; border-right:1px solid #e4e9f1; background:transparent; color:#1d3554; font-size:12px; font-weight:600; }
   .location svg { color:#6481a6; }
   .actions { order:2; }
-  .inner > :last-child { order:3; }
+  .inner > :where(button,a):not(.back) { order:3; }
   .client,.settingsTrigger { min-height:34px; height:34px; border:1px solid #dce5f0; border-radius:999px; background:#fff; color:#4c6586; font-size:11px; }
   .client:hover,.settingsTrigger:hover,.settingsOpen { background:#eff5ff; color:#1768e8; border-color:#b9d0f0; }
   .create { min-height:34px; border:1px solid #1768e8; border-radius:999px; background:#1768e8; color:#fff; box-shadow:none; font-size:11px; }

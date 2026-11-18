@@ -1,4 +1,6 @@
 "use client";
+
+import IdentityImage from "@/components/identity/IdentityImage";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import { X, CalendarDays } from "lucide-react";
@@ -49,6 +51,7 @@ function TrashIcon({ className = "h-4 w-4" }: { className?: string }) {
 interface CalendarCardProps {
   id: string;
   clientName: string;
+  logoUrl?: string | null;
   planStatus: string;
   postCount: number;
   createdAt: string;
@@ -62,6 +65,7 @@ interface CalendarCardProps {
 export default function CalendarCard({
   id,
   clientName,
+  logoUrl,
   postCount,
   collaboratorCount,
 }: CalendarCardProps) {
@@ -124,7 +128,7 @@ export default function CalendarCard({
         <Link href={href} className={styles.cardLink} aria-label={`Open ${clientName}`} />
         <div className={styles.cover}>
           <div className={styles.coverTop}>
-            <span className={styles.monogram} aria-hidden="true">{clientName.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "CW"}</span>
+            <IdentityImage name={clientName} src={logoUrl} logo className={styles.monogram} />
           </div>
           <h3 className={styles.cardTitle} title={clientName}>{clientName}</h3>
           <p className={styles.cardSubtitle}>Marketing workspace</p>

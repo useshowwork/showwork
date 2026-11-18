@@ -1,16 +1,8 @@
 "use client";
 
-import { IMAGE_FILE_ACCEPT, getFileContentType } from "@/lib/mediaFileTypes";
-
-
-import {
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-} from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { putFileWithProgress } from "@/lib/uploadClient";
+import IdentityImageEditor from "@/components/identity/IdentityImageEditor";
 
 type CreatorData = {
   name: string | null;
@@ -69,59 +61,10 @@ function PencilIcon() {
   );
 }
 
-function UploadIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-4 w-4"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 16V4m0 0L7 9m5-5 5 5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function getInitials(
-  name: string | null,
-  email: string
-) {
-  const value = name?.trim();
-
-  if (value) {
-    const parts = value
-      .split(/\s+/)
-      .filter(Boolean);
-
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${
-        parts[parts.length - 1][0]
-      }`.toUpperCase();
-    }
-
-    return value.slice(0, 2).toUpperCase();
-  }
-
-  return email.slice(0, 2).toUpperCase();
-}
-
 export default function ProfileEditor({
   creator,
 }: Props) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(
     creator.name ?? ""
@@ -138,14 +81,7 @@ export default function ProfileEditor({
   const [notifyOnView, setNotifyOnView] =
     useState(creator.notifyOnView);
 
-  const [avatarUrl, setAvatarUrl] = useState(
-    creator.avatarUrl
-  );
-
   const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] =
-    useState(false);
-  const [avatarUploadPercent, setAvatarUploadPercent] = useState(0);
 
   const [message, setMessage] = useState<string | null>(
     null
@@ -157,10 +93,6 @@ export default function ProfileEditor({
 
   const [isDirty, setIsDirty] = useState(false);
 
-  const initials = getInitials(
-    name || creator.name,
-    creator.email
-  );
 
   function markDirty() {
     setIsDirty(true);
@@ -219,91 +151,6 @@ export default function ProfileEditor({
     }
   }
 
-  async function handleAvatarChange(
-    event: ChangeEvent<HTMLInputElement>
-  ) {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    setMessage(null);
-    setError(null);
-
-    if (!getFileContentType(file).startsWith("image/")) {
-      setError("Please choose an image file.");
-      return;
-    }
-
-    const maxSize = 5 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      setError(
-        "Profile photos must be 5MB or smaller."
-      );
-      return;
-    }
-
-    setUploadingAvatar(true);
-    setAvatarUploadPercent(0);
-
-    try {
-      /*
-       * The existing account avatar endpoint returns a
-       * presigned R2 upload URL and the public URL.
-       */
-      const presignResponse = await fetch(
-        "/api/account/avatar",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: getFileContentType(file),
-          }),
-        }
-      );
-
-      const presignData =
-        await presignResponse.json();
-
-      if (!presignResponse.ok) {
-        setError(
-          presignData.error ??
-            "Couldn't prepare the profile photo upload."
-        );
-        return;
-      }
-
-      await putFileWithProgress(presignData.uploadUrl, file, {
-        contentType: getFileContentType(file),
-        onProgress: ({ percent }) => setAvatarUploadPercent(percent),
-      });
-
-      /*
-       * The existing avatar endpoint handles the account
-       * avatar record/update as part of its flow.
-       */
-      setAvatarUrl(
-        `${presignData.publicUrl}?v=${Date.now()}`
-      );
-
-      setMessage("Profile photo updated.");
-      router.refresh();
-    } catch {
-      setError(
-        "We couldn't upload your profile photo. Please try again."
-      );
-    } finally {
-      setUploadingAvatar(false);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  }
-
   return (
     <div className="space-y-6">
       {/* PROFILE INFORMATION */}
@@ -335,59 +182,8 @@ export default function ProfileEditor({
           onSubmit={handleSave}
           className="p-5 sm:p-7"
         >
-          {/* AVATAR */}
-          <div className="flex flex-col gap-4 border-b border-[#EAECF0] pb-7 sm:flex-row sm:items-center">
-            <div className="relative shrink-0">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={name || "Profile"}
-                  className="h-20 w-20 rounded-[20px] object-cover ring-1 ring-black/[0.08]"
-                />
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-[20px] bg-[#2478FF] text-lg font-bold text-white">
-                  {initials}
-                </div>
-              )}
-
-              <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#111318] text-white">
-                <UploadIcon />
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[13px] font-semibold text-[#101828]">
-                Profile photo
-              </p>
-
-              <p className="mt-1 max-w-md text-[11px] leading-5 text-[#98A2B3]">
-                Use a clear photo or professional image.
-                JPG, PNG or WebP up to 5MB.
-              </p>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={IMAGE_FILE_ACCEPT}
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  fileInputRef.current?.click()
-                }
-                disabled={uploadingAvatar}
-                className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-black/[0.08] bg-white px-3.5 text-[11px] font-semibold text-[#344054] transition hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <UploadIcon />
-
-                {uploadingAvatar
-                  ? `Uploading ${avatarUploadPercent}%`
-                  : "Change photo"}
-              </button>
-            </div>
+          <div className="border-b border-[#EAECF0] pb-7">
+            <IdentityImageEditor endpoint="/api/account/avatar" name={name || creator.email} src={creator.avatarUrl} />
           </div>
 
           {/* FIELDS */}

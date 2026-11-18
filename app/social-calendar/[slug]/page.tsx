@@ -393,6 +393,7 @@ export default async function SocialCalendarPage({
     <ClientCalendarWorkspace
       slug={slug}
       clientName={calendar.clientName}
+      logoUrl={calendar.logoUrl}
       planStatus={calendar.planStatus}
       displayTitle={displayTitle}
       displayDescription={displayDescription}

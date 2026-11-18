@@ -1,5 +1,7 @@
 "use client";
 
+import IdentityImage from "@/components/identity/IdentityImage";
+
 import CollapsibleMobileDock from "@/components/navigation/CollapsibleMobileDock";
 
 import PlatformBrandIcon from "./PlatformBrandIcon";
@@ -75,6 +77,7 @@ type PreviewPost = Omit<CalendarPost, "assets"> & {
 type Props = {
   slug: string;
   clientName: string;
+  logoUrl?: string | null;
   planStatus: string;
   displayTitle: string;
   displayDescription: string;
@@ -278,6 +281,7 @@ function ViewHeader({
 export default function ClientCalendarWorkspace({
   slug,
   clientName,
+  logoUrl,
   planStatus,
   displayTitle,
   displayDescription,
@@ -405,9 +409,7 @@ export default function ClientCalendarWorkspace({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-5">
             <div className="mb-7 rounded-2xl border border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-ink))]/[0.025] p-3">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2478FF]/10 text-[rgb(var(--client-blue))]">
-                  <Icon name="spark" className="h-4 w-4" />
-                </span>
+                <IdentityImage name={clientName} src={logoUrl} logo />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-[rgb(var(--client-muted))]">{clientName}</p>
                   <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[rgb(var(--client-muted))]">
@@ -478,7 +480,7 @@ export default function ClientCalendarWorkspace({
       <header className={`${styles.mobileHeader} sticky top-0 z-50 border-b border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-bg))]/94 backdrop-blur-2xl lg:hidden`}>
         <div className="flex h-[68px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
           <NavigationToggle open={mobileOpen} onClick={() => setMobileOpen(true)} label="workspace navigation" />
-          <ShowworkLogo tone="white" width={96}/>
+          {logoUrl ? <IdentityImage name={clientName} src={logoUrl} logo /> : <ShowworkLogo tone="white" width={96}/>}
           <div className="h-5 w-px bg-[rgb(var(--client-ink))]/10" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-[rgb(var(--client-muted))]">{clientName}</p>
@@ -535,7 +537,7 @@ export default function ClientCalendarWorkspace({
           {activeView === "overview" && <section className={styles.hero} aria-label="Your client workspace">
             {(desktopBannerUrl || mobileBannerUrl) && <picture className={styles.heroImage}>{mobileBannerUrl && <source media="(max-width:639px)" srcSet={mobileBannerUrl}/>}<img src={desktopBannerUrl || mobileBannerUrl!} alt=""/></picture>}
             <div className={styles.heroCopy}><span className={styles.heroEyebrow}><ShieldCheck size={13}/>Your private review room</span><h1>{displayTitle}</h1><p>{displayDescription}</p><button type="button" onClick={() => navigate(reviewPosts.length ? "review" : "calendar")}>{reviewPosts.length ? "Review your content" : "Explore your calendar"}<ArrowUpRight size={16}/></button></div>
-            <div className={styles.heroStamp}><span>{clientName.slice(0,2).toUpperCase()}</span><p>Created together.<br/><strong>Shared with you.</strong></p></div>
+            <div className={styles.heroStamp}><IdentityImage name={clientName} src={logoUrl} logo /><p>Created together.<br/><strong>Shared with you.</strong></p></div>
           </section>}
 
           <div className={styles.pageBody}>

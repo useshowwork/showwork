@@ -1,3 +1,5 @@
+import AccountAvatarLink from "@/components/identity/AccountAvatarLink";
+import IdentityImage from "@/components/identity/IdentityImage";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import HelpLink from "@/components/help/HelpLink";
 import { normalizeTeamRole, TEAM_ROLES } from "@/lib/calendarTeamPolicy";
@@ -155,6 +157,7 @@ export default async function CalendarsPage({
             <span className={styles.allTools}>All tools</span>
           </Link>
           <div className={styles.navActions}>
+            <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
             <HelpLink className={styles.helpLink}/>
             <DashboardTourButton />
             <Link
@@ -286,6 +289,7 @@ export default async function CalendarsPage({
                   key={cal.id}
                   id={cal.id}
                   clientName={cal.clientName}
+                  logoUrl={cal.logoUrl}
                   planStatus={cal.planStatus}
                   postCount={cal._count.posts}
                   createdAt={cal.createdAt.toISOString()}
@@ -349,7 +353,7 @@ export default async function CalendarsPage({
                   href={`/dashboard/calendars/${cal.id}`}
                   className={styles.sharedCard}
                 >
-                  <h3 className="truncate font-semibold">{cal.clientName}</h3>
+                  <div className="flex items-center gap-3"><IdentityImage name={cal.clientName} src={cal.logoUrl} logo /><h3 className="truncate font-semibold">{cal.clientName}</h3></div>
                   <p className="mt-1 truncate text-xs text-[#667085]">
                     Managed by {cal.manager.name || cal.manager.email}
                   </p>

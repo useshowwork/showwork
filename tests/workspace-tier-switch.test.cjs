@@ -71,7 +71,7 @@ test('every non-current comparison card requests a tier switch with the selected
       const comparison = find(tree, node => node.type?.name === 'WorkspacePlanComparison')[0];
       const cards = comparison.type(comparison.props);
       const switches = find(cards, node => node.type === 'button' && text(node).startsWith('Switch to'));
-      assert.equal(switches.length, 2);
+      assert.equal(switches.length, plans.CONTENT_WORKSPACE_PLAN_ORDER.length - 1);
       for (const button of switches) {
         assert.equal(button.props.href, undefined);
         button.props.onClick();

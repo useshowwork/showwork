@@ -5,6 +5,8 @@ import CollapsibleMobileDock from "@/components/navigation/CollapsibleMobileDock
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { CircleHelp, Menu, Sparkles, ArrowLeft, LayoutDashboard, CalendarRange, UsersRound, ChartNoAxesCombined, MessagesSquare, ContactRound, PanelsTopLeft, Cable, BrainCircuit, BookOpenText, WandSparkles, SendHorizontal, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
 import menuStyles from "./WorkspaceMenu.module.css";
+import AccountAvatarLink from "@/components/identity/AccountAvatarLink";
+import WorkspaceLogo from "@/components/identity/WorkspaceLogo";
 import headerStyles from "./WorkspaceHeader.module.css";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -96,6 +98,9 @@ export default function CalendarWorkspaceShell({
   calendarId,
   product = "marketing",
   clientName,
+  logoUrl,
+  canEditLogo,
+  account,
   clientUrl,
   isManager,
   settings,
@@ -106,6 +111,9 @@ export default function CalendarWorkspaceShell({
   product?: "marketing" | "engage";
   calendarId?: string;
   clientName: string;
+  logoUrl?: string | null;
+  canEditLogo?: boolean;
+  account?: { name: string; avatarUrl: string | null };
   clientUrl: string;
   isManager: boolean;
   settings?: ReactNode;
@@ -307,13 +315,14 @@ export default function CalendarWorkspaceShell({
           <button type="button" className={menuStyles.headerMenu} onClick={() => openSheet("more")} aria-label="Open workspace menu" aria-expanded={mobileOpen && mobileSheet === "more"} aria-haspopup="dialog"><Menu size={21}/></button>
           <Link href={product === "engage" ? "/dashboard/engage?billing=1" : "/dashboard/calendars"} aria-label={product === "engage" ? "Subscription" : "Back to workspaces"} title={product === "engage" ? "Subscription" : "All workspaces"} className={headerStyles.back}><ArrowLeft size={16}/><span>{product === "engage" ? "Subscription" : "All workspaces"}</span></Link>
           <span className={headerStyles.divider} aria-hidden="true"/>
-          <div className={headerStyles.identity}><span className={headerStyles.monogram} aria-hidden="true">{clientName.slice(0, 2).toUpperCase()}</span><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>{product === "engage" ? "Showwork Engage" : "Marketing workspace"}</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
+          <div className={headerStyles.identity}><WorkspaceLogo name={clientName} src={logoUrl} editableWorkspaceId={canEditLogo ? calendarId : undefined} className={headerStyles.monogram} /><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>{product === "engage" ? "Showwork Engage" : "Marketing workspace"}</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
           <span className={headerStyles.location}><SectionIcon name={active.id} className="h-3.5 w-3.5"/>{active.label}</span>
           <div className={headerStyles.actions}>
             {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={headerStyles.client}>Preview client page <ArrowUpRight className="h-3.5 w-3.5"/></a>}
             {canGenerate && active.id !== "content" && active.id !== "generate" && <button type="button" onClick={() => select("generate")} className={headerStyles.create}><Sparkles size={15}/> Create with AI</button>}
           </div>
           {settings}
+          {account && <AccountAvatarLink name={account.name} src={account.avatarUrl} />}
         </div>
       </header>
       <MobileDrawer motion="slide" placement={mobileSheet === "more" ? "left" : "bottom"} open={mobileOpen} onClose={() => { setMobileOpen(false); if (tourId && window.innerWidth < 1024) window.dispatchEvent(new Event("showwork-workspace-tour-dismiss")); }} label={mobileSheet === "ai" ? "AI Studio" : "Showwork navigation"} heading={mobileSheet === "more" ? <ShowworkLogo tone="white" width={120} /> : undefined} panelClassName={mobileSheet === "more" ? `${menuStyles.navigationDrawer} ${product === "engage" ? menuStyles.engageDrawer : ""}` : menuStyles.mobilePanel} className={mobileSheet === "more" ? "bg-[#123568] text-white" : "bg-white text-slate-800"}>

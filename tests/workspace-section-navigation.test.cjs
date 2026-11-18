@@ -9,6 +9,7 @@ function load(file, mocks) {
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   new Function('require', 'module', 'exports', code)(name => {
     if (Object.hasOwn(mocks, name)) return mocks[name];
+    if (name.startsWith("@/components/identity/")) return require("./helpers/load-typescript.cjs").load(name.slice(2) + ".tsx", mocks);
     if (name === "@/components/brand/ShowworkLogo") return require("./helpers/load-typescript.cjs").load("components/brand/ShowworkLogo.tsx");
     if (name === "@/components/uploads/WorkspaceUploadTray") return { __esModule: true, default: () => null };
     if (name === '@/components/help/HelpLink') return require('./helpers/load-typescript.cjs').load('components/help/HelpLink.tsx');

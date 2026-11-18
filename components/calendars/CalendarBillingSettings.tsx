@@ -205,6 +205,7 @@ export default function CalendarBillingSettings({
   switchRequest,
   recurringPriceNgn,
   onBusyChange,
+  hidePlanComparison = false,
 }: {
   plan: ContentWorkspacePlan;
   billingStatus: BillingStatus;
@@ -213,6 +214,7 @@ export default function CalendarBillingSettings({
   trialEndsAt: string | null;
   recurringPriceNgn?: number;
   switchRequest?: WorkspacePlanSwitchRequest | null;
+  hidePlanComparison?: boolean;
   onBusyChange?: (busy: boolean) => void;
 }) {
   const router = useRouter();
@@ -743,7 +745,7 @@ export default function CalendarBillingSettings({
             </div>
           </div>
 
-          <div className="mt-7">
+          {!hidePlanComparison && <div className="mt-7">
             <div className="mb-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#98A2B3]">
                 Plan management
@@ -794,7 +796,7 @@ export default function CalendarBillingSettings({
                 );
               })}
             </div>
-          </div>
+          </div>}
 
           {isActive && (
             <div className="mt-7 border-t border-[#EAECF0] pt-7">

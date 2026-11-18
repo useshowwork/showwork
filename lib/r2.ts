@@ -332,3 +332,14 @@ export async function putWorkspaceVideoPoster(key: string, body: Buffer) {
   if (!/^calendars\/[a-zA-Z0-9-]+\/video-posters\/[a-f0-9]{64}\.jpg$/.test(key)) throw Error("Invalid workspace poster key");
   await r2.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: "image/jpeg", ContentLength: body.length, CacheControl: "public, max-age=31536000, immutable" }));
 }
+
+export async function putIdentityImage(key: string, body: Buffer) {
+  await r2.send(new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+    Body: body,
+    ContentType: "image/webp",
+    ContentLength: body.length,
+    CacheControl: "public, max-age=86400, immutable",
+  }));
+}

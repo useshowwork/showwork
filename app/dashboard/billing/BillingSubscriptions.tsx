@@ -22,7 +22,7 @@ import {
   type ContentWorkspacePlan,
 } from "@/lib/contentWorkspaceEntitlements";
 
-type Product = "delivery" | "content-workspace";
+type Product = "delivery" | "content-workspace" | "engage";
 
 type BillingCycle = "MONTHLY" | "ANNUAL";
 
@@ -40,6 +40,7 @@ type BillingSubscriptionsProps = {
   creator: {
     name: string | null;
     email: string;
+    avatarUrl?: string | null;
   };
 
 usage: {
@@ -418,88 +419,6 @@ function getWorkspaceStatus(
   };
 }
 
-/* ============================================================
-   PRODUCT TAB
-============================================================ */
-
-function ProductTab({
-  active,
-  icon,
-  title,
-  description,
-  badge,
-  onClick,
-}: {
-  active: boolean;
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  badge?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      role="tab"
-      aria-selected={active}
-      className={`group relative flex min-w-0 flex-1 items-center gap-3 rounded-[18px] px-4 py-4 text-left transition-all duration-300 sm:px-5 ${
-        active
-          ? "bg-[#101828] text-white shadow-[0_12px_30px_rgba(16,24,40,0.16)]"
-          : "text-[#667085] hover:bg-white hover:text-[#101828]"
-      }`}
-    >
-      <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
-          active
-            ? "bg-white/10 text-[#78AEFF]"
-            : "bg-[#F2F4F7] text-[#667085] group-hover:bg-[#EEF4FF] group-hover:text-[#2478FF]"
-        }`}
-      >
-        {icon}
-      </span>
-
-      <span className="min-w-0">
-        <span
-          className={`flex items-center gap-2 text-[12px] font-semibold ${
-            active ? "text-white" : "text-[#344054]"
-          }`}
-        >
-          {title}
-
-          {badge && (
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.08em] ${
-                active
-                  ? "bg-[#2478FF] text-white"
-                  : "bg-[#EEF4FF] text-[#2478FF]"
-              }`}
-            >
-              {badge}
-            </span>
-          )}
-        </span>
-
-        <span
-          className={`mt-0.5 block truncate text-[10px] ${
-            active ? "text-white/45" : "text-[#98A2B3]"
-          }`}
-        >
-          {description}
-        </span>
-      </span>
-
-      {active && (
-        <span className="ml-auto hidden h-2 w-2 shrink-0 rounded-full bg-[#78AEFF] shadow-[0_0_14px_rgba(120,174,255,0.7)] sm:block" />
-      )}
-    </button>
-  );
-}
-
-/* ============================================================
-   DELIVERY
-============================================================ */
-
 function DeliverySubscription({
   offerPrices = {},
   usage,
@@ -568,7 +487,7 @@ function DeliverySubscription({
     },
     {
       key: "UNLIMITED" as const,
-      name: "Unlimited",
+      name: getDeliveryPlanName("UNLIMITED"),
       priceMonthly: TIERS.UNLIMITED.priceNgnMonthly,
       priceAnnual: TIERS.UNLIMITED.priceNgnAnnual,
       description:
@@ -588,196 +507,22 @@ function DeliverySubscription({
       id="project-delivery-subscription"
       className="space-y-6"
     >
-      {/* Current subscription */}
-      <div className="relative overflow-hidden rounded-[28px] border border-[#E7E9EE] bg-white shadow-[0_18px_60px_rgba(16,24,40,0.065)]">
-        <div className="absolute right-[-80px] top-[-100px] h-64 w-64 rounded-full bg-[#2478FF]/[0.07] blur-[70px]" />
-
-        <div className="relative border-b border-[#EAECF0] px-5 py-6 sm:px-7 sm:py-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex min-w-0 items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F2F4F7] text-[#344054]">
-                <DeliveryIcon className="h-5 w-5" />
-              </div>
-
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#98A2B3]">
-                    Project Delivery
-                  </p>
-
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-bold"
-                    style={{
-                      color: status.text,
-                      background: status.bg,
-                      borderColor: status.border,
-                    }}
-                  >
-                    <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{
-                        background: status.dot,
-                      }}
-                    />
-
-                    {status.label}
-                  </span>
-                </div>
-
-                <h2 className="mt-2 text-[25px] font-semibold tracking-[-0.035em] text-[#101828]">
-                  {planName}
-                </h2>
-
-                <p className="mt-1.5 text-sm leading-6 text-[#667085]">
-                  Your client delivery subscription.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#EAECF0] bg-[#F9FAFB] px-4 py-3 sm:min-w-[150px]">
-              <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-                Usage
-              </p>
-
-              <p className="mt-1 text-lg font-semibold tracking-tight text-[#101828]">
-                {usage.used}
-                <span className="text-sm font-normal text-[#98A2B3]">
-                  {usage.limit === Infinity
-                    ? " projects"
-                    : ` / ${usage.limit}`}
-                </span>
-              </p>
-
-              <p className="mt-0.5 text-[10px] text-[#98A2B3]">
-                This billing period
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-px bg-[#EAECF0] sm:grid-cols-3">
-          <div className="bg-white p-5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-              Plan
-            </p>
-
-            <p className="mt-2 text-sm font-semibold text-[#101828]">
-              {planName}
-            </p>
-
-            <p className="mt-1 text-xs text-[#667085]">
-              {usage.complimentary ? "Complimentary access · no recurring charge" : usage.tier === "FREE"
-                ? "No recurring charge"
-                : selectedCycle === "ANNUAL"
-                  ? "Annual billing"
-                  : "Monthly billing"}
-            </p>
-          </div>
-
-          <div className="bg-white p-5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-              Projects
-            </p>
-
-            <p className="mt-2 text-sm font-semibold text-[#101828]">
-              {usage.limit === Infinity
-                ? "Unlimited"
-                : `${usage.limit} / month`}
-            </p>
-
-            <p className="mt-1 text-xs text-[#667085]">
-              {usage.remaining} remaining
-            </p>
-          </div>
-
-          <div className="bg-white p-5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-              Status
-            </p>
-
-            <p className="mt-2 text-sm font-semibold text-[#101828]">
-              {usage.atCap
-                ? "Limit reached"
-                : "Available"}
-            </p>
-
-            <p className="mt-1 text-xs text-[#667085]">
-              {usage.atCap
-                ? "Choose a higher plan to continue."
-                : "Your delivery workspace is ready."}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Billing cycle */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#98A2B3]">
-            Billing cycle
-          </p>
-
-          <p className="mt-1 text-sm text-[#667085]">
-            Choose how often you want to be billed.
-          </p>
+          <p className="text-xs font-semibold text-blue-700">{status.label}</p>
+          <h3 className="mt-1 text-lg font-semibold">{planName}</h3>
+          {usage.atCap && <p className="mt-1 text-sm text-slate-600">Project limit reached for this billing period.</p>}
         </div>
-
-        <div className="inline-flex w-fit rounded-full border border-[#E1E4E9] bg-[#F7F8FA] p-1">
-          <Link
-            href={`/dashboard/billing?product=delivery&cycle=MONTHLY${
-              selectedTier
-                ? `&tier=${selectedTier}`
-                : ""
-            }`}
-            className={`rounded-full px-4 py-2 text-[11px] font-semibold transition ${
-              selectedCycle === "MONTHLY"
-                ? "bg-white text-[#101828] shadow-sm"
-                : "text-[#98A2B3] hover:text-[#344054]"
-            }`}
-          >
-            Monthly
-          </Link>
-
-          <Link
-            href={`/dashboard/billing?product=delivery&cycle=ANNUAL${
-              selectedTier
-                ? `&tier=${selectedTier}`
-                : ""
-            }`}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-semibold transition ${
-              selectedCycle === "ANNUAL"
-                ? "bg-[#101828] text-white shadow-sm"
-                : "text-[#98A2B3] hover:text-[#344054]"
-            }`}
-          >
-            Annual
-
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold ${
-                selectedCycle === "ANNUAL"
-                  ? "bg-white/10 text-[#78AEFF]"
-                  : "bg-[#EEF4FF] text-[#2478FF]"
-              }`}
-            >
-              SAVE 5%
-            </span>
-          </Link>
+        <div className="rounded-xl bg-slate-50 px-4 py-3">
+          <p className="text-sm font-semibold tabular-nums">{usage.used}{usage.limit === Infinity ? "" : ` of ${usage.limit}`} projects used</p>
+          <p className="mt-0.5 text-xs text-slate-600">This billing period</p>
         </div>
       </div>
 
       {/* Plans */}
       <div id="project-delivery-plans" className="scroll-mt-6">
-        <div className="mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#98A2B3]">
-            Project Delivery plans
-          </p>
-
-          <h3 className="mt-1 text-xl font-semibold tracking-[-0.025em] text-[#101828]">
-            Choose the way you deliver.
-          </h3>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
+        <h3 className="mb-4 text-lg font-semibold">Compare plans</h3>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {tiers.map((plan) => {
             const isCurrent =
               usage.tier === plan.key;
@@ -901,26 +646,6 @@ function DeliverySubscription({
         </div>
       </div>
 
-      {/* Why Delivery */}
-      <div className="rounded-[24px] border border-[#E7E9EE] bg-[#F9FAFB] p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#2478FF] shadow-sm ring-1 ring-[#EAECF0]">
-            <DeliveryIcon className="h-[18px] w-[18px]" />
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-[#101828]">
-              Project Delivery is for finished work.
-            </p>
-
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-[#667085]">
-              Use it to present projects beautifully,
-              share files securely, collect feedback and
-              move client work from delivery to approval.
-            </p>
-          </div>
-        </div>
-      </div>
     </section>
   );
 }
@@ -989,86 +714,11 @@ function ContentWorkspaceSubscription({
         id="content-workspace-subscription"
         className="space-y-6"
       >
-        <div className="relative overflow-hidden rounded-[30px] border border-[#DCE7FF] bg-white shadow-[0_18px_60px_rgba(16,24,40,0.065)]">
-          <div className="absolute right-[-80px] top-[-100px] h-72 w-72 rounded-full bg-[#2478FF]/[0.08] blur-[80px]" />
-
-          <div className="relative p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-2xl">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF4FF] text-[#2478FF]">
-                    <WorkspaceIcon className="h-5 w-5" />
-                  </span>
-
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#2478FF]">
-                      Marketing Workspace
-                    </p>
-
-                    <p className="mt-0.5 text-xs text-[#667085]">
-                      Plan · create · collaborate · approve
-                    </p>
-                  </div>
-                </div>
-
-                <h2 className="mt-6 text-[30px] font-semibold tracking-[-0.04em] text-[#101828] sm:text-[36px]">
-                  Your clients deserve a
-                  workspace, not another
-                  folder.
-                </h2>
-
-                <p className="mt-4 max-w-xl text-sm leading-7 text-[#667085]">
-                  Build an ongoing space where you
-                  and your clients can plan content,
-                  upload assets, collaborate, review,
-                  approve and publish.
-                </p>
-
-                <div className="mt-6 flex flex-wrap gap-x-5 gap-y-3">
-                  {[
-                    "3-day free trial",
-                    "No payment to start",
-                    "AI Studio included",
-                    "Client collaboration",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-center gap-2 text-[11px] font-medium text-[#475467]"
-                    >
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#ECFDF3] text-[#12B76A]">
-                        <CheckIcon className="h-2.5 w-2.5" />
-                      </span>
-
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="w-full shrink-0 rounded-[24px] border border-[#E1E4E9] bg-[#F9FAFB] p-5 lg:max-w-[310px]">
-                <p className="text-[9px] font-bold uppercase tracking-[0.13em] text-[#98A2B3]">
-                  Start your workspace
-                </p>
-
-                <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-[#101828]">
-                  Choose your plan
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-[#667085]">
-                  You can start with 3 days of full Agency feature access.
-                  No payment is required to begin.
-                </p>
-
-                <Link
-                  href="/dashboard/calendars"
-                  className="group mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2478FF] px-5 py-3 text-xs font-semibold text-white shadow-[0_10px_28px_rgba(36,120,255,0.20)] transition-all hover:-translate-y-0.5 hover:bg-[#1768E8]"
-                >
-                  Start Marketing Workspace
-                  <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#DCE7FF] bg-white p-5">
+          <p className="text-sm text-slate-600">Try Marketing Workspace free for 3 days with full Agency access.</p>
+          <Link href="/dashboard/calendars" className="text-sm font-semibold text-blue-700 hover:underline">
+            Start Marketing Workspace
+          </Link>
         </div>
 
         <WorkspacePlanComparison
@@ -1081,181 +731,22 @@ function ContentWorkspaceSubscription({
     );
   }
 
-  const planDetails =
-    CONTENT_WORKSPACE_PLANS[plan];
-  const agencyTrial = plan !== "ENGAGE" && ["TRIAL", "ACTIVE"].includes(billingStatus) && !!workspaceBilling?.contentWorkspaceTrialEndsAt && new Date(workspaceBilling.contentWorkspaceTrialEndsAt).getTime() > Date.now();
-  const accessDetails = agencyTrial ? CONTENT_WORKSPACE_PLANS.UNLIMITED : planDetails;
-
   return (
-    <section
-      id="content-workspace-subscription"
-      className="space-y-6"
-    >
-      {/* Existing subscription */}
-      <div className="relative overflow-hidden rounded-[30px] border border-[#E7E9EE] bg-white shadow-[0_18px_60px_rgba(16,24,40,0.065)]">
-        <div className="relative overflow-hidden bg-[#0B0D12] px-6 py-7 sm:px-8 sm:py-8">
-          <div className="pointer-events-none absolute right-[-50px] top-[-90px] h-64 w-64 rounded-full bg-[#2478FF]/20 blur-[75px]" />
-
-          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#2478FF]/10 text-[#78AEFF] ring-1 ring-[#2478FF]/20">
-                <WorkspaceIcon className="h-5 w-5" />
-              </div>
-
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#78AEFF]">
-                    Marketing Workspace
-                  </p>
-
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em]"
-                    style={{
-                      color: status.text,
-                      background: "rgba(255,255,255,0.05)",
-                      borderColor:
-                        "rgba(255,255,255,0.10)",
-                    }}
-                  >
-                    <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{
-                        background: status.dot,
-                      }}
-                    />
-
-                    {status.label}
-                  </span>
-                </div>
-
-                <h2 className="mt-3 text-[27px] font-semibold tracking-[-0.035em] text-white">
-                  {planDetails.name}
-                </h2>
-
-                <p className="mt-1.5 max-w-lg text-sm leading-6 text-white/45">
-                  {agencyTrial && !(billingStatus === "ACTIVE" && plan === "UNLIMITED") ? billingStatus === "ACTIVE" ? `Your ${planDetails.name} subscription is active. Full Agency access remains available until your original trial ends, then your paid plan continues.` : "Agency trial access is active. Your selected plan applies after the trial." : "Your ongoing marketing workspace subscription."}
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 sm:min-w-[160px]">
-              <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/30">
-                Billing
-              </p>
-
-              <p className="mt-1 text-sm font-semibold text-white">
-                {billingCycle === "ANNUAL"
-                  ? formatNaira(
-                      workspaceBilling?.recurringPriceNgn ?? planDetails.priceNgnAnnual
-                    )
-                  : formatNaira(
-                      workspaceBilling?.recurringPriceNgn ?? planDetails.priceNgnMonthly
-                    )}
-              </p>
-
-              <p className="mt-0.5 text-[10px] text-white/30">
-                {billingCycle === "ANNUAL"
-                  ? "per year"
-                  : "per month"}
-              </p>
-            </div>
-          </div>
+    <section id="content-workspace-subscription" className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <div>
+          <p className="text-xs font-semibold text-blue-700">{status.label}</p>
+          <h3 className="mt-1 text-lg font-semibold">{CONTENT_WORKSPACE_PLANS[plan].name}</h3>
+          {complimentaryPeriod ? (
+            <p className="mt-1 text-sm text-slate-600">{complimentaryPeriod.detail}</p>
+          ) : billingStatus === "ACTIVE" && workspaceBilling?.contentWorkspaceSubscriptionRenewsAt ? (
+            <p className="mt-1 text-sm text-slate-600">Renews {formatDate(workspaceBilling.contentWorkspaceSubscriptionRenewsAt)}</p>
+          ) : null}
         </div>
-
-        <div className="grid gap-px bg-[#EAECF0] sm:grid-cols-4">
-          <WorkspaceMetric
-            label="Workspaces"
-            value={formatWorkspaceLimit(accessDetails.activeWorkspaces)}
-            detail="Active client spaces"
-          />
-
-          <WorkspaceMetric
-            label="Collaborators"
-            value={formatWorkspaceLimit(accessDetails.collaborators)}
-            detail="Team members"
-          />
-
-          <WorkspaceMetric
-            label="Storage"
-            value={
-              `${accessDetails.storageBytes / 1_000_000_000} GB`
-            }
-            detail="Included storage"
-          />
-
-          <WorkspaceMetric
-            label="AI Studio"
-            value={String(
-              accessDetails.aiGenerations
-            )}
-            detail="Generations / month"
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 border-t border-[#EAECF0] p-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <div>
-  {workspaceBilling?.isComped && complimentaryPeriod ? (
-    <>
-      <p className="text-xs font-semibold text-[#175CD3]">
-        {complimentaryPeriod.label}
-      </p>
-
-      <p className="mt-1 text-[11px] text-[#667085]">
-        {complimentaryPeriod.detail}
-      </p>
-    </>
-  ) : billingStatus === "TRIAL" &&
-    workspaceBilling?.contentWorkspaceTrialEndsAt ? (
-    <>
-      <p className="text-xs font-semibold text-[#175CD3]">
-        Your Agency trial is active
-      </p>
-
-      <p className="mt-1 text-[11px] text-[#667085]">
-        Trial ends{" "}
-        {formatDate(
-          workspaceBilling.contentWorkspaceTrialEndsAt
-        )}
-      </p>
-    </>
-  ) : billingStatus === "ACTIVE" &&
-    workspaceBilling?.contentWorkspaceSubscriptionRenewsAt ? (
-    <>
-      <p className="text-xs font-semibold text-[#101828]">
-        Next renewal
-      </p>
-
-      <p className="mt-1 text-[11px] text-[#667085]">
-        {formatDate(
-          workspaceBilling.contentWorkspaceSubscriptionRenewsAt
-        )}
-        {" · "}
-        {billingCycle === "ANNUAL"
-          ? "Annual"
-          : "Monthly"}
-      </p>
-    </>
-  ) : (
-    <>
-      <p className="text-xs font-semibold text-[#101828]">
-        Workspace billing
-      </p>
-
-      <p className="mt-1 text-[11px] text-[#667085]">
-        Manage your plan and access.
-      </p>
-    </>
-  )}
-</div>
-
-          <Link
-            href="/dashboard/calendars"
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#D0D5DD] bg-white px-4 py-2.5 text-xs font-semibold text-[#344054] shadow-sm transition hover:bg-[#F9FAFB]"
-          >
-            Open Marketing Workspace
-            <ArrowUpRightIcon className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        <Link href={plan === "ENGAGE" ? "/dashboard/engage?billing=1" : "/dashboard/calendars"} className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline">
+          {plan === "ENGAGE" ? "Manage Engage" : "Open Marketing Workspace"}
+          <ArrowUpRightIcon className="h-4 w-4" />
+        </Link>
       </div>
 
       {workspaceBilling && plan !== "ENGAGE" &&
@@ -1274,6 +765,7 @@ function ContentWorkspaceSubscription({
         <CalendarBillingSettings
           plan={plan}
           recurringPriceNgn={workspaceBilling?.recurringPriceNgn}
+          hidePlanComparison
           switchRequest={switchRequest}
           onBusyChange={setSwitchBusy}
           billingStatus={billingStatus}
@@ -1296,40 +788,11 @@ function ContentWorkspaceSubscription({
           offerPrices={offerPrices}
         selectedCycle={selectedCycle}
         currentPlan={billingStatus === "ACTIVE" ? plan : null}
+        trialPlan={billingStatus === "TRIAL" ? plan : null}
         switching={switchBusy}
         onSelectPlan={(nextPlan) => setSwitchRequest({ plan: nextPlan, billingCycle: selectedCycle })}
       />
     </section>
-  );
-}
-
-/* ============================================================
-   WORKSPACE METRIC
-============================================================ */
-
-function WorkspaceMetric({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <div className="bg-white p-5">
-      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#98A2B3]">
-        {label}
-      </p>
-
-      <p className="mt-2 text-lg font-semibold tracking-tight text-[#101828]">
-        {value}
-      </p>
-
-      <p className="mt-1 text-[10px] text-[#98A2B3]">
-        {detail}
-      </p>
-    </div>
   );
 }
 
@@ -1342,6 +805,7 @@ function WorkspacePlanComparison({
   offerPrices = {},
   selectedCycle,
   currentPlan,
+  trialPlan = null,
   switching = false,
   onSelectPlan,
 }: {
@@ -1349,6 +813,7 @@ function WorkspacePlanComparison({
   offerPrices?: OfferPrices;
   selectedCycle: BillingCycle;
   currentPlan: ContentWorkspacePlan | null;
+  trialPlan?: ContentWorkspacePlan | null;
   switching?: boolean;
   onSelectPlan?: (plan: ContentWorkspacePlan) => void;
 }) {
@@ -1356,17 +821,9 @@ function WorkspacePlanComparison({
 
   return (
     <div id="content-workspace-plans" className="scroll-mt-6">
-      <div className="mb-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#98A2B3]">
-          Marketing Workspace plans
-        </p>
+      <h3 className="mb-4 text-lg font-semibold">Compare plans</h3>
 
-        <h3 className="mt-1 text-xl font-semibold tracking-[-0.025em] text-[#101828]">
-          Pick the workspace that fits your operation.
-        </h3>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {plans.map((planKey) => {
           const plan =
             CONTENT_WORKSPACE_PLANS[planKey];
@@ -1383,18 +840,12 @@ function WorkspacePlanComparison({
               id={`workspace-plan-${planKey}`}
               style={{ scrollMarginTop: 24 }}
               data-selected={selectedTier === planKey ? "true" : undefined}
-              className={`relative overflow-hidden rounded-[26px] border bg-white p-6 transition-all duration-300 ${
+              className={`relative flex flex-col rounded-2xl border bg-white p-5 transition-colors ${
                 isCurrent || selectedTier === planKey
                   ? "border-[#2478FF] shadow-[0_12px_40px_rgba(36,120,255,0.10)]"
                   : "border-[#E7E9EE] hover:-translate-y-0.5 hover:border-[#D0D5DD] hover:shadow-[0_14px_40px_rgba(16,24,40,0.06)]"
               }`}
             >
-              {planKey === "UNLIMITED" && !isCurrent && (
-                <div className="absolute right-5 top-5 rounded-full bg-[#101828] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white">
-                  Recommended for teams
-                </div>
-              )}
-
               {isCurrent && (
                 <div className="absolute right-5 top-5 rounded-full bg-[#EEF4FF] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-[#2478FF]">
                   Current plan
@@ -1471,10 +922,10 @@ function WorkspacePlanComparison({
                 </div>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-auto pt-6">
                 {isCurrent ? (
                   <span className="text-[11px] font-semibold text-[#067647]">Current plan</span>
-                ) : currentPlan ? (
+                ) : currentPlan || (trialPlan && trialPlan !== planKey) ? (
                   <button
                     type="button"
                     disabled={switching}
@@ -1539,112 +990,119 @@ export default function BillingSubscriptions({
       key: "delivery",
       title: "Project Delivery",
       icon: <DeliveryIcon />,
-      plan: getDeliveryPlanName(usage.tier),
-      status: usage.complimentary ? "Complimentary access" : getDeliveryStatus(usage.tier).label,
-      href: `/dashboard/billing?product=delivery&cycle=${selectedCycle}#subscription-details`,
-      action: "Manage Project Delivery",
+      status: usage.complimentary ? "Complimentary access" : `Current plan · ${getDeliveryPlanName(usage.tier)}`,
     },
     {
       key: "content-workspace",
       title: "Marketing Workspace",
       icon: <WorkspaceIcon />,
-      plan: workspacePlan ? CONTENT_WORKSPACE_PLANS[workspacePlan].name : "Not started",
-      status: workspaceStatus,
-      href: `/dashboard/billing?product=content-workspace&cycle=${selectedCycle}#subscription-details`,
-      action: "Manage Marketing Workspace",
+      status: workspacePlan && workspacePlan !== "ENGAGE"
+        ? `${CONTENT_WORKSPACE_PLANS[workspacePlan].name} · ${workspaceStatus}` : "Content planning & publishing",
     },
     {
-      key: "portfolio",
-      title: "Portfolio",
-      icon: <PortfolioIcon />,
-      plan: "Free",
-      status: "No subscription required",
-      href: "/dashboard/portfolio",
-      action: "Manage Portfolio",
+      key: "engage",
+      title: "Showwork Engage",
+      icon: <UiSymbol name="message" />,
+      status: workspacePlan === "ENGAGE" ? workspaceStatus : "Conversations & AI replies",
     },
   ];
+  const selected = products.find((product) => product.key === selectedProduct);
+  const activeMarketing = workspacePlan && workspacePlan !== "ENGAGE" && workspaceBilling?.contentWorkspaceBillingStatus === "ACTIVE";
+  const engage = CONTENT_WORKSPACE_PLANS.ENGAGE;
+  const engageOffer = offerPrices?.[`CONTENT_WORKSPACE:ENGAGE:${selectedCycle}`];
+  const engagePrice = selectedCycle === "ANNUAL" ? engage.priceNgnAnnual : engage.priceNgnMonthly;
 
   return (
-    <main className="min-h-screen bg-[#F5F7FA] text-[#101828]">
-      <header className="border-b border-[#E7E9EE] bg-white">
-        <div className="mx-auto max-w-[1180px] px-5 py-7 sm:px-7 sm:py-9 lg:px-8">
-          <Link href="/dashboard" className="text-xs font-semibold text-[#667085] hover:text-[#101828]"><>{" "}<UiSymbol name="left" />{" Dashboard "}</></Link>
-          <div className="mt-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <main className="min-h-screen bg-[#f5f7fc] text-[#101828]">
+      <header className="bg-[#0b1534] bg-[radial-gradient(ellipse_at_top_right,_#224ab0,_transparent_65%)] text-white">
+        <div className="mx-auto max-w-[1280px] px-5 pb-9 pt-6 sm:px-8 sm:pb-12">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/15 pb-5">
+            <Link href="/dashboard" aria-label="Showwork dashboard">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/logo/swwhite.svg" alt="Showwork" width={112} height={19} />
+            </Link>
+            <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-100 hover:text-white">
+              <UiSymbol name="left" /> Back to dashboard
+            </Link>
+          </div>
+          <div className="mt-8 flex flex-wrap items-end justify-between gap-5">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#2478FF]">Account billing</p>
-              <h1 className="mt-2 text-[32px] font-semibold tracking-tight sm:text-[42px]">Billing & subscriptions</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667085]">
-                Manage Project Delivery, Marketing Workspace and your free Portfolio in one place.
-              </p>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Billing &amp; subscriptions</h1>
+              <p className="mt-3 text-sm text-blue-100 sm:text-base">View your subscriptions and compare Showwork plans.</p>
             </div>
-            <div className="rounded-2xl border border-[#E7E9EE] bg-[#F9FAFB] px-4 py-3">
-              <p className="text-[10px] font-semibold text-[#98A2B3]">Account</p>
-              <p className="mt-1 text-xs font-semibold text-[#344054]">{creator.name || creator.email}</p>
-            </div>
+            <Link href="/dashboard/profile" aria-label="Edit your profile" className="inline-flex max-w-full items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-blue-50 hover:bg-white/15">
+              {creator.avatarUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={creator.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-lg object-cover" />
+              )}
+              <span className="break-all">{creator.name || creator.email}</span>
+            </Link>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1180px] px-5 py-7 sm:px-7 sm:py-9 lg:px-8">
-        {benefits}
-        <section aria-label="Your products" className="grid gap-4 md:grid-cols-3">
+      <div className="mx-auto max-w-[1280px] px-5 pb-12 pt-6 sm:px-8">
+        <nav aria-label="Billing products" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-2 sm:grid-cols-3">
           {products.map((product) => (
-            <article key={product.key} className={`rounded-[24px] border bg-white p-6 ${selectedProduct === product.key ? "border-[#2478FF]" : "border-[#E7E9EE]"}`}>
-              <div className="flex items-center gap-3">
-                <span className="rounded-xl bg-[#EEF4FF] p-3 text-[#2478FF]">{product.icon}</span>
-                <h2 className="text-sm font-semibold">{product.title}</h2>
-              </div>
-              <p className="mt-5 text-xl font-semibold">{product.plan}</p>
-              <p className="mt-1 text-xs text-[#667085]">{product.status}</p>
-              <Link href={product.href} aria-current={selectedProduct === product.key ? "true" : undefined}
-                className="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-[#2478FF] hover:underline">
-                {product.action}<ArrowRightIcon />
-              </Link>
-            </article>
+            <Link key={product.key} href={`/dashboard/billing?product=${product.key}&cycle=${selectedCycle}`}
+              aria-current={selectedProduct === product.key ? "page" : undefined}
+              className={`flex items-center gap-3 rounded-xl p-3 text-sm transition-colors ${selectedProduct === product.key ? "bg-[#173fb2] text-white" : "text-slate-800 hover:bg-blue-50"}`}>
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${selectedProduct === product.key ? "bg-white/15" : "bg-blue-50 text-blue-700"}`}>{product.icon}</span>
+              <span>
+                <span className="block font-semibold">{product.title}</span>
+                <span className={`mt-0.5 block text-xs ${selectedProduct === product.key ? "text-blue-100" : "text-slate-600"}`}>{product.status}</span>
+              </span>
+            </Link>
           ))}
-        </section>
+        </nav>
 
-        <section id="subscription-details" aria-label="Manage subscription" className="mt-8 scroll-mt-6">
+        <section id="subscription-details" aria-labelledby="billing-product-title" className="mt-7 scroll-mt-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+            <h2 id="billing-product-title" className="text-2xl font-semibold tracking-tight">{selected?.title}</h2>
+            <nav aria-label="Billing cycle" className="inline-flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
+              {(["MONTHLY", "ANNUAL"] as const).map((cycle) => (
+                <Link key={cycle} aria-current={selectedCycle === cycle ? "true" : undefined}
+                  href={`/dashboard/billing?product=${selectedProduct}&cycle=${cycle}${selectedTier ? `&tier=${encodeURIComponent(selectedTier)}` : ""}#subscription-details`}
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold ${selectedCycle === cycle ? "bg-[#173fb2] text-white" : "text-slate-600 hover:bg-blue-50"}`}>
+                  {cycle === "MONTHLY" ? "Monthly" : "Annual"}
+                </Link>
+              ))}
+            </nav>
+          </div>
           {selectedProduct === "delivery" ? (
             <DeliverySubscription offerPrices={offerPrices} usage={usage} selectedTier={selectedTier} selectedCycle={selectedCycle} />
-          ) : (
+          ) : selectedProduct === "content-workspace" ? (
             <ContentWorkspaceSubscription selectedTier={selectedTier} offerPrices={offerPrices} workspaceBilling={workspaceBilling} selectedCycle={selectedCycle} />
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid md:grid-cols-[1.3fr_1fr]">
+              <div className="p-6 sm:p-8">
+                <h3 className="text-xl font-semibold tracking-tight">Manage conversations across channels</h3>
+                <ul className="mt-5 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
+                  {getContentWorkspaceFeatureList("ENGAGE").map((feature) => (
+                    <li key={feature} className="flex items-center gap-2"><CheckIcon className="h-4 w-4 shrink-0 text-blue-700" />{feature}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="border-t border-blue-100 bg-blue-50 p-6 sm:p-8 md:border-l md:border-t-0">
+                <p className="text-sm font-semibold text-blue-900">{selectedCycle === "ANNUAL" ? "Annual plan" : "Monthly plan"}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight">{formatNaira(engageOffer?.priceNgn ?? engagePrice)}<span className="ml-1 text-sm font-normal text-slate-600">/{selectedCycle === "ANNUAL" ? "year" : "month"}</span></p>
+                {engageOffer && <p className="mt-2 text-sm text-blue-900">{engageOffer.percent}% off for {engageOffer.remainingCycles} {engageOffer.remainingCycles === 1 ? "payment" : "payments"}, then {formatNaira(engageOffer.standardPriceNgn)} per {selectedCycle === "ANNUAL" ? "year" : "month"}.</p>}
+                {!engageOffer && <p className="mt-2 text-sm text-slate-600">{selectedCycle === "ANNUAL" ? "Save ₦29,800 compared with monthly billing." : `Annual billing is ${formatNaira(engage.priceNgnAnnual)} per year.`}</p>}
+                {activeMarketing && <p className="mt-4 text-sm text-slate-700">Your account has an active Marketing Workspace subscription. Your account can have one of these subscriptions at a time.</p>}
+                <Link href={`/dashboard/engage?billing=1&cycle=${selectedCycle}`} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#173fb2] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">
+                  {workspacePlan === "ENGAGE" ? "Manage Engage" : "View Engage options"} <ArrowRightIcon />
+                </Link>
+              </div>
+            </div>
           )}
         </section>
-        <p className="mt-10 pb-8 text-center text-[10px] text-[#98A2B3]">
-          Project Delivery and Marketing Workspace are billed separately. Portfolio is free.
-        </p>
+
+        {benefits && <div className="mt-8">{benefits}</div>}
+        <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-sm text-slate-600">
+          <span className="inline-flex items-center gap-2"><PortfolioIcon /> Portfolio is free · No subscription required</span>
+          <Link href="/dashboard/portfolio" className="inline-flex items-center gap-2 font-semibold text-blue-700 hover:underline">Manage Portfolio <ArrowUpRightIcon /></Link>
+        </div>
       </div>
     </main>
-  );
-}
-
-/* ============================================================
-   BILLING PRINCIPLE
-============================================================ */
-
-function BillingPrinciple({
-  number,
-  title,
-  body,
-}: {
-  number: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="rounded-[20px] border border-[#E7E9EE] bg-white p-5">
-      <span className="font-mono text-[9px] font-semibold tracking-[0.15em] text-[#2478FF]">
-        {number}
-      </span>
-
-      <h3 className="mt-3 text-sm font-semibold tracking-[-0.01em] text-[#101828]">
-        {title}
-      </h3>
-
-      <p className="mt-2 text-xs leading-5 text-[#667085]">
-        {body}
-      </p>
-    </div>
   );
 }

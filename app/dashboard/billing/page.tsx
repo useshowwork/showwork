@@ -54,11 +54,6 @@ export default async function BillingPage({
    * The product query parameter lets every CTA return the user
    * to the exact subscription they were trying to purchase.
    */
-  const selectedProduct =
-    productParam === "content-workspace"
-      ? "content-workspace"
-      : "delivery";
-
   /*
    * ------------------------------------------------------------
    * BILLING CYCLE
@@ -90,10 +85,12 @@ export default async function BillingPage({
    *
    * work correctly.
    */
-  if (productParam === "engage" || selectedTierParam === "ENGAGE") redirect("/dashboard/engage");
   let creator = await getCurrentCreator();
-
-  if (creator?.contentWorkspacePlan === "ENGAGE" && productParam !== "content-workspace") redirect("/dashboard/engage?billing=1");
+  const selectedProduct =
+    productParam === "content-workspace" ? "content-workspace"
+      : productParam === "engage" || selectedTierParam === "ENGAGE" ||
+        (!productParam && creator?.contentWorkspacePlan === "ENGAGE") ? "engage"
+        : "delivery";
 
   if (!creator) {
     const params = new URLSearchParams();
@@ -296,6 +293,7 @@ export default async function BillingPage({
       creator={{
         name: creator.name,
         email: creator.email,
+        avatarUrl: creator.avatarUrl,
       }}
       benefits={<BillingBenefits creator={creator} />}
       offerPrices={offerPrices}

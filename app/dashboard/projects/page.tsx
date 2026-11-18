@@ -1,3 +1,4 @@
+import AccountAvatarLink from "@/components/identity/AccountAvatarLink";
 import ProjectDeliveryMobileMenu from "@/components/projects/ProjectDeliveryMobileMenu";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import DeliveryHelpLink from "@/components/help/DeliveryHelpLink";
@@ -266,7 +267,7 @@ export default async function ProjectDeliveryPage() {
           <Link href={BILLING_HREF}><CreditCard size={18}/>Billing &amp; plan</Link>
           <DeliveryHelpLink/><Link href="/dashboard"><ArrowLeft size={18}/>All tools</Link>
         </ProjectDeliveryMobileMenu>
-        <div className={styles.toolbarTitle}><Layers size={16}/><span>Project Delivery</span></div><div className={styles.toolbarActions}><DeliveryHelpLink className={styles.headerHelp}/><ProjectThemeToggle/><Link href="/dashboard/profile" className={styles.profile}>Account</Link>{isAdminEmail(creator.email)&&<Link href="/admin" className={styles.profile}>Admin</Link>}<LogoutButton/></div></header>
+        <div className={styles.toolbarTitle}><Layers size={16}/><span>Project Delivery</span></div><div className={styles.toolbarActions}><DeliveryHelpLink className={styles.headerHelp}/><ProjectThemeToggle/><AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />{isAdminEmail(creator.email)&&<Link href="/admin" className={styles.profile}>Admin</Link>}<LogoutButton/></div></header>
       <section className={styles.content} aria-labelledby="delivery-title">
         <div className={styles.pageHeading}><div><p className={styles.kicker}>YOUR CLIENT WORK, TOGETHER</p><h1 id="delivery-title">Project Delivery</h1><p>{totalCount>0||sharedProjects.length>0?'Open a project to manage files, feedback, and final delivery.':'Create a project to share your work and collect client feedback.'}</p></div><Link href="/dashboard/start" className={styles.primary}><Plus size={16}/>New project</Link></div>
         {(nearCap||atCap)&&<aside className={styles.allowance} aria-label="Project allowance"><p>{atCap?'You’ve used your current project allowance.':`You have ${usage.remaining} ${usage.remaining===1?'project':'projects'} left on your plan.`}</p><Link href={BILLING_HREF}>{nextTierInfo?`Explore ${PLAN_DISPLAY_NAME[nextTier!]}`:'Manage plan'}<ArrowRight size={14}/></Link></aside>}

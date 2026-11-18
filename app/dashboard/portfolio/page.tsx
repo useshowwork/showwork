@@ -1,3 +1,4 @@
+import AccountAvatarLink from "@/components/identity/AccountAvatarLink";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import PortfolioHelpLink from "@/components/help/PortfolioHelpLink";
 import UiSymbol from "@/components/ui/UiSymbol";
@@ -129,7 +130,7 @@ export default async function PortfolioEntryPage() {
 
                 <ShowworkLogo width={96}/>
 
-                <div className="w-[55px]" />
+                <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
               </div>
             </header>
 
@@ -271,7 +272,7 @@ export default async function PortfolioEntryPage() {
 
             <ShowworkLogo width={96}/>
 
-            <div className="w-[55px]" />
+            <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
           </div>
         </header>
 

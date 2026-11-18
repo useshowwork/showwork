@@ -58,6 +58,20 @@ for (const product of ['delivery', 'content-workspace']) {
   });
 }
 
+test('Engage billing shows the selected price and routes to the existing Engage flow', () => {
+  for (const [cycle, price] of [['MONTHLY', '14,900'], ['ANNUAL', '149,000']]) {
+    const html = renderToStaticMarkup(React.createElement(View, {
+      creator: { name: 'Test', email: 'test@example.com' },
+      usage: { tier: 'FREE', used: 0, limit: 3, remaining: 3, atCap: false },
+      workspaceBilling: null, selectedProduct: 'engage', selectedTier: null, selectedCycle: cycle,
+    }));
+    assert.match(html, /Showwork Engage/);
+    assert.ok(html.includes(`₦${price}`));
+    assert.match(html, /1,000 AI replies per month/);
+    assert.ok(html.includes(`/dashboard/engage?billing=1&amp;cycle=${cycle}`));
+  }
+});
+
 test('a paid downgrade determines delivery usage even with complimentary access', async () => {
   const usageModule = load('lib/subscriptionUsage.ts', {
     '@/lib/db': { db: { project: { count: async () => 2 } } },

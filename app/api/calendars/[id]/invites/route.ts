@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: Context) {
     const requestedActivityPage = Number(_req.nextUrl.searchParams.get('activityPage') || 1);
     const activityPage = Math.min(activityPages, Math.max(1, Number.isFinite(requestedActivityPage) ? Math.floor(requestedActivityPage) : 1));
     const [collaborators, pendingInvites, activity, memberCount, pendingCount, active] = await Promise.all([
-      db.calendarCollaborator.findMany({ where: { calendarId: id }, orderBy: { addedAt: 'desc' }, include: { creator: { select: { name: true, email: true } } } }),
+      db.calendarCollaborator.findMany({ where: { calendarId: id }, orderBy: { addedAt: 'desc' }, include: { creator: { select: { name: true, email: true, avatarUrl: true } } } }),
       db.calendarInvite.findMany({ where: { calendarId: id, status: 'PENDING' }, orderBy: { createdAt: 'desc' } }),
       db.calendarTeamActivity.findMany({ where: { calendarId: id }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 50, skip: (activityPage - 1) * 50, select: { id: true, actorName: true, action: true, targetEmail: true, details: true, createdAt: true } }),
       db.calendarCollaborator.count({ where: { calendar: { managerId: calendar.managerId } } }),
@@ -30,11 +30,11 @@ export async function GET(_req: NextRequest, { params }: Context) {
     const plan = getContentWorkspacePlan(calendar.manager);
     const limit = plan ? CONTENT_WORKSPACE_PLANS[plan].collaborators : 0;
     return NextResponse.json({
-      owner: { id: calendar.manager.id, name: calendar.manager.name, email: calendar.manager.email, role: 'OWNER' },
+      owner: { id: calendar.manager.id, name: calendar.manager.name, email: calendar.manager.email, avatarUrl: calendar.manager.avatarUrl, role: 'OWNER' },
       actorRole: access.role, actorPermissions: access.permissions, canManage: access.permissions.includes('people.manage'), active,
       advancedPermissionsAccess: canUseContentWorkspaceFeature(calendar.manager, 'advancedTeamPermissions'),
       usage: { members: memberCount, pending: pendingCount, limit, remaining: Math.max(0, limit - memberCount - pendingCount) },
-      collaborators: collaborators.map(member => ({ id: member.id, creatorId: member.creatorId, name: member.creator.name, email: member.creator.email,
+      collaborators: collaborators.map(member => ({ id: member.id, creatorId: member.creatorId, name: member.creator.name, email: member.creator.email, avatarUrl: member.creator.avatarUrl,
         role: normalizeTeamRole(member.role), permissions: effectiveTeamPermissions(member.role, member.permissions, member.customPermissions), customPermissions: member.customPermissions,
         canEdit: access.permissions.includes("people.manage") && member.creatorId !== actor.id && canManageTeamRole(access.role, member.role) && (access.role === "OWNER" || effectiveTeamPermissions(member.role, member.permissions, member.customPermissions).every(permission => access.permissions.includes(permission))),
         canManage: access.permissions.includes('people.manage') && member.creatorId !== actor.id && canManageTeamRole(access.role, member.role) })),

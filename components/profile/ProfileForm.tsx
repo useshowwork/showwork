@@ -1,11 +1,10 @@
 "use client";
 
-import { IMAGE_FILE_ACCEPT, getFileContentType } from "@/lib/mediaFileTypes";
+import IdentityImageEditor from "@/components/identity/IdentityImageEditor";
 
 import UiSymbol from "@/components/ui/UiSymbol";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { putFileWithProgress } from "@/lib/uploadClient";
 
 const COLOR = { gold: "#F5C842", black: "#0A0A0A" };
 
@@ -16,7 +15,6 @@ export default function ProfileForm({
   email,
   emailVerified,
   avatarUrl,
-  initialsFallback,
 }: {
   name: string | null;
   phone: string | null;
@@ -27,57 +25,12 @@ export default function ProfileForm({
   initialsFallback: string;
 }) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [nameInput, setNameInput] = useState(name ?? "");
   const [phoneInput, setPhoneInput] = useState(phone ?? "");
   const [companyNameInput, setCompanyNameInput] = useState(companyName ?? "");
-  const [currentAvatar, setCurrentAvatar] = useState(avatarUrl);
   const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [avatarProgress, setAvatarProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingAvatar(true);
-    setAvatarProgress(0);
-    setError(null);
-
-    try {
-      const presignRes = await fetch("/api/account/avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, contentType: getFileContentType(file), fileSizeMb: file.size / (1024 * 1024) }),
-      });
-      if (!presignRes.ok) {
-        const data = await presignRes.json();
-        throw new Error(data.error ?? "Failed to start upload");
-      }
-      const { uploadUrl, publicUrl } = await presignRes.json();
-
-      await putFileWithProgress(uploadUrl, file, {
-        contentType: getFileContentType(file),
-        onProgress: ({ percent }) => setAvatarProgress(percent),
-      });
-
-      const saveRes = await fetch("/api/account/avatar", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl: publicUrl }),
-      });
-      if (!saveRes.ok) throw new Error("Failed to save avatar");
-
-      setCurrentAvatar(publicUrl);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setUploadingAvatar(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -101,30 +54,8 @@ export default function ProfileForm({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          {currentAvatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={currentAvatar} alt="" className="h-16 w-16 rounded-full object-cover" />
-          ) : (
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-full text-lg font-semibold"
-              style={{ background: "rgba(245,200,66,0.18)", color: COLOR.gold }}
-            >
-              {initialsFallback}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingAvatar}
-            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] disabled:opacity-50"
-            style={{ background: COLOR.gold, color: COLOR.black }}
-            aria-label="Change avatar"
-          ><UiSymbol name="edit" /></button>
-          <input ref={fileInputRef} type="file" accept={IMAGE_FILE_ACCEPT} onChange={handleAvatarSelect} className="hidden" />
-        </div>
-        <p className="text-xs text-white/40">{uploadingAvatar ? `Uploading ${avatarProgress}%` : "Click the pencil to upload a photo"}</p>
+      <div className="rounded-xl bg-white p-4">
+        <IdentityImageEditor endpoint="/api/account/avatar" name={nameInput || email} src={avatarUrl} />
       </div>
 
       <div>

@@ -278,7 +278,7 @@ export default async function DashboardPage() {
               {/* Avatar */}
               <Link
                 href="/dashboard/profile"
-                className="ml-1 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[#EDF3FF] text-sm font-bold text-[#2478FF] ring-1 ring-[#D8E6FF]"
+                className="ml-1 flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-[#EDF3FF] text-sm font-bold text-[#2478FF] ring-1 ring-[#D8E6FF]"
                 aria-label="Profile"
               >
                 {creator.avatarUrl ? (
@@ -306,7 +306,7 @@ export default async function DashboardPage() {
               {/* Mobile avatar */}
               <Link
                 href="/dashboard/profile"
-                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[#EDF3FF] text-sm font-bold text-[#2478FF] ring-1 ring-[#D8E6FF]"
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-[#EDF3FF] text-sm font-bold text-[#2478FF] ring-1 ring-[#D8E6FF]"
                 aria-label="Profile"
               >
                 {creator.avatarUrl ? (

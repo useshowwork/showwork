@@ -518,6 +518,9 @@ contentIdea: p.contentIdea,
     <CalendarPaymentCallbackHandler />
     <CalendarWorkspaceShell
       product={isEngage ? "engage" : "marketing"}
+      logoUrl={calendar.logoUrl}
+      canEditLogo={workspaceActive && can("workspace.manage")}
+      account={{ name: creator.name || creator.email, avatarUrl: creator.avatarUrl }}
       clientName={calendar.clientName}
       calendarId={calendar.id}
       setup={!isEngage && isOwner && setup?.enabled ? setup : undefined}
