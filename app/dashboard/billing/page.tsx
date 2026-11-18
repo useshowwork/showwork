@@ -16,6 +16,8 @@ import {
   cancelSubscription,
 } from "@/lib/paystack";
 import BillingSubscriptions from "./BillingSubscriptions";
+import BillingHistory from "./BillingHistory";
+import { Suspense } from "react";
 import { syncVerifiedPayment } from "@/lib/paymentSync";
 import { extractPaystackPlanCode } from "@/lib/paystackPlan";
 import { processReferralCommission } from "@/lib/partnerCommissions";
@@ -32,6 +34,7 @@ export default async function BillingPage({
 
     tier?: string;
     cycle?: string;
+    historyPage?: string;
   }>;
 }) {
   const {
@@ -41,6 +44,7 @@ export default async function BillingPage({
     product: productParam,
     tier: selectedTierParam,
     cycle: cycleParam,
+    historyPage,
   } = await searchParams;
 
   /*
@@ -288,8 +292,20 @@ export default async function BillingPage({
    * ------------------------------------------------------------
    */
 
-  const currentWorkspaceOffer = creator.workspaceOfferSubscriptionId
-    ? await db.billingOfferSubscription.findUnique({ where: { id: creator.workspaceOfferSubscriptionId } }) : null;
+  const [currentWorkspaceOffer, deliveryOffer, details, workspaceSeatsUsed] = await Promise.all([
+    creator.workspaceOfferSubscriptionId
+      ? db.billingOfferSubscription.findUnique({ where: { id: creator.workspaceOfferSubscriptionId } })
+      : null,
+    creator.deliveryOfferSubscriptionId
+      ? db.billingOfferSubscription.findUnique({ where: { id: creator.deliveryOfferSubscriptionId } })
+      : null,
+    db.accountBillingDetails?.findUnique({ where: { creatorId: creator.id } }).catch(() => undefined),
+    (selectedProduct === "content-workspace" || selectedProduct === "engage") && creator.contentWorkspacePlan
+      ? db.calendarCollaborator.count({ where: { calendar: { managerId: creator.id } } }).then(count => count + 1).catch(() => null)
+      : null,
+  ]);
+  const requestedPage = Number(historyPage);
+  const paymentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   return (
     <BillingSubscriptions
       creator={{
@@ -297,7 +313,26 @@ export default async function BillingPage({
         email: creator.email,
         avatarUrl: creator.avatarUrl,
       }}
-      benefits={<BillingBenefits creator={creator} />}
+      benefits={<BillingBenefits creator={creator} showManageLink={false} />}
+      account={{
+        deliveryActive: creator.subscriptionActive,
+        deliveryTier: creator.subscriptionTier,
+        deliveryCycle: creator.subscriptionCycle,
+        deliveryRenewsAt: creator.subscriptionRenewsAt,
+        deliveryAmount: deliveryOffer ? (deliveryOffer.restoredAt ? deliveryOffer.standardPriceNgn : deliveryOffer.discountedPriceNgn) : null,
+        deliveryCard: !!creator.paystackSubscriptionCode && (creator.subscriptionActive || creator.subscriptionTier !== "FREE"),
+        workspacePlan: creator.contentWorkspacePlan,
+        workspaceCard: !!creator.contentWorkspacePaystackSubscriptionCode,
+        seatsUsed: workspaceSeatsUsed,
+        detailsAvailable: details !== undefined,
+        details: {
+          name: details ? details.name ?? "" : creator.companyName ?? creator.name ?? "",
+          email: details ? details.email ?? "" : creator.email,
+          address: details?.address ?? "",
+          taxId: details?.taxId ?? "",
+        },
+      }}
+      history={<Suspense fallback={<p role="status" className="p-5 text-sm text-slate-600">Loading billing history…</p>}><BillingHistory creatorId={creator.id} page={paymentPage} href={`/dashboard/billing?product=${selectedProduct}&cycle=${selectedCycle}`} /></Suspense>}
       offerPrices={offerPrices}
       usage={usage}
       workspaceBilling={workspaceBilling ? {

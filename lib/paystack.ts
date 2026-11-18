@@ -339,3 +339,36 @@ export async function fetchPartnerPaymentIssue(kind: "refund" | "dispute", id: s
   }
   return body.data;
 }
+
+export async function getSubscriptionCard(code: string) {
+  const response = await fetch(`${PAYSTACK_BASE_URL}/subscription/${encodeURIComponent(code)}`, {
+    headers: { Authorization: `Bearer ${paystackSecretKey()}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(8000),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.status) throw new Error("Paystack subscription unavailable");
+  const authorization = result.data?.authorization;
+  if (authorization?.channel !== "card" || !/^\d{4}$/.test(authorization.last4 ?? "")) return null;
+  return {
+    brand: String(authorization.brand || authorization.card_type || "Card").trim().slice(0, 30),
+    last4: authorization.last4 as string,
+    month: /^\d{1,2}$/.test(authorization.exp_month ?? "") ? String(authorization.exp_month).padStart(2, "0") : null,
+    year: /^\d{4}$/.test(authorization.exp_year ?? "") ? String(authorization.exp_year) : null,
+  };
+}
+
+export async function getSubscriptionManagementLink(code: string) {
+  const response = await fetch(`${PAYSTACK_BASE_URL}/subscription/${encodeURIComponent(code)}/manage/link`, {
+    headers: { Authorization: `Bearer ${paystackSecretKey()}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(8000),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.status || !result.data?.link) throw new Error("Paystack management unavailable");
+  const url = new URL(result.data.link);
+  if (url.origin !== "https://paystack.com" || !url.pathname.startsWith("/manage/subscriptions/")) {
+    throw new Error("Invalid Paystack management link");
+  }
+  return url.toString();
+}

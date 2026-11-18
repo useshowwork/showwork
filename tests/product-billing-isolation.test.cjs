@@ -38,8 +38,8 @@ for (const [product, sectionText] of Object.entries({
       usage: { tier: 'FREE', used: 0, limit: 3, remaining: 3, atCap: false },
       workspaceBilling: null, selectedProduct: product, selectedTier: null, selectedCycle: 'MONTHLY',
     }));
-    assert.match(html, /Billing &amp; subscriptions/);
-    for (const name of ['Project Delivery', 'Marketing Workspace', 'Showwork Engage', 'Portfolio', 'No subscription required']) assert.ok(html.includes(name));
+    assert.match(html, /Billing &amp; Subscription/);
+    for (const name of ['Project Delivery', 'Marketing Workspace', 'Showwork Engage', 'Portfolio']) assert.ok(html.includes(name));
     assert.match(html, new RegExp(`href="/dashboard/billing\\?product=${product}&amp;cycle=MONTHLY" aria-current="page"`));
     assert.match(html, new RegExp(sectionText));
     if (product === 'portfolio') assert.doesNotMatch(html, /aria-label="Billing cycle"/);
@@ -189,4 +189,54 @@ test('Agency solution destination highlights the highest workspace plan and offe
     assert.match(html, /id="workspace-plan-UNLIMITED"[^>]*data-selected="true"/);
     assert.match(html, /Subscribe to Agency/);
   }
+});
+
+test('the billing overview places real usage and history before plan options', () => {
+  const html = renderToStaticMarkup(React.createElement(View, {
+    creator: { name: 'Test', email: 'test@example.com' },
+    usage: { tier: 'GROWTH', used: 2, limit: 10, remaining: 8, atCap: false },
+    account: {
+      deliveryActive: true, deliveryTier: 'GROWTH', deliveryCycle: 'MONTHLY',
+      deliveryRenewsAt: new Date('2027-01-06T12:00:00Z'), deliveryAmount: 12000,
+      deliveryCard: true, workspacePlan: null, workspaceCard: false, seatsUsed: null,
+      detailsAvailable: true, details: { name: '', email: '', address: '', taxId: '' },
+    },
+    history: React.createElement('div', { id: 'billing-history' }, 'Payment history'),
+    workspaceBilling: null, selectedProduct: 'delivery', selectedTier: null, selectedCycle: 'MONTHLY',
+  }));
+  assert.match(html, /₦12,000/);
+  assert.match(html, /role="meter" aria-label="Projects this period"[^>]+aria-valuemax="10" aria-valuenow="2"/);
+  assert.ok(html.indexOf('id="billing-history"') < html.indexOf('id="subscription-details"'));
+});
+
+test('billing navigation uses product names only and plan features expand on demand', () => {
+  const html = renderToStaticMarkup(React.createElement(View, {
+    creator: { name: 'Test', email: 'test@example.com' },
+    usage: { tier: 'FREE', used: 0, limit: 1, remaining: 1, atCap: false },
+    workspaceBilling: null, selectedProduct: 'delivery', selectedTier: null, selectedCycle: 'MONTHLY',
+  }));
+  const navigation = html.match(/<nav aria-label="Billing products"[^>]*>(.*?)<\/nav>/)?.[1];
+  assert.ok(navigation);
+  assert.deepEqual([...navigation.matchAll(/<a\b[^>]*>([^<]+)<\/a>/g)].map(match => match[1]),
+    ['Marketing Workspace', 'Project Delivery', 'Showwork Engage', 'Portfolio']);
+  const freePlan = html.slice(html.indexOf('id="delivery-plan-FREE"'), html.indexOf('id="delivery-plan-STARTER"'));
+  const [visible, dropdown] = freePlan.split('<details');
+  assert.match(visible, /1 project per 30 days/);
+  assert.match(visible, /Password-protected delivery/);
+  assert.doesNotMatch(visible, /Custom presentation/);
+  assert.match(dropdown, /^ class="group mt-1"><summary[^>]*>All features/);
+  assert.match(dropdown, /Custom presentation/);
+});
+
+test('Marketing Workspace explains inactive Engage access with a separate billing link', () => {
+  const html = renderToStaticMarkup(React.createElement(View, {
+    creator: { name: 'Test', email: 'test@example.com' },
+    usage: { tier: 'FREE', used: 0, limit: 1, remaining: 1, atCap: false },
+    workspaceBilling: { contentWorkspacePlan: 'ENGAGE', contentWorkspaceBillingStatus: 'OFFLINE', isComped: false },
+    selectedProduct: 'content-workspace', selectedTier: null, selectedCycle: 'MONTHLY',
+  }));
+  assert.match(html, /Your Engage access is inactive/);
+  assert.match(html, /Engage and Marketing Workspace are separate plans/);
+  assert.match(html, /href="\/dashboard\/billing\?product=engage"[^>]*>View Engage billing/);
+  assert.doesNotMatch(html, /Restore workspace access/);
 });

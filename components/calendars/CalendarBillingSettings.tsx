@@ -206,6 +206,7 @@ export default function CalendarBillingSettings({
   recurringPriceNgn,
   onBusyChange,
   hidePlanComparison = false,
+  compactTrigger = false,
 }: {
   plan: ContentWorkspacePlan;
   billingStatus: BillingStatus;
@@ -215,6 +216,7 @@ export default function CalendarBillingSettings({
   recurringPriceNgn?: number;
   switchRequest?: WorkspacePlanSwitchRequest | null;
   hidePlanComparison?: boolean;
+  compactTrigger?: boolean;
   onBusyChange?: (busy: boolean) => void;
 }) {
   const router = useRouter();
@@ -459,6 +461,14 @@ export default function CalendarBillingSettings({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [switchRequest, plan]);
 
+  if (!open && compactTrigger) {
+    return plan === "ENGAGE" ? null : (
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#edf4ff] px-3 text-sm font-medium text-[var(--brand-blue-dark,#0052FF)] hover:bg-[#e0edff]">
+        <SettingsIcon className="h-4 w-4" /> Manage billing
+      </button>
+    );
+  }
+
   if (!open) {
     return (
       <button
@@ -511,7 +521,7 @@ export default function CalendarBillingSettings({
 
   return (
     <>
-      <section className="mb-8 overflow-hidden rounded-[28px] border border-[#E7E9EE] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.08)]">
+      <section className="mb-8 w-full overflow-hidden rounded-[28px] border border-[#E7E9EE] bg-white shadow-[0_20px_60px_rgba(16,24,40,0.08)]">
         <div className="relative overflow-hidden border-b border-[#EAECF0] bg-[#0B0D12] px-5 py-6 sm:px-7 sm:py-7">
           <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#2478FF] opacity-20 blur-[80px]" />
           <div className="pointer-events-none absolute right-24 top-4 h-24 w-24 rounded-full border border-white/[0.06]" />

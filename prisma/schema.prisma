@@ -125,6 +125,7 @@ model Creator {
   billingOfferSubscriptions BillingOfferSubscription[]
   billingOfferRedemptions BillingOfferRedemption[]
   billingBenefitNotifications BillingBenefitNotification[]
+  accountBillingDetails AccountBillingDetails?
   // Overrides the standard Free-tier limit (normally 1/month) for this
   // specific creator, without granting them a paid tier or full comped
   // access — they stay on Free, just with a raised allowance. Null
@@ -3043,4 +3044,13 @@ model ReportingSyncJob {
 
   @@index([status, nextAttemptAt])
   @@index([calendarId])
+}
+
+model AccountBillingDetails {
+  creatorId String  @id
+  creator   Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  name      String?
+  email     String?
+  address   String?
+  taxId     String?
 }

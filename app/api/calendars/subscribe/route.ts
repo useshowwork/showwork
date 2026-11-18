@@ -109,8 +109,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const cycleChange = creator.contentWorkspaceBillingStatus === "ACTIVE" &&
+    resolvePlan(body.plan) === creator.contentWorkspacePlan && !!creator.contentWorkspacePlan &&
+    (body.billingCycle === "MONTHLY" || body.billingCycle === "ANNUAL") &&
+    body.billingCycle !== (creator.contentWorkspaceBillingCycle ?? "MONTHLY");
+
   if (
-    creator.contentWorkspaceBillingStatus === "ACTIVE" && body.activateOffer !== true
+    creator.contentWorkspaceBillingStatus === "ACTIVE" && body.activateOffer !== true && !cycleChange
   ) {
     return NextResponse.json(
       {
@@ -238,8 +243,7 @@ export async function POST(req: NextRequest) {
         id: creator.id,
       },
       data: {
-        contentWorkspacePlan: plan,
-        contentWorkspaceBillingCycle: billingCycle,
+        ...(cycleChange ? {} : { contentWorkspacePlan: plan, contentWorkspaceBillingCycle: billingCycle }),
         contentWorkspacePendingSubscriptionRef: reference,
       },
     });

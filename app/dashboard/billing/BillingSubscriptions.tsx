@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import styles from "./BillingDashboard.module.css";
+import { BillingCancellation, BillingDetailsForm, BillingPaymentMethod, type BillingDetails } from "./BillingAccountControls";
 import SubscriptionCheckoutButton from "@/components/billing/SubscriptionCheckoutButton";
 
 import { getContentWorkspaceFeatureList } from "@/lib/contentWorkspaceEntitlements";
@@ -12,7 +14,6 @@ import Link from "next/link";
 import { TIERS } from "@/lib/subscriptionTiers";
 import SubscribeButton from "@/components/SubscribeButton";
 import CancelSubscriptionButton from "@/components/CancelSubscriptionButton";
-import TrialCountdownBanner from "@/components/calendars/TrialCountdownBanner";
 import CalendarBillingSettings, { type WorkspacePlanSwitchRequest } from "@/components/calendars/CalendarBillingSettings";
 
 import {
@@ -36,6 +37,20 @@ type OfferPrices = Record<string, { title: string; percent: number; months: numb
 
 type BillingSubscriptionsProps = {
   benefits?: React.ReactNode;
+  history?: React.ReactNode;
+  account?: {
+    deliveryActive: boolean;
+    deliveryTier: "FREE" | keyof typeof TIERS;
+    deliveryCycle: BillingCycle | null;
+    deliveryRenewsAt: Date | null;
+    deliveryAmount: number | null;
+    deliveryCard: boolean;
+    workspacePlan: ContentWorkspacePlan | null;
+    workspaceCard: boolean;
+    seatsUsed: number | null;
+    detailsAvailable: boolean;
+    details: BillingDetails;
+  };
   offerPrices?: OfferPrices;
   creator: {
     name: string | null;
@@ -147,129 +162,30 @@ function CheckIcon({
   );
 }
 
-function DeliveryIcon({
-  className = "h-5 w-5",
-}: {
-  className?: string;
-}) {
+function PlanFeatures({ features }: { features: string[] }) {
+  const renderFeature = (feature: string) => (
+    <li key={feature} className="flex items-start gap-1.5">
+      <CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#155FC7]" />
+      <span>{feature}</span>
+    </li>
+  );
+
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={className}
-      aria-hidden="true"
-    >
-      <rect
-        x="3"
-        y="4"
-        width="18"
-        height="16"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-
-      <path
-        d="M8 9h8M8 13h5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-
-      <path
-        d="m15 16 2.5-2.5L20 16"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className="mt-3 text-xs leading-5 text-slate-700">
+      <ul className="space-y-1">{features.slice(0, 2).map(renderFeature)}</ul>
+      {features.length > 2 && (
+        <details className="group mt-1">
+          <summary className="flex min-h-11 cursor-pointer list-none sm:min-h-9 items-center gap-1.5 font-medium text-[#155FC7] [&::-webkit-details-marker]:hidden">
+            All features <span aria-hidden="true" className="text-[10px] transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <ul className="space-y-1 border-t border-[#d9e6f5] pt-2">{features.slice(2).map(renderFeature)}</ul>
+        </details>
+      )}
+    </div>
   );
 }
 
-function WorkspaceIcon({
-  className = "h-5 w-5",
-}: {
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={className}
-      aria-hidden="true"
-    >
-      <rect
-        x="3"
-        y="5"
-        width="18"
-        height="15"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-
-      <path
-        d="M3 9.5h18M8 3v4M16 3v4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-
-      <path
-        d="M7 13h3M14 13h3M7 16.5h3M14 16.5h3"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function PortfolioIcon({
-  className = "h-5 w-5",
-}: {
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={className}
-      aria-hidden="true"
-    >
-      <rect
-        x="3"
-        y="4"
-        width="18"
-        height="16"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-
-      <circle
-        cx="8.5"
-        cy="9"
-        r="1.4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-
-      <path
-        d="m3 16 5-5 4 4 3-3 6 6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-/* ============================================================
-   HELPERS
-============================================================ */
+const planSurfaces = ["bg-white", "bg-[#f0f8f7]", "bg-[#f0f5fc]", "bg-[#e3efff]"];
 
 function formatNaira(value: number) {
   return `₦${value.toLocaleString("en-NG")}`;
@@ -355,28 +271,6 @@ function getDeliveryPlanName(
   return names[tier];
 }
 
-function getDeliveryStatus(
-  tier: string
-) {
-  if (tier === "FREE") {
-    return {
-      label: "Free plan",
-      dot: "#98A2B3",
-      text: "#475467",
-      bg: "#F2F4F7",
-      border: "#EAECF0",
-    };
-  }
-
-  return {
-    label: "Active",
-    dot: "#22C55E",
-    text: "#067647",
-    bg: "#ECFDF3",
-    border: "#D1FADF",
-  };
-}
-
 function getWorkspaceStatus(
   status: WorkspaceBillingStatus
 ) {
@@ -430,8 +324,6 @@ function DeliverySubscription({
   selectedTier: string | null;
   selectedCycle: BillingCycle;
 }) {
-  const status = { ...getDeliveryStatus(usage.tier), ...(usage.complimentary ? { label: "Complimentary access" } : {}) };
-  const planName = getDeliveryPlanName(usage.tier);
 
   useEffect(() => {
     if (selectedTier && ["STARTER", "GROWTH", "UNLIMITED"].includes(selectedTier)) {
@@ -445,8 +337,6 @@ function DeliverySubscription({
       name: "Free",
       priceMonthly: 0,
       priceAnnual: 0,
-      description:
-        "A simple place to start delivering creative work.",
       features: [
         "1 project per 30 days",
         "Password-protected delivery",
@@ -460,8 +350,6 @@ function DeliverySubscription({
       name: "Starter",
       priceMonthly: TIERS.STARTER.priceNgnMonthly,
       priceAnnual: TIERS.STARTER.priceNgnAnnual,
-      description:
-        "For creators taking on clients consistently.",
       features: [
         "Up to 5 projects per billing cycle",
         "Password-protected delivery",
@@ -475,8 +363,6 @@ function DeliverySubscription({
       name: "Growth",
       priceMonthly: TIERS.GROWTH.priceNgnMonthly,
       priceAnnual: TIERS.GROWTH.priceNgnAnnual,
-      description:
-        "For studios and creators delivering every week.",
       features: [
         "Up to 20 projects per billing cycle",
         "Client feedback",
@@ -490,8 +376,6 @@ function DeliverySubscription({
       name: getDeliveryPlanName("UNLIMITED"),
       priceMonthly: TIERS.UNLIMITED.priceNgnMonthly,
       priceAnnual: TIERS.UNLIMITED.priceNgnAnnual,
-      description:
-        "For teams who no longer want to count projects.",
       features: [
         "Unlimited projects",
         "Full delivery experience",
@@ -507,23 +391,15 @@ function DeliverySubscription({
       id="project-delivery-subscription"
       className="space-y-6"
     >
-      <div className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5">
-        <div>
-          <p className="text-xs font-semibold text-blue-700">{status.label}</p>
-          <h3 className="mt-1 text-lg font-semibold">{planName}</h3>
-          {usage.atCap && <p className="mt-1 text-sm text-slate-600">Project limit reached for this billing period.</p>}
-        </div>
-        <div className="rounded-xl bg-slate-50 px-4 py-3">
-          <p className="text-sm font-semibold tabular-nums">{usage.used}{usage.limit === Infinity ? "" : ` of ${usage.limit}`} projects used</p>
-          <p className="mt-0.5 text-xs text-slate-600">This billing period</p>
-        </div>
-      </div>
+      <p className="w-fit rounded-lg bg-[#edf4ff] px-3 py-2 text-sm text-slate-700">
+        {usage.used}{usage.limit === Infinity ? "" : ` of ${usage.limit}`} projects used this billing period
+      </p>
 
       {/* Plans */}
       <div id="project-delivery-plans" className="scroll-mt-6">
-        <h3 className="mb-4 text-lg font-semibold">Compare plans</h3>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {tiers.map((plan) => {
+        <h3 className="mb-3 text-lg font-medium">Compare plans</h3>
+        <div className="grid gap-3 sm:auto-rows-fr sm:grid-cols-2 xl:grid-cols-4">
+          {tiers.map((plan, index) => {
             const isCurrent =
               usage.tier === plan.key;
 
@@ -538,17 +414,18 @@ function DeliverySubscription({
               <div
                 key={plan.key}
                 id={`delivery-plan-${plan.key}`}
+                data-billing-card
                 style={{ scrollMarginTop: 24 }}
-                className={`relative overflow-hidden rounded-[24px] border bg-white p-5 transition-all duration-300 sm:p-6 ${
+                className={`relative flex flex-col rounded-2xl border p-3.5 transition-colors sm:p-4 ${planSurfaces[index]} ${
                   isCurrent
-                    ? "border-[#2478FF] shadow-[0_12px_40px_rgba(36,120,255,0.10)]"
+                    ? "border-[#155FC7]"
                     : isSelected
-                      ? "border-[#2478FF] shadow-[0_12px_40px_rgba(36,120,255,0.10)]"
-                      : "border-[#E7E9EE] hover:-translate-y-0.5 hover:border-[#D0D5DD] hover:shadow-[0_14px_40px_rgba(16,24,40,0.06)]"
+                      ? "border-[#155FC7]"
+                      : "border-[#E7E9EE] hover:border-[#b9cde7]"
                 }`}
               >
                 {isCurrent && (
-                  <div className="absolute right-5 top-5 rounded-full bg-[#EEF4FF] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-[#2478FF]">
+                  <div className="absolute right-5 top-5 rounded-full bg-[#EEF4FF] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-[#155FC7]">
                     Current
                   </div>
                 )}
@@ -559,13 +436,13 @@ function DeliverySubscription({
                   </div>
                 )}
 
-                <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#2478FF]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#155FC7]">
                   {plan.name}
                 </p>
 
-                {offer && <p className="mt-3 text-xs text-[#2478FF]"><span className="mr-2 text-[#98A2B3] line-through">{formatNaira(offer.standardPriceNgn)}</span>{offer.percent}% off for {offer.remainingCycles} payment(s)</p>}
+                {offer && <p className="mt-3 text-xs text-[#155FC7]"><span className="mr-2 text-[#98A2B3] line-through">{formatNaira(offer.standardPriceNgn)}</span>{offer.percent}% off for {offer.remainingCycles} payment(s)</p>}
                 <div className="mt-3 flex items-end gap-1">
-                  <span className="text-[30px] font-semibold tracking-[-0.04em] text-[#101828]">
+                  <span className="text-[26px] font-medium tracking-[-0.04em] text-[#101828]">
                     {price === 0
                       ? "₦0"
                       : formatNaira(price)}
@@ -582,7 +459,7 @@ function DeliverySubscription({
 
                 {selectedCycle === "ANNUAL" &&
                   price > 0 && (
-                    <p className="mt-1 text-[10px] font-medium text-[#2478FF]">
+                    <p className="mt-1 text-[10px] font-medium text-[#155FC7]">
                       Equivalent to{" "}
                       {formatNaira(
                         Math.round(
@@ -593,34 +470,11 @@ function DeliverySubscription({
                     </p>
                   )}
 
-                <p className="mt-4 min-h-[42px] text-xs leading-5 text-[#667085]">
-                  {plan.description}
-                </p>
+                <PlanFeatures features={plan.features} />
 
-                <div className="mt-5 space-y-2.5 border-t border-[#EAECF0] pt-5">
-                  {plan.features.map(
-                    (feature) => (
-                      <div
-                        key={feature}
-                        className="flex items-start gap-2 text-[11px] text-[#475467]"
-                      >
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#ECFDF3] text-[#12B76A]">
-                          <CheckIcon className="h-2.5 w-2.5" />
-                        </span>
-
-                        {feature}
-                      </div>
-                    )
-                  )}
-                </div>
-
-                <div className="mt-6">
+                <div className="mt-auto pt-2.5">
                   {isCurrent ? (
                     <div className="space-y-3">
-                      <div className="text-[11px] font-semibold text-[#067647]">
-                        You are currently on this plan.
-                      </div>
-
                       {offer && plan.key !== "FREE" && <SubscribeButton tier={plan.key} cycle={selectedCycle} label="Activate this offer" />}
                       {usage.tier !== "FREE" && !usage.complimentary && (
                         <CancelSubscriptionButton />
@@ -694,6 +548,10 @@ function ContentWorkspaceSubscription({
     }
   : getWorkspaceStatus(billingStatus);
 
+  const trialEnd = workspaceBilling?.contentWorkspaceTrialEndsAt;
+  const restoreAccess = billingStatus === "OFFLINE" || (billingStatus === "TRIAL" && !!trialEnd && new Date(trialEnd).getTime() <= Date.now());
+  const showSubscribe = plan && plan !== "ENGAGE" && !workspaceBilling?.isComped && (billingStatus === "TRIAL" || restoreAccess);
+
   const complimentaryPeriod =
   workspaceBilling?.isComped
     ? getComplimentaryPeriod(
@@ -716,7 +574,7 @@ function ContentWorkspaceSubscription({
       >
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#DCE7FF] bg-white p-5">
           <p className="text-sm text-slate-600">Try Marketing Workspace free for 3 days with full Agency access.</p>
-          <Link href="/dashboard/calendars" className="text-sm font-semibold text-blue-700 hover:underline">
+          <Link href="/dashboard/calendars" className="text-sm font-semibold text-[#155FC7] hover:underline">
             Start Marketing Workspace
           </Link>
         </div>
@@ -733,53 +591,49 @@ function ContentWorkspaceSubscription({
 
   return (
     <section id="content-workspace-subscription" className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5">
-        <div>
-          <p className="text-xs font-semibold text-blue-700">{status.label}</p>
-          <h3 className="mt-1 text-lg font-semibold">{CONTENT_WORKSPACE_PLANS[plan].name}</h3>
-          {complimentaryPeriod ? (
-            <p className="mt-1 text-sm text-slate-600">{complimentaryPeriod.detail}</p>
-          ) : billingStatus === "ACTIVE" && workspaceBilling?.contentWorkspaceSubscriptionRenewsAt ? (
-            <p className="mt-1 text-sm text-slate-600">Renews {formatDate(workspaceBilling.contentWorkspaceSubscriptionRenewsAt)}</p>
-          ) : null}
-        </div>
-        <Link href={plan === "ENGAGE" ? "/dashboard/engage?billing=1" : "/dashboard/calendars"} className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline">
-          {plan === "ENGAGE" ? "Manage Engage" : "Open Marketing Workspace"}
-          <ArrowUpRightIcon className="h-4 w-4" />
-        </Link>
-      </div>
-
-      {workspaceBilling && plan !== "ENGAGE" &&
-        (workspaceBilling.isComped || billingStatus === "TRIAL" || billingStatus === "OFFLINE") && (
-          <TrialCountdownBanner
-            plan={plan}
-            billingStatus={billingStatus}
-            trialEndsAt={workspaceBilling.contentWorkspaceTrialEndsAt?.toISOString() ?? ""}
-            isComped={workspaceBilling.isComped}
-            compedUntil={workspaceBilling.compedUntil?.toISOString() ?? null}
-          />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {plan === "ENGAGE" ? (
+          <div data-billing-card className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-[#dbe9fb] bg-[#edf4ff] px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-slate-900">{billingStatus === "ACTIVE" ? "You’re on Showwork Engage" : billingStatus === "TRIAL" && !restoreAccess ? "You’re trying Showwork Engage" : "Your Engage access is inactive"}</p>
+              <p className="mt-0.5 text-xs leading-5 text-slate-600">Engage and Marketing Workspace are separate plans. Compare Marketing Workspace plans below.</p>
+            </div>
+            <Link href="/dashboard/billing?product=engage" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-white px-3 text-xs font-medium text-[#155FC7] hover:bg-[#f5f9ff]">
+              View Engage billing <ArrowRightIcon className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        ) : (
+          <div data-billing-card className="flex w-fit flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-[#edf4ff] px-3 py-2 text-sm">
+            <span className="font-medium text-slate-900">{CONTENT_WORKSPACE_PLANS[plan].name}</span>
+            <span className="rounded-md bg-white px-2 py-1 text-xs text-[#155FC7]">{restoreAccess && !workspaceBilling?.isComped ? "Restore workspace access" : status.label}</span>
+            {complimentaryPeriod ? (
+              <span className="text-xs text-slate-600">{complimentaryPeriod.detail}</span>
+            ) : billingStatus === "ACTIVE" && workspaceBilling?.contentWorkspaceSubscriptionRenewsAt ? (
+              <span className="text-xs text-slate-600">Renews {formatDate(workspaceBilling.contentWorkspaceSubscriptionRenewsAt)}</span>
+            ) : billingStatus === "TRIAL" && !restoreAccess && trialEnd ? (
+              <span className="text-xs text-slate-600">Ends {formatDate(trialEnd)}</span>
+            ) : null}
+            <Link href="/dashboard/calendars" className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-[#155FC7] hover:underline">
+              Open workspace <ArrowUpRightIcon className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         )}
-
-      {/* Existing billing settings */}
-      <div>
+        {showSubscribe && (
+          <SubscriptionCheckoutButton product="CONTENT_WORKSPACE" plan={plan} cycle={selectedCycle}
+            label={restoreAccess ? "Subscribe & restore access" : "Subscribe now"}
+            className="min-h-11 rounded-lg bg-[#155FC7] px-3 text-sm font-medium text-white hover:brightness-95" />
+        )}
         <CalendarBillingSettings
           plan={plan}
           recurringPriceNgn={workspaceBilling?.recurringPriceNgn}
           hidePlanComparison
+          compactTrigger
           switchRequest={switchRequest}
           onBusyChange={setSwitchBusy}
           billingStatus={billingStatus}
           billingCycle={billingCycle}
-          subscriptionRenewsAt={
-            workspaceBilling?.contentWorkspaceSubscriptionRenewsAt
-              ? workspaceBilling.contentWorkspaceSubscriptionRenewsAt.toISOString()
-              : null
-          }
-          trialEndsAt={
-            workspaceBilling?.contentWorkspaceTrialEndsAt
-              ? workspaceBilling.contentWorkspaceTrialEndsAt.toISOString()
-              : null
-          }
+          subscriptionRenewsAt={workspaceBilling?.contentWorkspaceSubscriptionRenewsAt?.toISOString() ?? null}
+          trialEndsAt={workspaceBilling?.contentWorkspaceTrialEndsAt?.toISOString() ?? null}
         />
       </div>
 
@@ -788,7 +642,7 @@ function ContentWorkspaceSubscription({
           offerPrices={offerPrices}
         selectedCycle={selectedCycle}
         currentPlan={billingStatus === "ACTIVE" ? plan : null}
-        trialPlan={billingStatus === "TRIAL" ? plan : null}
+        trialPlan={billingStatus === "TRIAL" && !restoreAccess ? plan : null}
         switching={switchBusy}
         onSelectPlan={(nextPlan) => setSwitchRequest({ plan: nextPlan, billingCycle: selectedCycle })}
       />
@@ -821,10 +675,10 @@ function WorkspacePlanComparison({
 
   return (
     <div id="content-workspace-plans" className="scroll-mt-6">
-      <h3 className="mb-4 text-lg font-semibold">Compare plans</h3>
+      <h3 className="mb-3 text-lg font-medium">Compare plans</h3>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {plans.map((planKey) => {
+      <div className="grid gap-3 sm:auto-rows-fr sm:grid-cols-2 xl:grid-cols-4">
+        {plans.map((planKey, index) => {
           const plan =
             CONTENT_WORKSPACE_PLANS[planKey];
 
@@ -838,27 +692,29 @@ function WorkspacePlanComparison({
             <div
               key={planKey}
               id={`workspace-plan-${planKey}`}
+              data-billing-card
               style={{ scrollMarginTop: 24 }}
               data-selected={selectedTier === planKey ? "true" : undefined}
-              className={`relative flex flex-col rounded-2xl border bg-white p-5 transition-colors ${
+              className={`relative flex flex-col rounded-2xl border p-3.5 transition-colors sm:p-4 ${planSurfaces[index]} ${
                 isCurrent || selectedTier === planKey
-                  ? "border-[#2478FF] shadow-[0_12px_40px_rgba(36,120,255,0.10)]"
-                  : "border-[#E7E9EE] hover:-translate-y-0.5 hover:border-[#D0D5DD] hover:shadow-[0_14px_40px_rgba(16,24,40,0.06)]"
+                  ? "border-[#155FC7]"
+                  : "border-[#E7E9EE] hover:border-[#b9cde7]"
               }`}
             >
               {isCurrent && (
-                <div className="absolute right-5 top-5 rounded-full bg-[#EEF4FF] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-[#2478FF]">
+                <div className="absolute right-5 top-5 rounded-full bg-[#EEF4FF] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-[#155FC7]">
                   Current plan
                 </div>
               )}
 
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#2478FF]">
-                {plan.name}
-              </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-sm font-medium text-[#155FC7]">{plan.name}</p>
+                {planKey === "UNLIMITED" && !isCurrent && <span className="w-fit rounded-full bg-[#D8F3A5] px-2 py-0.5 text-[10px] text-[#102A29]">Recommended for teams</span>}
+              </div>
 
-              {offer && <p className="mt-3 text-xs text-[#2478FF]"><span className="mr-2 text-[#98A2B3] line-through">{formatNaira(offer.standardPriceNgn)}</span>{offer.percent}% off for {offer.remainingCycles} payment(s)</p>}
+              {offer && <p className="mt-3 text-xs text-[#155FC7]"><span className="mr-2 text-[#98A2B3] line-through">{formatNaira(offer.standardPriceNgn)}</span>{offer.percent}% off for {offer.remainingCycles} payment(s)</p>}
               <div className="mt-3 flex items-end gap-1">
-                <span className="text-[31px] font-semibold tracking-[-0.045em] text-[#101828]">
+                <span className="text-[26px] font-medium tracking-[-0.045em] text-[#101828]">
                   {formatNaira(price)}
                 </span>
 
@@ -870,62 +726,21 @@ function WorkspacePlanComparison({
               </div>
 
               {selectedCycle === "ANNUAL" && (
-                <p className="mt-1 text-[10px] font-medium text-[#2478FF]">
+                <p className="mt-1 text-[10px] font-medium text-[#155FC7]">
                   5% annual savings
                 </p>
               )}
 
-              <div className="mt-6 grid grid-cols-2 gap-2">
-                <WorkspaceMiniStat
-                  label="Workspaces"
-                  value={formatWorkspaceLimit(plan.activeWorkspaces)}
-                />
+              <PlanFeatures features={[
+                ...getContentWorkspaceFeatureList(planKey),
+                `Workspaces · ${formatWorkspaceLimit(plan.activeWorkspaces)}`,
+                `Collaborators · ${formatWorkspaceLimit(plan.collaborators)}`,
+                `Storage · ${plan.storageBytes / 1_000_000_000} GB`,
+                `AI generations per month · ${plan.aiGenerations}`,
+              ]} />
 
-                <WorkspaceMiniStat
-                  label="Collaborators"
-                  value={formatWorkspaceLimit(plan.collaborators)}
-                />
-
-                <WorkspaceMiniStat
-                  label="Storage"
-                  value={
-                    `${plan.storageBytes / 1_000_000_000} GB`
-                  }
-                />
-
-                <WorkspaceMiniStat
-                  label="AI / month"
-                  value={String(
-                    plan.aiGenerations
-                  )}
-                />
-              </div>
-
-              <div className="mt-6 border-t border-[#EAECF0] pt-5">
-                <p className="text-[11px] font-semibold text-[#344054]">
-                  Included
-                </p>
-
-                <div className="mt-3 space-y-2">
-                  {getContentWorkspaceFeatureList(planKey).map((feature) => (
-                    <div
-                      key={feature}
-                      className="flex items-center gap-2 text-[11px] text-[#667085]"
-                    >
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#ECFDF3] text-[#12B76A]">
-                        <CheckIcon className="h-2.5 w-2.5" />
-                      </span>
-
-                      {feature}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-auto pt-6">
-                {isCurrent ? (
-                  <span className="text-[11px] font-semibold text-[#067647]">Current plan</span>
-                ) : currentPlan || (trialPlan && trialPlan !== planKey) ? (
+              <div className="mt-auto pt-2.5">
+                {!isCurrent && (currentPlan || (trialPlan && trialPlan !== planKey) ? (
                   <button
                     type="button"
                     disabled={switching}
@@ -936,8 +751,8 @@ function WorkspacePlanComparison({
                     <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                   </button>
                 ) : (
-                  <SubscriptionCheckoutButton product="CONTENT_WORKSPACE" plan={planKey} cycle={selectedCycle} label={`Subscribe to ${plan.name}`} className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-[#2478FF] px-4 py-2.5 text-xs font-semibold text-white"/>
-                )}
+                  <SubscriptionCheckoutButton product="CONTENT_WORKSPACE" plan={planKey} cycle={selectedCycle} label={`Subscribe to ${plan.name}`} className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-[#155FC7] px-4 py-2.5 text-xs font-semibold text-white"/>
+                ))}
               </div>
             </div>
           );
@@ -947,32 +762,27 @@ function WorkspacePlanComparison({
   );
 }
 
-function WorkspaceMiniStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function BillingUsage({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const finite = Number.isFinite(limit);
   return (
-    <div className="rounded-xl border border-[#EAECF0] bg-[#F9FAFB] p-3">
-      <p className="text-[8px] font-bold uppercase tracking-[0.1em] text-[#98A2B3]">
-        {label}
-      </p>
-
-      <p className="mt-1 text-sm font-semibold text-[#101828]">
-        {value}
-      </p>
+    <div>
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="text-slate-600">{label}</span>
+        <span className="font-medium tabular-nums">{finite ? `${used} of ${limit} used` : `${used} used · Unlimited`}</span>
+      </div>
+      {finite && limit > 0 && (
+        <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={limit} aria-valuenow={Math.min(used, limit)} aria-valuetext={`${used} of ${limit} used`} className="h-1.5 overflow-hidden rounded-full bg-[#ebf1f8]">
+          <div className="h-full rounded-full bg-[#155FC7]" style={{ width: `${Math.min(100, used / limit * 100)}%` }} />
+        </div>
+      )}
     </div>
   );
 }
 
-/* ============================================================
-   PAGE
-============================================================ */
-
 export default function BillingSubscriptions({
   benefits,
+  history,
+  account,
   offerPrices,
   creator,
   usage,
@@ -982,35 +792,11 @@ export default function BillingSubscriptions({
   selectedCycle,
 }: BillingSubscriptionsProps) {
   const workspacePlan = workspaceBilling?.contentWorkspacePlan;
-  const workspaceStatus = workspaceBilling?.isComped
-    ? "Complimentary access"
-    : getWorkspaceStatus(workspaceBilling?.contentWorkspaceBillingStatus ?? "PENDING_SETUP").label;
   const products = [
-    {
-      key: "delivery",
-      title: "Project Delivery",
-      icon: <DeliveryIcon />,
-      status: usage.complimentary ? "Complimentary access" : `Current plan · ${getDeliveryPlanName(usage.tier)}`,
-    },
-    {
-      key: "content-workspace",
-      title: "Marketing Workspace",
-      icon: <WorkspaceIcon />,
-      status: workspacePlan && workspacePlan !== "ENGAGE"
-        ? `${CONTENT_WORKSPACE_PLANS[workspacePlan].name} · ${workspaceStatus}` : "Content planning & publishing",
-    },
-    {
-      key: "engage",
-      title: "Showwork Engage",
-      icon: <UiSymbol name="message" />,
-      status: workspacePlan === "ENGAGE" ? workspaceStatus : "Conversations & AI replies",
-    },
-    {
-      key: "portfolio",
-      title: "Portfolio",
-      icon: <PortfolioIcon />,
-      status: "No subscription required",
-    },
+    { key: "content-workspace", title: "Marketing Workspace" },
+    { key: "delivery", title: "Project Delivery" },
+    { key: "engage", title: "Showwork Engage" },
+    { key: "portfolio", title: "Portfolio" },
   ];
   const selected = products.find((product) => product.key === selectedProduct);
   const activeMarketing = workspacePlan && workspacePlan !== "ENGAGE" && workspaceBilling?.contentWorkspaceBillingStatus === "ACTIVE";
@@ -1018,59 +804,140 @@ export default function BillingSubscriptions({
   const engageOffer = offerPrices?.[`CONTENT_WORKSPACE:ENGAGE:${selectedCycle}`];
   const engagePrice = selectedCycle === "ANNUAL" ? engage.priceNgnAnnual : engage.priceNgnMonthly;
 
+  const isDelivery = selectedProduct === "delivery";
+  const isPortfolio = selectedProduct === "portfolio";
+  const actualWorkspacePlan = account?.workspacePlan;
+  const workspaceSelected = !isDelivery && !isPortfolio &&
+    !!actualWorkspacePlan && (selectedProduct === "engage") === (actualWorkspacePlan === "ENGAGE");
+  const workspacePaid = workspaceSelected && workspaceBilling?.contentWorkspaceBillingStatus === "ACTIVE";
+  const workspaceTrial = workspaceSelected && workspaceBilling?.contentWorkspaceBillingStatus === "TRIAL" &&
+    !!workspaceBilling.contentWorkspaceTrialEndsAt && new Date(workspaceBilling.contentWorkspaceTrialEndsAt).getTime() > Date.now();
+  const hasPaidPlan = isDelivery ? !!account?.deliveryActive : workspacePaid;
+  const hasCard = isDelivery ? !!account?.deliveryCard : workspaceSelected && !!account?.workspaceCard;
+  const currentCycle = (isDelivery ? account?.deliveryCycle : workspaceBilling?.contentWorkspaceBillingCycle) ?? "MONTHLY";
+  const currentWorkspace = workspaceSelected ? CONTENT_WORKSPACE_PLANS[actualWorkspacePlan!] : null;
+  const workspaceAccess = selectedProduct === "content-workspace" && workspacePlan !== "ENGAGE" && workspaceBilling?.isComped ? workspacePlan : null;
+  const status = isDelivery ? hasPaidPlan ? "Active" : usage.complimentary ? "Complimentary access" : hasCard ? "Payment issue" : "Free"
+    : isPortfolio ? "Free" : workspacePaid ? "Active" : workspaceTrial ? "Trial"
+    : workspaceAccess ? "Complimentary access" : workspaceSelected && workspaceBilling?.contentWorkspaceBillingStatus === "OFFLINE" ? "Payment issue"
+    : workspaceSelected && workspaceBilling?.contentWorkspaceBillingStatus === "TRIAL" ? "Trial ended" : "No subscription";
+  const planName = isDelivery ? getDeliveryPlanName(hasPaidPlan && account ? account.deliveryTier : usage.tier)
+    : isPortfolio ? "Portfolio Free"
+    : currentWorkspace?.name ?? (workspaceAccess ? CONTENT_WORKSPACE_PLANS[workspaceAccess].name : selected?.title);
+  const deliveryPrice = account && account.deliveryTier !== "FREE" ? TIERS[account.deliveryTier] : null;
+  const workspacePrice = currentWorkspace ? (currentCycle === "ANNUAL" ? currentWorkspace.priceNgnAnnual : currentWorkspace.priceNgnMonthly) : null;
+  const amount = hasPaidPlan ? isDelivery
+    ? account?.deliveryAmount ?? (currentCycle === "ANNUAL" ? deliveryPrice?.priceNgnAnnual : deliveryPrice?.priceNgnMonthly)
+    : workspaceBilling?.recurringPriceNgn ?? workspacePrice
+    : ["Free", "Trial", "Complimentary access"].includes(status) ? 0 : null;
+  const nextPayment = hasPaidPlan ? (isDelivery ? account?.deliveryRenewsAt : workspaceBilling?.contentWorkspaceSubscriptionRenewsAt) : null;
+  const seats = currentWorkspace && (workspacePaid || workspaceTrial) ? currentWorkspace.collaborators : null;
+
   return (
-    <main className="min-h-screen bg-[#f5f7fc] text-[#101828]">
-      <header className="bg-[#0b1534] bg-[radial-gradient(ellipse_at_top_right,_#224ab0,_transparent_65%)] text-white">
-        <div className="mx-auto max-w-[1280px] px-5 pb-9 pt-6 sm:px-8 sm:pb-12">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/15 pb-5">
-            <Link href="/dashboard" aria-label="Showwork dashboard">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/logo/swwhite.svg" alt="Showwork" width={112} height={19} />
-            </Link>
-            <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-100 hover:text-white">
-              <UiSymbol name="left" /> Back to dashboard
+    <main className={`${styles.page} min-h-screen bg-[#f7f8fa] font-sans text-[#102A29]`}>
+      <header className="mx-auto max-w-[1280px] px-5 pt-4 sm:px-8 sm:pt-5">
+        <div className={styles.header}>
+          <div className={styles.top}>
+            <div className={styles.navigation}>
+              <Link href="/dashboard" className={styles.brand} aria-label="Showwork dashboard">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/logo/swwhite.svg" alt="Showwork" width={98} height={16} />
+              </Link>
+              <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
+                <Link href="/dashboard">All tools</Link>
+                <span aria-hidden="true">/</span>
+                <span aria-current="page">Billing</span>
+              </nav>
+            </div>
+            <Link href="/dashboard/profile" aria-label="Edit your profile" className={styles.profile}>
+              {creator.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={creator.avatarUrl} alt="" className={styles.avatar} />
+              ) : <span aria-hidden="true" className={styles.initial}>{(creator.name || creator.email).trim().charAt(0).toUpperCase()}</span>}
+              <span className={styles.profileName}>{creator.name || creator.email}</span>
             </Link>
           </div>
-          <div className="mt-8 flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Billing &amp; subscriptions</h1>
-              <p className="mt-3 text-sm text-blue-100 sm:text-base">View your subscriptions and compare Showwork plans.</p>
-            </div>
-            <Link href="/dashboard/profile" aria-label="Edit your profile" className="inline-flex max-w-full items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-blue-50 hover:bg-white/15">
-              {creator.avatarUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={creator.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-lg object-cover" />
-              )}
-              <span className="break-all">{creator.name || creator.email}</span>
-            </Link>
+          <div className={styles.heading}>
+            <h1>Billing &amp; Subscription</h1>
+            <p>Manage your plan, payments and billing details.</p>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1280px] px-5 pb-12 pt-6 sm:px-8">
-        <nav aria-label="Billing products" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-[1280px] gap-4 px-5 pb-12 pt-5 sm:px-8 lg:grid-cols-[174px_minmax(0,1fr)] lg:gap-6">
+        <aside className="lg:sticky lg:top-5 lg:self-start">
+        <nav aria-label="Billing products" className="grid grid-cols-2 gap-1 rounded-xl bg-[#eaf1fb] p-1 lg:grid-cols-1">
           {products.map((product) => (
             <Link key={product.key} href={`/dashboard/billing?product=${product.key}&cycle=${selectedCycle}`}
               aria-current={selectedProduct === product.key ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl p-3 text-sm transition-colors ${selectedProduct === product.key ? "bg-[#173fb2] text-white" : "text-slate-800 hover:bg-blue-50"}`}>
-              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${selectedProduct === product.key ? "bg-white/15" : "bg-blue-50 text-blue-700"}`}>{product.icon}</span>
-              <span>
-                <span className="block font-semibold">{product.title}</span>
-                <span className={`mt-0.5 block text-xs ${selectedProduct === product.key ? "text-blue-100" : "text-slate-600"}`}>{product.status}</span>
-              </span>
+              className={`flex min-h-11 items-center rounded-lg px-2.5 lg:min-h-9 py-1.5 text-xs font-medium leading-tight transition-colors ${selectedProduct === product.key ? "bg-[#155FC7] text-white" : "text-slate-700 hover:bg-white/70"}`}>
+              {product.title}
             </Link>
           ))}
         </nav>
 
-        <section id="subscription-details" aria-labelledby="billing-product-title" className="mt-7 scroll-mt-6">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-            <h2 id="billing-product-title" className="text-2xl font-semibold tracking-tight">{selected?.title}</h2>
+        {account && <nav aria-label="Billing sections" className="mt-4 hidden gap-0.5 pl-2.5 text-xs lg:grid">
+          <a href="#subscription-details" className="py-2 text-slate-600 hover:text-[#155FC7]">Plan management</a>
+          <a href="#payment-method" className="py-2 text-slate-600 hover:text-[#155FC7]">Payment method</a>
+          <a href="#billing-history" className="py-2 text-slate-600 hover:text-[#155FC7]">Billing history</a>
+          <a href="#billing-details" className="py-2 text-slate-600 hover:text-[#155FC7]">Billing details</a>
+        </nav>}
+        </aside>
+
+        <div className="min-w-0">
+
+        {account && (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+            <section data-billing-card aria-labelledby="current-subscription-title" className="flex min-w-0 flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white">
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 id="current-subscription-title" className="text-sm font-medium text-slate-600">Current subscription</h2>
+                    <p className="mt-1 text-xl font-medium tracking-tight">{planName}</p>
+                    <span className={hasPaidPlan ? "mt-2 inline-flex rounded-full bg-[#D8F3A5] px-2.5 py-1 text-xs text-[#102A29]" : "mt-2 inline-flex rounded-full bg-[#edf4ff] px-2.5 py-1 text-xs text-[#155FC7]"}>{status}</span>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="text-3xl font-semibold leading-none tracking-tight tabular-nums">{amount == null ? "—" : formatNaira(amount)}{hasPaidPlan && <span className="ml-1 text-sm font-normal tracking-normal text-slate-600">/ {currentCycle === "ANNUAL" ? "year" : "month"}</span>}</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-600">{workspaceTrial ? `Trial ends ${formatDate(workspaceBilling?.contentWorkspaceTrialEndsAt ?? null)}` : nextPayment ? `Next payment ${formatDate(nextPayment)}` : hasPaidPlan ? "Next payment date unavailable" : "No payment scheduled"}</p>
+                  </div>
+                </div>
+                <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+                  {isDelivery && <BillingUsage label="Projects this period" used={usage.used} limit={usage.limit} />}
+                  {seats != null && account.seatsUsed != null && <BillingUsage label="Team seats" used={account.seatsUsed} limit={seats === Number.MAX_SAFE_INTEGER ? Infinity : seats + 1} />}
+                  {!isDelivery && (seats == null || account.seatsUsed == null) && <p className="text-sm text-slate-600">{isPortfolio ? "Portfolio has no recurring subscription." : "Compare plans to see what’s included."}</p>}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-[#f8fafc] px-4 py-3 sm:px-5">
+                <a href="#subscription-details" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#155FC7] px-4 text-sm font-medium text-white hover:bg-[#114f9f]">Manage plan <ArrowRightIcon /></a>
+                {hasPaidPlan && (!isDelivery || account.deliveryCard) && <BillingCancellation key={selectedProduct} delivery={isDelivery} product={selected?.title ?? "subscription"} />}
+                {hasPaidPlan && selectedCycle !== currentCycle && (
+                  <SubscriptionCheckoutButton
+                    product={isDelivery ? "DELIVERY" : "CONTENT_WORKSPACE"}
+                    plan={isDelivery ? account.deliveryTier : actualWorkspacePlan!}
+                    cycle={selectedCycle}
+                    label={selectedCycle === "ANNUAL" ? "Switch to yearly" : "Switch to monthly"}
+                    className="min-h-11 rounded-lg border border-slate-200 px-4 text-sm font-medium text-[#155FC7] hover:bg-[#f2f7ff]"
+                  />
+                )}
+                {status === "Payment issue" && <a href={hasCard ? "#payment-method" : "#subscription-details"} className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-[#155FC7]">Resolve payment issue</a>}
+              </div>
+            </section>
+            <BillingPaymentMethod key={selectedProduct} product={selectedProduct} available={hasCard} />
+          </div>
+        )}
+
+        {history && <div className="mt-4">{history}</div>}
+        {benefits && <div className="mt-4">{benefits}</div>}
+
+        <section id="subscription-details" aria-labelledby="billing-product-title" className="mt-5 scroll-mt-6">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="billing-product-title" className="text-xl font-medium tracking-tight">{account && selectedProduct !== "portfolio" ? "Plan management" : selected?.title}</h2>
             {selectedProduct !== "portfolio" && <nav aria-label="Billing cycle" className="inline-flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
               {(["MONTHLY", "ANNUAL"] as const).map((cycle) => (
                 <Link key={cycle} aria-current={selectedCycle === cycle ? "true" : undefined}
                   href={`/dashboard/billing?product=${selectedProduct}&cycle=${cycle}${selectedTier ? `&tier=${encodeURIComponent(selectedTier)}` : ""}#subscription-details`}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold ${selectedCycle === cycle ? "bg-[#173fb2] text-white" : "text-slate-600 hover:bg-blue-50"}`}>
-                  {cycle === "MONTHLY" ? "Monthly" : "Annual"}
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold ${selectedCycle === cycle ? "bg-[#155FC7] text-white" : "text-slate-600 hover:bg-blue-50"}`}>
+                  {cycle === "MONTHLY" ? "Monthly" : "Yearly"}
                 </Link>
               ))}
             </nav>}
@@ -1080,7 +947,7 @@ export default function BillingSubscriptions({
           ) : selectedProduct === "content-workspace" ? (
             <ContentWorkspaceSubscription selectedTier={selectedTier} offerPrices={offerPrices} workspaceBilling={workspaceBilling} selectedCycle={selectedCycle} />
           ) : selectedProduct === "portfolio" ? (
-            <div className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+            <div data-billing-card className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
               <div>
                 <h3 className="text-lg font-semibold">Free plan</h3>
                 <p className="mt-1 text-sm text-slate-600">Your Portfolio is free to use and has no recurring charges.</p>
@@ -1090,14 +957,10 @@ export default function BillingSubscriptions({
               </Link>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid md:grid-cols-[1.3fr_1fr]">
+            <div data-billing-card className="overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid md:grid-cols-[1.3fr_1fr]">
               <div className="p-6 sm:p-8">
                 <h3 className="text-xl font-semibold tracking-tight">Manage conversations across channels</h3>
-                <ul className="mt-5 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
-                  {getContentWorkspaceFeatureList("ENGAGE").map((feature) => (
-                    <li key={feature} className="flex items-center gap-2"><CheckIcon className="h-4 w-4 shrink-0 text-blue-700" />{feature}</li>
-                  ))}
-                </ul>
+                <PlanFeatures features={getContentWorkspaceFeatureList("ENGAGE")} />
               </div>
               <div className="border-t border-blue-100 bg-blue-50 p-6 sm:p-8 md:border-l md:border-t-0">
                 <p className="text-sm font-semibold text-blue-900">{selectedCycle === "ANNUAL" ? "Annual plan" : "Monthly plan"}</p>
@@ -1105,7 +968,7 @@ export default function BillingSubscriptions({
                 {engageOffer && <p className="mt-2 text-sm text-blue-900">{engageOffer.percent}% off for {engageOffer.remainingCycles} {engageOffer.remainingCycles === 1 ? "payment" : "payments"}, then {formatNaira(engageOffer.standardPriceNgn)} per {selectedCycle === "ANNUAL" ? "year" : "month"}.</p>}
                 {!engageOffer && <p className="mt-2 text-sm text-slate-600">{selectedCycle === "ANNUAL" ? "Save ₦29,800 compared with monthly billing." : `Annual billing is ${formatNaira(engage.priceNgnAnnual)} per year.`}</p>}
                 {activeMarketing && <p className="mt-4 text-sm text-slate-700">Your account has an active Marketing Workspace subscription. Your account can have one of these subscriptions at a time.</p>}
-                <Link href={`/dashboard/engage?billing=1&cycle=${selectedCycle}`} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#173fb2] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">
+                <Link href={`/dashboard/engage?billing=1&cycle=${selectedCycle}`} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#155FC7] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">
                   {workspacePlan === "ENGAGE" ? "Manage Engage" : "View Engage options"} <ArrowRightIcon />
                 </Link>
               </div>
@@ -1113,7 +976,10 @@ export default function BillingSubscriptions({
           )}
         </section>
 
-        {benefits && <div className="mt-8">{benefits}</div>}
+        {account && <div className="mt-6 space-y-4">
+          <BillingDetailsForm initialDetails={account.details} available={account.detailsAvailable} />
+        </div>}
+        </div>
       </div>
     </main>
   );

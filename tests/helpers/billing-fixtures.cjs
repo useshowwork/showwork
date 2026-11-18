@@ -28,7 +28,10 @@ exports.withBillingDependencies = dependencies => ({
   '@/lib/paymentSync': { syncVerifiedPayment: async () => ({ payment: { id: 'verified', creatorId: 'owner' } }) },
   '@/lib/partnerCommissions': { processReferralCommission: async () => {} },
   '@/components/billing/SubscriptionCheckoutButton': { default: ({ label }) => require('react').createElement('button', null, label), __esModule: true },
-  '@/components/billing/BillingBenefits': { default: () => null, __esModule: true },
+  './BillingHistory': { default: () => null, __esModule: true },
+ './BillingDashboard.module.css': { default: {}, __esModule: true },
+ './BillingAccountControls': { BillingCancellation: () => null, BillingDetailsForm: () => null, BillingPaymentMethod: () => null },
+ '@/components/billing/BillingBenefits': { default: () => null, __esModule: true },
   '@/lib/billingOffers': {
     initializeOfferSubscription: params => dependencies['@/lib/paystack'].initializeSubscription(params),
     resolveDeliveryPlan: async code => (dependencies["@/lib/subscriptionTiers"] ?? delivery).tierFromPlanCode(code),
