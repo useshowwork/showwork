@@ -340,7 +340,6 @@ export default function ClientCalendarWorkspace({
       if (event.altKey && event.key === "1") { event.preventDefault(); navigate("calendar"); }
       if (event.altKey && event.key === "2") { event.preventDefault(); navigate("analytics"); }
       if (event.altKey && event.key === "3") { event.preventDefault(); navigate("overview"); }
-      if (event.altKey && event.key === "4") { event.preventDefault(); navigate("tiktok"); }
       if (event.altKey && event.key === "5") { event.preventDefault(); navigate("review"); }
     };
 
@@ -401,78 +400,23 @@ export default function ClientCalendarWorkspace({
     window.scrollTo({ top: 0, behavior: "instant" });
   };
 
-  const sidebar = <>
-          <div className="border-b border-[rgb(var(--client-ink))]/[0.07] px-5 py-5">
-          <span className={styles.sidebarLogo}><ShowworkLogo tone="white" width={104}/></span>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-5">
-            <div className="mb-7 rounded-2xl border border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-ink))]/[0.025] p-3">
-              <div className="flex items-center gap-3">
-                <IdentityImage name={clientName} src={logoUrl} logo />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-[rgb(var(--client-muted))]">{clientName}</p>
-                  <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[rgb(var(--client-muted))]">
-                    Private workspace
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-2 rounded-lg bg-[rgb(var(--client-ink))]/[0.025] px-2.5 py-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#43E097] shadow-[0_0_10px_rgba(67,224,151,0.65)]" />
-                <span className="text-[9px] font-medium text-[rgb(var(--client-muted))]">Secure client access</span>
-              </div>
-            </div>
-
-            <div className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[rgb(var(--client-muted))]">
-              Workspace
-            </div>
-            <div className="space-y-1">
-              <SidebarItem active={activeView === "calendar"} onClick={() => navigate("calendar")} icon="calendar" label="Content Calendar" />
-              <SidebarItem active={activeView === "analytics"} onClick={() => navigate("analytics")} icon="analytics" label="Analytics & Reporting" />
-              <SidebarItem active={activeView === "leads"} onClick={() => navigate("leads")} icon="leads" label="Leads" />
-              <SidebarItem active={activeView === "overview"} onClick={() => navigate("overview")} icon="grid" label="Overview" />
-            </div>
-
-            <div className="mb-2 mt-7 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[rgb(var(--client-muted))]">
-              Previews
-            </div>
-            <div className="space-y-1">
-              <SidebarItem active={activeView === "instagram"} onClick={() => navigate("instagram")} icon="instagram" label="Instagram" />
-              <SidebarItem active={activeView === "tiktok"} onClick={() => navigate("tiktok")} icon="tiktok" label="TikTok" />
-              <SidebarItem active={activeView === "linkedin"} onClick={() => navigate("linkedin")} icon="linkedin" label="LinkedIn" />
-              <SidebarItem active={activeView === "facebook"} onClick={() => navigate("facebook")} icon="facebook" label="Facebook" />
-              <SidebarItem active={activeView === "x"} onClick={() => navigate("x")} icon="x" label="X" />
-            </div>
-
-            <div className="mb-2 mt-7 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[rgb(var(--client-muted))]">
-              Review
-            </div>
-            <div className="space-y-1">
-              <SidebarItem
-                active={activeView === "review"}
-                onClick={() => navigate("review")}
-                icon="review"
-                label="Review Centre"
-                count={reviewPosts.length}
-              />
-            </div>
-          </div>
-
-          <div className="border-t border-[rgb(var(--client-ink))]/[0.07] p-3.5">
-            <HelpLink className={styles.helpLink}/>
-            <div className="rounded-xl border border-[rgb(var(--client-ink))]/[0.06] bg-[rgb(var(--client-ink))]/[0.025] px-3.5 py-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[rgb(var(--client-ink))]/[0.04]">
-                  <Icon name="lock" className="h-3.5 w-3.5 text-[rgb(var(--client-muted))]" />
-                </span>
-                <div>
-                  <p className="text-[10px] font-semibold text-[rgb(var(--client-muted))]">Private workspace</p>
-                  <div className="mt-1 flex items-center gap-1.5 text-[9px] text-[rgb(var(--client-muted))]"><span>Powered by</span><ShowworkLogo tone="white" width={62}/></div>
-                </div>
-              </div>
-            </div>
-          </div>
-  </>;
+  const sidebar = (
+    <>
+      <div className="border-b border-white/10 px-5 py-5">
+        <span className={styles.sidebarLogo}><ShowworkLogo tone="white" width={104} /></span>
+      </div>
+      <nav aria-label="Client workspace sections" className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3.5 py-4">
+        <SidebarItem active={activeView === "calendar"} onClick={() => navigate("calendar")} icon="calendar" label="Content calendar" />
+        <SidebarItem active={activeView === "analytics"} onClick={() => navigate("analytics")} icon="analytics" label="Analytics" />
+        <SidebarItem active={activeView === "leads"} onClick={() => navigate("leads")} icon="leads" label="Leads" />
+        <SidebarItem active={activeView === "review"} onClick={() => navigate("review")} icon="review" label="Review centre" count={reviewPosts.length} />
+        <SidebarItem active={activeView === "overview"} onClick={() => navigate("overview")} icon="grid" label="Overview" />
+      </nav>
+      <div className="border-t border-white/10 p-3.5">
+        <HelpLink className={styles.helpLink} />
+      </div>
+    </>
+  );
 
   return (
     <main style={themeStyle} data-showwork-client-view="workspace" data-client-theme={theme} className={`${styles.workspace} min-h-screen overflow-x-hidden bg-[rgb(var(--client-bg))] text-[rgb(var(--client-ink))] lg:h-dvh lg:min-h-0 lg:overflow-hidden`}>
@@ -480,8 +424,7 @@ export default function ClientCalendarWorkspace({
       <header className={`${styles.mobileHeader} sticky top-0 z-50 border-b border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-bg))]/94 backdrop-blur-2xl lg:hidden`}>
         <div className="flex h-[68px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
           <NavigationToggle open={mobileOpen} onClick={() => setMobileOpen(true)} label="workspace navigation" />
-          {logoUrl ? <IdentityImage name={clientName} src={logoUrl} logo /> : <ShowworkLogo tone="white" width={96}/>}
-          <div className="h-5 w-px bg-[rgb(var(--client-ink))]/10" />
+          <IdentityImage name={clientName} src={logoUrl} logo />
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-[rgb(var(--client-muted))]">{clientName}</p>
             <p className="mt-0.5 text-[9px] uppercase tracking-[0.12em] text-[rgb(var(--client-muted))]">
@@ -505,31 +448,16 @@ export default function ClientCalendarWorkspace({
         {/* Everything below stays mounted. Only the active workspace view changes. */}
         <section aria-label="Marketing workspace content" className={`${styles.content} min-w-0 flex-1 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain`}>
           <header className={`${styles.topbar} sticky top-0 z-30 hidden h-[68px] items-center border-b border-[rgb(var(--client-ink))]/[0.07] bg-[rgb(var(--client-bg))]/90 px-6 backdrop-blur-2xl lg:flex xl:px-9`}>
-            <div>
-              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[rgb(var(--client-muted))]">
-                {activeView === "overview"
-                  ? "Workspace"
-                  : activeView === "calendar"
-                    ? "Content"
-                    : activeView === "analytics"
-                      ? "Analytics & Reporting"
-                    : activeView === "leads"
-                      ? "Leads"
-                    : activeView === "review"
-                      ? "Client review"
-                      : "Social preview"}
-              </p>
-              <p className="mt-1 text-xs font-medium text-[rgb(var(--client-muted))]">{clientName}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <IdentityImage name={clientName} src={logoUrl} logo />
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{clientName}</p>
+                <span className="text-xs text-[rgb(var(--client-muted))]">Client workspace</span>
+              </div>
             </div>
-
             <div className="ml-auto flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 text-xs text-[rgb(var(--client-muted))]"><Icon name="lock" className="h-3.5 w-3.5" /> Private</span>
               {themeToggle}
-              <span className="rounded-full border border-[#43E097]/15 bg-[#43E097]/[0.07] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[rgb(var(--client-green))]">
-                Private
-              </span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[rgb(var(--client-ink))]/[0.08] bg-[rgb(var(--client-ink))]/[0.035]">
-                <Icon name="lock" className="h-4 w-4 text-[rgb(var(--client-muted))]" />
-              </span>
             </div>
           </header>
 
@@ -582,6 +510,12 @@ export default function ClientCalendarWorkspace({
                     posts={posts}
                   />
                 </div>
+              )}
+
+              {["instagram", "tiktok", "linkedin", "facebook", "x"].includes(activeView) && (
+                <button type="button" onClick={() => navigate("calendar")} className="mb-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[rgb(var(--client-blue))]">
+                  <ArrowUpRight size={16} className="rotate-[-135deg]" aria-hidden="true" /> Back to content calendar
+                </button>
               )}
 
               {(activeView === "linkedin" || activeView === "facebook" || activeView === "x") && (

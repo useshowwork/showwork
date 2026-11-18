@@ -3,12 +3,13 @@ import type { CreativeBrief } from "@/lib/content/brief";
 import { clientReviewLocked } from "@/lib/clientPostReview";
 import BulkApprovalBubble from "./BulkApprovalBubble";
 import styles from "./ClientContentCalendar.module.css";
-import { ArrowUpRight, FileText, Layers, Play, Palette, Target } from "lucide-react";
+import { ArrowUpRight, CalendarDays, FileText, Inbox, Layers, Play, Palette, Target } from "lucide-react";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CalendarVideoComments, { type CalendarVideoCommentData } from "@/components/calendars/CalendarVideoComments";
+import PlatformBrandIcon from "./PlatformBrandIcon";
 import SocialFeedPreview from "@/components/calendars/SocialFeedPreview";
 import InstagramPreview from "@/components/calendars/InstagramPreview";
 import TikTokPreview from "@/components/calendars/TikTokPreview";
@@ -702,90 +703,34 @@ export default function ClientCalendarView({
         color: t.text,
       }}
     >
-      {/* SOCIAL VIEW SWITCHER */}
-      <div className={styles.intro}><div><h2>Your content calendar</h2><p>Your next post, ready for a closer look.</p></div><span>Click any card to review <ArrowUpRight size={14}/></span></div>
-      <div
-        className={`${styles.viewSwitcher} mb-6 overflow-hidden rounded-[14px] border p-1.5 transition-colors duration-300`}
-        style={{
-          background: t.cardBg,
-          borderColor: t.cardBorder,
-          boxShadow: theme === "dark"
-            ? "0 18px 60px rgba(0,0,0,0.18)"
-            : "0 18px 60px rgba(0,0,0,0.07)",
-        }}
-      >
-        <div className="flex items-center justify-between gap-3 px-1 pb-1.5">
-          <div className="hidden min-w-0 items-center gap-2 pl-2 sm:flex">
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: "#2478FF", boxShadow: "0 0 10px rgba(36,120,255,0.55)" }}
-            />
-            <span className="truncate text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: t.textFaint }}>
-              Explore channel previews
-            </span>
-          </div>
-          {controlledTheme === undefined && <div className="ml-auto">
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
-          </div>}
-        </div>
-        <div role="group" aria-label="Calendar and channel previews" className="grid grid-cols-3 gap-1 sm:flex sm:flex-wrap">
-          {[
-            { key: "calendar" as const, label: "Calendar", icon: "calendar" },
-            { key: "instagram" as const, label: "Instagram", icon: "instagram" },
-            { key: "tiktok" as const, label: "TikTok", icon: "tiktok" },
-            { key: "linkedin" as const, label: "LinkedIn", icon: "linkedin" },
-            { key: "facebook" as const, label: "Facebook", icon: "facebook" },
-            { key: "x" as const, label: "X", icon: "x" },
-            { key: "inbox" as const, label: "Inbox", icon: "inbox" },
-          ].map((tab) => {
-            const active = viewMode === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                aria-pressed={active}
-                onClick={() => { setViewMode(tab.key); setPlatformFilter("ALL"); }}
-                className="relative flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[16px] px-3 py-2.5 text-xs font-semibold transition-all duration-300 active:scale-[0.98] sm:text-sm"
-                style={{
-                  background: active ? "#1768e8" : "transparent",
-                  color: active ? "#fff" : t.textMuted,
-                  boxShadow: active
-                    ? theme === "dark"
-                      ? "0 8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)"
-                      : "0 8px 28px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8)"
-                    : "none",
-                }}
-              >
-                {tab.icon === "calendar" && (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
-                    <rect x="3" y="4" width="18" height="17" rx="3" />
-                    <path d="M8 2.5v4M16 2.5v4M3 9h18" strokeLinecap="round" />
-                  </svg>
-                )}
-                {tab.icon === "instagram" && (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <rect x="3" y="3" width="18" height="18" rx="5" />
-                    <circle cx="12" cy="12" r="4" />
-                    <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
-                  </svg>
-                )}
-                {tab.icon === "tiktok" && (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <path d="M16.6 2h-3.3v13.8c0 1.5-1.2 2.7-2.7 2.7a2.7 2.7 0 1 1 0-5.4c.3 0 .5 0 .8.1V9.8a6.1 6.1 0 0 0-.8 0A6.1 6.1 0 1 0 16.6 15.9V8.5a8 8 0 0 0 4.6 1.5V6.7a4.8 4.8 0 0 1-4.6-4.7Z" />
-                  </svg>
-                )}
-                {tab.icon === "inbox" && (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
-                    <path d="M4 5.5h16v13H4z" />
-                    <path d="M4 13h4l1.5 2h5L16 13h4M8 9h8" />
-                  </svg>
-                )}
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+      <div className={styles.intro}>
+        <h1>Content calendar</h1>
+        {controlledTheme === undefined && <ThemeToggle theme={theme} onToggle={toggleTheme} />}
       </div>
+
+      <section className={styles.channelStrip} aria-labelledby="channel-preview-heading">
+        <h2 id="channel-preview-heading">Explore channel previews</h2>
+        <div role="group" aria-label="Calendar and channel previews" className={styles.channelOptions}>
+          {([
+            { key: "calendar", label: "Calendar", platform: null },
+            { key: "instagram", label: "Instagram", platform: "INSTAGRAM" },
+            { key: "tiktok", label: "TikTok", platform: "TIKTOK" },
+            { key: "linkedin", label: "LinkedIn", platform: "LINKEDIN" },
+            { key: "facebook", label: "Facebook", platform: "FACEBOOK" },
+            { key: "x", label: "X", platform: "X" },
+            { key: "inbox", label: "Inbox", platform: null },
+          ] as const).map(({ key, label, platform }) => (
+            <button key={key} type="button" aria-pressed={viewMode === key} data-channel={key}
+              onClick={() => { setViewMode(key); setPlatformFilter("ALL"); }} className={styles.channelOption}>
+              <span className={styles.channelMark}>
+                {platform ? <PlatformBrandIcon platform={platform} size={19} /> :
+                  key === "calendar" ? <CalendarDays size={18} aria-hidden="true" /> : <Inbox size={18} aria-hidden="true" />}
+              </span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
       {viewMode === "instagram" && (
         <section className="relative overflow-hidden rounded-[28px] border px-3 py-8 transition-colors duration-300 sm:px-6 sm:py-10"
@@ -798,9 +743,7 @@ export default function ClientCalendarView({
           <div className="pointer-events-none absolute -right-32 bottom-10 h-72 w-72 rounded-full bg-[#7C3AED]/10 blur-[100px]" />
           <div className="relative z-10">
             <div className="mb-8 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: t.textFaint }}>Social preview</p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl" style={{ color: t.text }}>Instagram Preview</h3>
-              <p className="mx-auto mt-2 max-w-md text-xs leading-5 sm:text-sm" style={{ color: t.textMuted }}>Present your brand the right way — see how your Instagram content comes together before it goes live.</p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl" style={{ color: t.text }}>Instagram preview</h3>
             </div>
             <InstagramPreview posts={filteredPosts} clientName={clientName?.trim() || "Your brand"} />
           </div>
@@ -818,9 +761,7 @@ export default function ClientCalendarView({
           <div className="pointer-events-none absolute -right-32 bottom-10 h-72 w-72 rounded-full bg-[#FE2C55]/10 blur-[100px]" />
           <div className="relative z-10">
             <div className="mb-8 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: t.textFaint }}>Social preview</p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl" style={{ color: t.text }}>TikTok experience</h3>
-              <p className="mx-auto mt-2 max-w-md text-xs leading-5 sm:text-sm" style={{ color: t.textMuted }}>Experience the complete vertical sequence exactly as a viewer would scroll through it.</p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl" style={{ color: t.text }}>TikTok preview</h3>
             </div>
             <TikTokPreview posts={filteredPosts} clientName={clientName?.trim() || "Your brand"} />
           </div>
@@ -863,23 +804,8 @@ export default function ClientCalendarView({
           <div className="relative flex flex-col gap-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      background: "#2478FF",
-                      boxShadow: "0 0 14px rgba(36,120,255,0.7)",
-                    }}
-                  />
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-[0.2em]"
-                    style={{ color: t.textFaint }}
-                  >
-                    YOUR SCHEDULE
-                  </span>
-                </div>
                 <h2
-                  className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl"
+                  className="text-xl font-semibold tracking-tight sm:text-2xl"
                   style={{ color: t.text }}
                 >
                   {currentMonth.toLocaleDateString("en-US", {
@@ -961,6 +887,7 @@ export default function ClientCalendarView({
               </div>
             </div>
 
+            {monthPosts.length > 0 && <>
             <div className={styles.scheduleSummary} aria-label="Review status shortcuts">
               {([
                 { value: "ALL", label: "All posts", count: monthPosts.length },
@@ -969,6 +896,8 @@ export default function ClientCalendarView({
                 { value: "NEEDS_REVISION", label: "Changes requested", count: monthPosts.filter(post => post.approvalStatus === "NEEDS_REVISION").length },
               ] as const).map(item => <button key={item.value} type="button" aria-pressed={approvalFilter === item.value} onClick={() => setApprovalFilter(item.value)}><span>{item.label}</span><strong>{item.count}</strong></button>)}
             </div>
+            <details className={styles.scheduleFilters}>
+              <summary>Search and filters{(platformFilter !== "ALL" || contentFilter !== "ALL" || searchQuery.trim()) ? " · Active" : ""}</summary>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.8fr))]">
               <div className="relative">
                 <svg
@@ -1064,20 +993,22 @@ export default function ClientCalendarView({
                 </button>
               </div>
             )}
+            </details>
+            </>}
           </div>
         </div>
       </div>
 
       {activeDates.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed py-16 text-center" style={{ borderColor: t.cardBorder }}>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-4 py-10 text-center sm:py-14" style={{ borderColor: t.cardBorder }}>
           <span className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: t.pillBg }}>
-            <svg viewBox="0 0 24 24" className="h-5 w-5 text-white/30" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" style={{ color: t.textMuted }} fill="none" stroke="currentColor" strokeWidth="1.6">
               <rect x="3" y="4" width="18" height="17" rx="3" />
               <path d="M8 2.5v4M16 2.5v4M3 9h18" strokeLinecap="round" />
             </svg>
           </span>
-          <p className="text-sm font-semibold" style={{ color: t.textMuted }}>{monthPosts.length ? "No posts match your filters" : "A fresh month, ready for ideas"}</p>
-          <p className="max-w-xs text-xs" style={{ color: t.textFaint }}>{monthPosts.length ? "Try another channel or clear your filters to see the full schedule." : "Your team’s planned posts will appear here. You can also browse another month."}</p>
+          <p className="text-sm font-semibold" style={{ color: t.textMuted }}>{monthPosts.length ? "No posts match your filters" : "No posts scheduled this month"}</p>
+          <p className="max-w-xs text-xs" style={{ color: t.textFaint }}>{monthPosts.length ? "Try another channel or clear your filters to see the full schedule." : "Choose another month to see more posts."}</p>
           {monthPosts.length > 0 && <button type="button" className={styles.clearSchedule} onClick={clearFilters}>Clear filters</button>}
         </div>
       ) : (

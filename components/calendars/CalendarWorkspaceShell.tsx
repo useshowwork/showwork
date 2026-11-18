@@ -306,7 +306,7 @@ export default function CalendarWorkspaceShell({
     <div className={menuStyles.footer}>
       {canViewBilling && <Link href={billingHref} className={menuStyles.helpLink}><CreditCard size={16} aria-hidden="true" /><span>Billing</span><ArrowUpRight className="h-3.5 w-3.5" /></Link>}
       <a href="/help/workspace" target="_blank" rel="noopener noreferrer" className={menuStyles.helpLink}><CircleHelp size={16}/><span>Help & guides</span><span className="sr-only"> (opens in a new tab)</span><ArrowUpRight className="h-3.5 w-3.5"/></a>
-      {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={menuStyles.clientLink}><span className={menuStyles.clientIcon}><PanelsTopLeft size={17}/></span><span><strong>Preview client page</strong><small>See what your client sees</small></span><ArrowUpRight/></a>}
+      {clientUrl && active.id !== "access" && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={menuStyles.clientLink}><span className={menuStyles.clientIcon}><PanelsTopLeft size={17}/></span><span><strong>Preview client page</strong><small>See what your client sees</small></span><ArrowUpRight/></a>}
       {publishAction}
     </div>
   </>;
@@ -322,8 +322,8 @@ export default function CalendarWorkspaceShell({
           <div className={headerStyles.identity}><WorkspaceLogo name={clientName} src={logoUrl} editableWorkspaceId={canEditLogo ? calendarId : undefined} className={headerStyles.monogram} /><div className={headerStyles.name}><p title={clientName}>{clientName}</p><span><span className={headerStyles.desktopSection}>{product === "engage" ? "Showwork Engage" : "Marketing workspace"}</span><span className={headerStyles.mobileSection}>{active.label}</span></span></div></div>
           <span className={headerStyles.location}><SectionIcon name={active.id} className="h-3.5 w-3.5"/>{active.label}</span>
           <div className={headerStyles.actions}>
-            {clientUrl && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={headerStyles.client}>Preview client page <ArrowUpRight className="h-3.5 w-3.5"/></a>}
-            {canGenerate && active.id !== "content" && active.id !== "generate" && <button type="button" onClick={() => select("generate")} className={headerStyles.create}><Sparkles size={15}/> Create with AI</button>}
+            {clientUrl && active.id !== "access" && <a href={clientUrl} target="_blank" rel="noopener noreferrer" className={headerStyles.client}>Preview client page <ArrowUpRight className="h-3.5 w-3.5"/></a>}
+            {canGenerate && !["access", "content", "generate"].includes(active.id) && <button type="button" onClick={() => select("generate")} className={headerStyles.create}><Sparkles size={15}/> Create with AI</button>}
           </div>
           {settings}
           {account && <AccountAvatarLink name={account.name} src={account.avatarUrl} />}
@@ -364,7 +364,7 @@ export default function CalendarWorkspaceShell({
               </nav>
               {canViewBilling && <Link href={billingHref} title="Billing" aria-label="Billing" className={menuStyles.collapsedHelp}><CreditCard size={19} /></Link>}
               <a href="/help/workspace" target="_blank" rel="noopener noreferrer" title="Workspace help (opens in a new tab)" aria-label="Workspace help (opens in a new tab)" className={menuStyles.collapsedHelp}><CircleHelp size={19}/></a>
-              {clientUrl && <div className={menuStyles.collapsedFooter}>
+              {clientUrl && active.id !== "access" && <div className={menuStyles.collapsedFooter}>
                 <a href={clientUrl} target="_blank" rel="noopener noreferrer" title="Preview client page" aria-label="Preview client page"
                   className={menuStyles.collapsedAction}><ArrowUpRight className="h-5 w-5" /></a>
               </div>}
@@ -376,13 +376,13 @@ export default function CalendarWorkspaceShell({
         {/* ACTIVE WORKSPACE */}
         <main id="workspace-main" className="min-w-0 pb-[calc(104px+env(safe-area-inset-bottom))] lg:pb-0">
           <div
-            className={`${menuStyles.contentSurface} mx-auto ${
+            className={`${menuStyles.contentSurface} ${active.id === "access" ? menuStyles.sharingSurface : ""} mx-auto ${
               active.id === "content" ? "max-w-none" : "max-w-[1480px]"
             } ${["inbox", "team", "analytics"].includes(active.id) ? "px-3 py-4 sm:px-4 lg:px-5" : "px-4 py-6 sm:px-5 md:py-8 lg:px-7 xl:px-9"}`}
           >
             {/* CONTEXT BAR */}
             {calendarId && active.id !== "inbox" && sections.some(section => section.id === "inbox") && <InboxHandoffAlert calendarId={calendarId} />}
-            {["overview", "content", "generate", "knowledge", "channels", "research", "inbox", "team", "analytics"].includes(active.id) ? <h1 className="sr-only">{active.title}</h1> : (
+            {active.id === "access" ? null : ["overview", "content", "generate", "knowledge", "channels", "research", "inbox", "team", "analytics"].includes(active.id) ? <h1 className="sr-only">{active.title}</h1> : (
             <div className="mb-6 flex flex-col gap-4 px-1 py-1 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0 max-w-4xl">
                 <div className="flex flex-wrap items-center gap-2">
@@ -409,7 +409,7 @@ export default function CalendarWorkspaceShell({
             </div>
             )}
 
-            {calendarId && setup && <WorkspaceSetup calendarId={calendarId} initialState={setup} activeSection={active.id} onNavigate={select} />}
+            {calendarId && setup && <div hidden={active.id === "access"}><WorkspaceSetup calendarId={calendarId} initialState={setup} activeSection={active.id} onNavigate={select} /></div>}
             {/* Keep visited panels mounted so navigation preserves local work. */}
             {visibleSections.map((section) => {
               if (section.id !== active.id && !mountedInsightViews.has(section.id)) return null;
@@ -418,7 +418,7 @@ export default function CalendarWorkspaceShell({
               </div>;
             })}
 
-            {active.id !== "inbox" && <div className="mt-8 flex items-center justify-between border-t border-[#E4E9F0] pt-5 text-[9px] font-semibold uppercase tracking-[0.13em] text-[#A0A8B4]">
+            {active.id !== "inbox" && active.id !== "access" && <div className="mt-8 flex items-center justify-between border-t border-[#E4E9F0] pt-5 text-[9px] font-semibold uppercase tracking-[0.13em] text-[#A0A8B4]">
               <span className="inline-flex items-center gap-3"><ShowworkLogo width={80}/><span>{product === "engage" ? "Showwork Engage" : "Marketing Workspace"}</span></span>
               <span className="hidden sm:inline">{clientName}</span>
             </div>}

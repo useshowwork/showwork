@@ -291,3 +291,42 @@
   }
   .bottomNav .dockItem:focus-visible { outline-color: #a9ceff; outline-offset: -2px; }
 }
+
+
+/* Carry the sharing view's softer surfaces across Marketing Workspace. */
+.desktopFrame[data-workspace-product="marketing"] {
+  --workspace-wash: radial-gradient(ellipse at 22% 12%, #fbfdff, transparent 62%),
+    radial-gradient(ellipse at 84% 80%, #dceaff, transparent 63%), #edf3fb;
+}
+
+.desktopFrame[data-workspace-product="marketing"] .contentSurface {
+  background: var(--workspace-wash);
+}
+
+.desktopFrame[data-workspace-product="marketing"] .contentSurface :is(h1, h2, h3) {
+  font-weight: 500;
+}
+
+.desktopFrame[data-workspace-product="marketing"] :is(.rail, .navigationDrawer) .navItem[aria-current="page"] {
+  background: #dceaff;
+  border-color: transparent;
+  color: #193f72;
+}
+.desktopFrame[data-workspace-product="marketing"] :is(.rail, .navigationDrawer) .navItem[aria-current="page"] .iconWell {
+  color: #24579a;
+}
+
+@media (min-width: 1024px) {
+  .desktopFrame[data-workspace-product="marketing"] .contentSurface {
+    border-color: transparent;
+    box-shadow: 0 16px 36px -28px #31578b55;
+  }
+
+  .desktopFrame .sharingSurface {
+    display: flex;
+    flex-direction: column;
+    padding: clamp(16px, 2vw, 24px);
+  }
+
+  .sharingSurface > [data-workspace-panel="access"] { margin-block: auto; }
+}

@@ -13,3 +13,24 @@ function nodes(tree){const list=[];function visit(node){if(!node||typeof node!==
 test('the whole post is an accessible button opening its review dialog',()=>{let opened=0;const tree=PostTile({post:base,onClick:()=>opened++});assert.equal(tree.type,'button');assert.equal(tree.props['aria-haspopup'],'dialog');assert.match(tree.props['aria-label'],/Campaign portrait/);tree.props.onClick();assert.equal(opened,1);assert.ok(nodes(tree).some(node=>node.props.className==='openPost'));});
 test('photo cards use natural dimensions without a landscape crop',()=>{const photo=nodes(PostTile({post:base,onClick(){}})).find(node=>node.type==='img');assert.equal(photo.props.className,'fullMedia');const css=fs.readFileSync('components/calendars/ClientContentCalendar.module.css','utf8');assert.match(css,/\.fullMedia\{[^}]*width:100%;height:auto;[^}]*object-fit:contain/);assert.doesNotMatch(photo.props.className,/object-cover|aspect-video/);});
 test('documents display a useful placeholder rather than a broken image',()=>{const tree=PostTile({post:{...base,assets:[{id:'doc',mediaType:'PDF',contentUrl:'/deck.pdf'}]},onClick(){}});assert.ok(!nodes(tree).some(node=>node.type==='img'));assert.ok(nodes(tree).some(node=>node.props.children==='Document attached'));});
+
+test('an empty calendar keeps the branded channel picker and hides unused filters', () => {
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const View = load('components/calendars/ClientCalendarView.tsx', {
+    'next/navigation': { useRouter: () => ({}) },
+    '@/components/calendars/CalendarVideoComments': stub,
+    '@/components/calendars/SocialFeedPreview': stub,
+    '@/components/calendars/InstagramPreview': stub,
+    '@/components/calendars/TikTokPreview': stub,
+    '@/components/calendars/SocialLeadInbox': stub,
+  }).default;
+  const html = renderToStaticMarkup(React.createElement(View, {
+    slug: 'sample', clientName: 'Sample', planStatus: 'PUBLISHED', posts: [], controlledTheme: 'light',
+  }));
+  assert.match(html, /Explore channel previews/);
+  for (const platform of ['instagram', 'tiktok', 'linkedin', 'facebook', 'x']) {
+    assert.ok(html.includes(`/images/integrations/${platform}.svg`));
+  }
+  assert.match(html, /No posts scheduled this month/);
+  assert.doesNotMatch(html, /Search and filters/);
+});
