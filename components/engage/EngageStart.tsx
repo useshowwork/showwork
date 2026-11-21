@@ -46,9 +46,7 @@ export default function EngageStart({
   if (existingSubscription)
     return (
       <p className="rounded-xl bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-        Your Marketing Workspace subscription already covers your workspaces.
-        Engage is a separate package for businesses that only need conversations
-        and leads. Your current subscription stays active.
+        Your Marketing Workspace subscription already includes conversations.
       </p>
     );
   return (
@@ -85,9 +83,6 @@ export default function EngageStart({
               /{cycle === "MONTHLY" ? "month" : "year"}
             </span>
           </p>
-          <p className={styles.allowanceCaption}>
-            Includes 1,000 AI replies every month.
-          </p>
         </>
       )}
       {active || canStartTrial ? (
@@ -101,7 +96,7 @@ export default function EngageStart({
             ? "Please wait…"
             : canStartTrial
               ? "Start my 3-day free trial →"
-              : "Open my business →"}
+              : "Create business →"}
         </button>
       ) : (
         <div className={styles.checkout}>
@@ -109,7 +104,7 @@ export default function EngageStart({
             product="CONTENT_WORKSPACE"
             plan="ENGAGE"
             cycle={cycle}
-            label="Continue with Engage →"
+            label="Subscribe to Engage →"
             className={styles.primary}
           />
         </div>

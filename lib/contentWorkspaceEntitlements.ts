@@ -12,6 +12,8 @@
 
 export type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED" | "ENGAGE";
 
+export const ENGAGE_TRIAL_AI_REPLY_LIMIT = 50;
+
 export type ContentWorkspaceBillingCycle = "MONTHLY" | "ANNUAL";
 
 export interface ContentWorkspaceEntitlements {

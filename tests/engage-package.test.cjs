@@ -173,10 +173,10 @@ test("publishing and canonical content generation reject Engage even with residu
   );
 });
 
-function usageService(account, used = 999) {
+function usageService(account, used = 999, cycleStart = new Date()) {
   let record = {
     creatorId: "owner",
-    cycleStart: new Date(),
+    cycleStart,
     storageBytes: 0n,
     storageReservedBytes: 0n,
     aiGenerationsUsed: used,
@@ -221,6 +221,21 @@ test("concurrent drafts/automatic replies share the final included reply; human 
     policy.canUseContentWorkspaceFeature(owner(), "socialInbox"),
     true,
   );
+});
+test("Engage trial shares 50 replies across concurrent requests without a monthly reset", async () => {
+  const account = owner({ contentWorkspaceBillingStatus: "TRIAL" });
+  const service = usageService(account, 49, new Date("2024-01-15T00:00:00Z"));
+  const before = await service.getContentWorkspaceUsage(account);
+  assert.equal(before.aiGenerationLimit, 50);
+  assert.equal(before.aiGenerationsRemaining, 1);
+  const results = await Promise.all([
+    service.consumeAiGeneration("owner"),
+    service.consumeAiGeneration("owner"),
+  ]);
+  assert.equal(results.filter(result => result.allowed).length, 1);
+  assert.ok(results.every(result => result.limit === 50 && result.remaining === 0));
+  assert.equal((await service.consumeAiGeneration("owner")).allowed, false);
+  assert.equal(policy.canUseContentWorkspaceFeature(account, "socialInbox"), true);
 });
 test("Engage can create its first business for a trial, but cannot restart an exhausted trial", async () => {
   const account = owner({ contentWorkspaceBillingStatus: "PENDING_SETUP" });

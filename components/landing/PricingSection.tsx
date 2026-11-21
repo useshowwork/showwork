@@ -7,6 +7,7 @@ import {
   CONTENT_WORKSPACE_PLAN_ORDER,
   formatWorkspaceLimit,
   getContentWorkspaceFeatureList,
+  ENGAGE_TRIAL_AI_REPLY_LIMIT,
 } from "@/lib/contentWorkspaceEntitlements";
 
 import { useState } from "react";
@@ -703,7 +704,7 @@ export default function PricingSection({
                     }`}
                   >
                     {product === "engage"
-                      ? "3-day free trial · no card required"
+                      ? `3-day free trial · ${ENGAGE_TRIAL_AI_REPLY_LIMIT} AI replies · no card required`
                       : "3-day Agency trial · no payment required to start"}
                   </p>
                 )}

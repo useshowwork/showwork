@@ -154,7 +154,10 @@ export default async function CalendarsPage({
             className={styles.homeLink}
           >
             <ShowworkLogo width={96}/>
-            <span className={styles.allTools}>All tools</span>
+            <span className={styles.allTools}>
+              <ArrowLeft size={14} aria-hidden="true" />
+              Go back to all tools
+            </span>
           </Link>
           <div className={styles.navActions}>
             <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
