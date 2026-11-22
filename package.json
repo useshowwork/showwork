@@ -6,7 +6,7 @@
     "ai-worker:build": "prisma generate && node scripts/vps/build-ai-worker.mjs",
     "ai-worker:start": "echo \"AI worker in site_v1 is disabled. Run worker in functions directory: npm --prefix ../functions run ai-worker:start\" && exit 1",
     "dev": "npm run prestart &&  NODE_OPTIONS='--no-experimental-webstorage' next dev",
-    "build": "node scripts/package-media-binaries.cjs && npm run prestart && next build",
+    "build": "node scripts/package-media-binaries.cjs && prisma generate && next build",
     "start": "NODE_OPTIONS='--no-experimental-webstorage' next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
