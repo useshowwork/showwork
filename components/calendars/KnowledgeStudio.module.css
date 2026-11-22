@@ -57,3 +57,8 @@
 .sourcesDisclosureBody{padding:0 14px 14px}.sourcesDisclosureBody .sourceList{max-height:240px}.sourcesDisclosureBody .understanding{margin-top:14px}
 .sourceLayout{gap:14px}.addPanel{padding:14px;gap:12px}.upload{min-height:126px;padding:14px 12px}.library{margin-bottom:16px}.nextStep{margin-top:14px;padding-top:14px}
 @media(max-width:550px){.sourcesDisclosure>summary{padding:11px 12px}.sourcesDisclosure>summary>span:last-child{font-size:9px}}
+
+.websiteSourceActions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.websiteSourceActions button { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; color: #155fc7; font-size: .75rem; font-weight: 600; }
+.websiteSourceActions button:disabled { opacity: .55; }
+.websiteSourceActions button:focus-visible { outline: 2px solid #2478ff; outline-offset: 2px; border-radius: 4px; }

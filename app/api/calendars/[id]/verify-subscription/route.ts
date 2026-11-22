@@ -161,7 +161,7 @@ export async function POST(
       metadata?.contentWorkspacePlan ===
         "CREATOR" ||
       metadata?.contentWorkspacePlan ===
-        "STUDIO" || metadata?.contentWorkspacePlan ===
+        "STUDIO" || metadata?.contentWorkspacePlan === "GROWTH" || metadata?.contentWorkspacePlan === "ENGAGE" || metadata?.contentWorkspacePlan ===
         "UNLIMITED"
         ? (metadata.contentWorkspacePlan as ContentWorkspacePlan)
         : null;
@@ -173,9 +173,7 @@ export async function POST(
         : null;
 
     const plan =
-      planFromPaystack?.plan ??
-      metadataPlan ??
-      creator.contentWorkspacePlan;
+      planFromPaystack?.plan ?? metadataPlan;
 
     const cycle =
       planFromPaystack?.cycle ??

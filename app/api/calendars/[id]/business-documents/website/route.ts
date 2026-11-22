@@ -46,44 +46,59 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Your Marketing Workspace subscription isn't active yet." }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => null) as { url?: unknown } | null;
-  if (typeof body?.url !== "string" || !body.url.trim() || body.url.trim().length > 2048) {
-    return NextResponse.json({ error: "Enter a website address up to 2,048 characters long." }, { status: 400 });
+  const body = await req.json().catch(() => null) as { url?: unknown; documentId?: unknown } | null;
+  const refresh = body?.documentId !== undefined;
+  if (refresh ? typeof body.documentId !== "string" || !body.documentId.trim() || body.documentId.length > 100
+      : typeof body?.url !== "string" || !body.url.trim() || body.url.trim().length > 2048) {
+    return NextResponse.json({ error: refresh ? "Choose a saved website source." : "Enter a website address up to 2,048 characters long." }, { status: 400 });
   }
 
   try {
-    const website = await extractWebsiteKnowledge(body.url);
+    const saved = refresh ? await db.calendarBusinessDocument.findFirst({
+      where: { id: body!.documentId as string, calendarId: id, websiteUrl: { not: null } },
+    }) : null;
+    if (refresh && !saved?.websiteUrl) return NextResponse.json({ error: "Website source not found." }, { status: 404 });
+
+    const website = await extractWebsiteKnowledge(saved?.websiteUrl ?? body!.url as string);
+    const refreshedAt = new Date();
     const websiteUrlHash = createHash("sha256").update(website.url).digest("hex");
-    const existing = await db.calendarBusinessDocument.findFirst({
+    const existing = saved ?? await db.calendarBusinessDocument.findFirst({
       where: { calendarId: id, websiteUrlHash },
-      select: { id: true },
     });
     if (!existing && calendar.businessDocuments.length >= 10) {
       return NextResponse.json({ error: "You can add up to 10 website sources to one workspace." }, { status: 409 });
     }
 
-    const document = await db.calendarBusinessDocument.upsert({
-      where: { calendarId_websiteUrlHash: { calendarId: id, websiteUrlHash } },
-      create: {
-        calendarId: id,
-        fileKey: null,
-        originalName: `Website — ${website.name}`,
-        websiteUrl: website.url,
-        websiteUrlHash,
-        sizeBytes: 0,
-        extractedText: website.text,
-      },
-      update: {
-        originalName: `Website — ${website.name}`,
-        websiteUrl: website.url,
-        extractedText: website.text,
-      },
+    const changed = !existing || existing.extractedText !== website.text;
+    const updatedSource = {
+      originalName: changed ? `Website — ${website.name}` : existing.originalName,
+      extractedText: website.text,
+      websiteRefreshedAt: refreshedAt,
+    };
+    if (existing) {
+      const result = await db.calendarBusinessDocument.updateMany({
+        where: { id: existing.id, calendarId: id, websiteRefreshedAt: existing.websiteRefreshedAt },
+        data: updatedSource,
+      });
+      if (!result.count) return NextResponse.json({ error: "This source changed during refresh. Try again." }, { status: 409 });
+    }
+    const document = existing ? { ...existing, ...updatedSource } : await db.calendarBusinessDocument.create({
+      data: { ...updatedSource, calendarId: id, fileKey: null, websiteUrl: website.url, websiteUrlHash, sizeBytes: 0 },
     });
+    const source = {
+      id: document.id,
+      originalName: document.originalName,
+      websiteUrl: document.websiteUrl,
+      createdAt: document.createdAt.toISOString(),
+      websiteRefreshedAt: refreshedAt.toISOString(),
+    };
+    if (!changed) return NextResponse.json({ document: source, changed, pagesRead: website.pageCount });
 
     try {
       const { summary, updatedAt: summaryUpdatedAt } = await rebuildBusinessKnowledge(id);
       return NextResponse.json({
-        document: { id: document.id, originalName: document.originalName, websiteUrl: document.websiteUrl, createdAt: document.createdAt.toISOString() },
+        document: source,
+        changed,
         businessSummary: summary,
         summaryUpdatedAt: summaryUpdatedAt.toISOString(),
         summaryUpdated: true,
@@ -92,7 +107,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     } catch (error) {
       console.error(`Failed to fold website knowledge into AI summary for calendar ${id}:`, error);
       return NextResponse.json({
-        document: { id: document.id, originalName: document.originalName, websiteUrl: document.websiteUrl, createdAt: document.createdAt.toISOString() },
+        document: source,
+        changed,
         summaryUpdated: false,
         pagesRead: website.pageCount,
       });

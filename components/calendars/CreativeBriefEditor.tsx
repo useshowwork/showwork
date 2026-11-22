@@ -5,7 +5,7 @@ import {
   useState,
   type TextareaHTMLAttributes,
 } from "react";
-import { Sparkles, Check, Save, Loader2, FileText, Target, Palette } from "lucide-react";
+import { Sparkles, Check, Copy, Pencil, Save, Loader2, FileText, Target, Palette, X } from "lucide-react";
 import styles from "./CreativeBriefEditor.module.css";
 import { createPortal } from "react-dom";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
@@ -154,6 +154,20 @@ export default function CreativeBriefEditor({
       ]),
     ),
   );
+  const [editing, setEditing] = useState<{ kind: "brief" | ExecutionKind; name: string; original: string } | null>(null);
+  const actionToFocus = useRef<string | null>(null);
+  const [copiedField, setCopiedField] = useState("");
+  useEffect(() => {
+    if (!editing && actionToFocus.current) {
+      document.getElementById(actionToFocus.current)?.focus();
+      actionToFocus.current = null;
+    }
+  }, [editing]);
+  useEffect(() => {
+    if (!copiedField) return;
+    const timer = window.setTimeout(() => setCopiedField(""), 1700);
+    return () => window.clearTimeout(timer);
+  }, [copiedField]);
   const [dirtyKinds, setDirtyKinds] = useState<string[]>([]);
   const developmentDirty = dirtyKinds.length > 0;
   const [active, setActive] = useState<ExecutionKind | null>(null),
@@ -172,6 +186,7 @@ export default function CreativeBriefEditor({
     generate = false,
     field?: BriefField,
     fillMissing = false,
+    section?: "strategy" | "creativeDirection",
   ) => {
     if (busy) return;
     setBusy(true);
@@ -189,6 +204,7 @@ export default function CreativeBriefEditor({
             field,
             instruction,
             fillMissing,
+            section,
             expectedUpdatedAt: post.updatedAt,
             ...(kind === "brief" ? { brief } : { text: text[kind] || "" }),
           }),
@@ -199,7 +215,7 @@ export default function CreativeBriefEditor({
         throw Error(data.error || "Could not update this creative section.");
       if (kind === "brief") {
         const received = editablePostBrief(data.post);
-        if (!received.objective.trim() || !received.targetAudience.trim())
+        if (fillMissing && (!received.objective.trim() || !received.targetAudience.trim()))
           throw Error(
             "The server response is missing the saved objective or audience. Reload the post and retry completion.",
           );
@@ -210,6 +226,10 @@ export default function CreativeBriefEditor({
           [kind]: data.post.creativeDevelopment?.[kind]?.text || "",
         }));
         setDirtyKinds((current) => current.filter((item) => item !== kind));
+      }
+      if (!generate && editing) {
+        actionToFocus.current = `${post.id}-${editing.kind}-${editing.name}-edit`;
+        setEditing(null);
       }
       onUpdated(data.post);
       setNotice(generate ? "Updated and saved." : "All changes saved.");
@@ -222,7 +242,7 @@ export default function CreativeBriefEditor({
   useEffect(() => {
     onSaveReady?.(
       () =>
-        void run(dirty ? "brief" : (dirtyKinds[0] as ExecutionKind) || "brief"),
+        void (editing ? run(editing.kind, false, editing.kind === "brief" ? editing.name as BriefField : undefined) : run(dirty ? "brief" : (dirtyKinds[0] as ExecutionKind) || "brief")),
     );
     return () => onSaveReady?.(null);
   }, [
@@ -230,6 +250,7 @@ export default function CreativeBriefEditor({
     text,
     dirty,
     dirtyKinds,
+    editing,
     busy,
     instruction,
     post.updatedAt,
@@ -251,42 +272,78 @@ export default function CreativeBriefEditor({
       needsContext: missingContext,
     });
   }, [dirty, developmentDirty, busy, missingContext, onStateChange]);
-  const field = (name: BriefField, rows = 2) => (
-    <div key={name} className="min-w-0">
-      <label
-        htmlFor={`${post.id}-${name}`}
-        className="mb-2 block text-xs font-semibold text-slate-600"
-      >
-        {LABELS[name]}
-      </label>
-      <GrowingTextarea
-        id={`${post.id}-${name}`}
-        disabled={readOnly || busy}
-        aria-label={LABELS[name]}
-        maxLength={
-          name === "caption" ? 5000 : name === "creativeDirection" ? 1800 : 800
-        }
-        value={brief[name] || ""}
-        rows={rows}
-        onChange={(event) => {
-          setBrief((current) => ({ ...current, [name]: event.target.value }));
-          setNotice("");
-        }}
-        placeholder={
-          name === "objective"
-            ? "What should this post achieve?"
-            : name === "targetAudience"
-              ? "Who is this post for?"
-              : undefined
-        }
-        className={`block min-h-[60px] w-full resize-y overflow-hidden rounded-xl border border-slate-200 bg-white px-3 py-3 text-[16px] leading-7 text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 ${name === "caption" ? "min-h-[150px]" : ""}`}
-      />
-      {name === "caption" && (
-        <span className="mt-1 block text-right text-[10px] text-slate-400">
-          {brief.caption.length.toLocaleString()} / 5,000
-        </span>
-      )}
-    </div>
+  const improveSection = (section: "strategy" | "creativeDirection", label: string) =>
+    !readOnly && hasContent && (
+      <button type="button" disabled={busy || dirty || developmentDirty || !!editing} onClick={() => void run("brief", true, undefined, false, section)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-600 disabled:opacity-40">
+        <Sparkles size={15} aria-hidden="true" />{label}
+      </button>
+    );
+  const renderTextContainer = (
+    kind: "brief" | ExecutionKind, name: string, label: string, value: string, rows: number, maxLength: number,
+    onChange: (next: string) => void, placeholder?: string,
+  ) => {
+    const id = `${post.id}-${kind}-${name}`;
+    const isEditing = editing?.kind === kind && editing.name === name;
+    function stopEditing() {
+      if (!editing) return;
+      onChange(editing.original);
+      if (kind !== "brief") setDirtyKinds(current => current.filter(item => item !== kind));
+      actionToFocus.current = `${id}-edit`;
+      setEditing(null);
+      setError("");
+    }
+    async function copy() {
+      try {
+        await navigator.clipboard.writeText(value);
+        setCopiedField(id);
+      } catch {
+        setError(`Could not copy ${label.toLowerCase()}. You can select and copy the text directly.`);
+      }
+    }
+    return (
+      <div key={name} className={styles.textContainer}>
+        <div className={styles.textContainerHeader}>
+          <label id={`${id}-label`} htmlFor={isEditing ? id : undefined}>{label}</label>
+          <div className={styles.textContainerActions}>
+            <button type="button" disabled={!value.trim()} onClick={() => void copy()} aria-label={`Copy ${label.toLowerCase()}`}>
+              {copiedField === id ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+              <span>{copiedField === id ? "Copied" : "Copy"}</span>
+            </button>
+            {!readOnly && (isEditing ? <>
+              <button type="button" disabled={busy} onClick={() => void run(kind, false, kind === "brief" ? name as BriefField : undefined)} aria-label={`Save ${label.toLowerCase()}`}>
+                {busy ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
+                <span>{busy ? "Saving…" : "Save"}</span>
+              </button>
+              <button type="button" disabled={busy} onClick={stopEditing} aria-label={`Cancel editing ${label.toLowerCase()}`} title="Cancel edit">
+                <X size={15} aria-hidden="true" />
+              </button>
+            </> : (
+              <button id={`${id}-edit`} type="button" disabled={busy || !!editing || dirty || developmentDirty} onClick={() => { setError(""); setEditing({ kind, name, original: value }); }} aria-label={`Edit ${label.toLowerCase()}`}>
+                <Pencil size={15} aria-hidden="true" /><span>Edit</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {isEditing && !readOnly ? (
+          <GrowingTextarea id={id} autoFocus disabled={busy} aria-labelledby={`${id}-label`} value={value}
+            rows={rows} maxLength={maxLength} placeholder={placeholder} onChange={event => onChange(event.target.value)}
+            onKeyDown={event => { if (event.key === "Escape" && !busy) { event.preventDefault(); event.stopPropagation(); stopEditing(); } }}
+            className={styles.textContainerInput} />
+        ) : (
+          <div aria-labelledby={`${id}-label`} className={styles.textContainerValue}>
+            {value || <span>{placeholder || "No text yet."}</span>}
+          </div>
+        )}
+        {isEditing && name === "caption" && <span className="mt-1 block text-right text-[10px] text-slate-400">{value.length.toLocaleString()} / 5,000</span>}
+        <span className="sr-only" role="status">{copiedField === id ? `${label} copied` : ""}</span>
+      </div>
+    );
+  };
+  const field = (name: BriefField, rows = 2) => renderTextContainer(
+    "brief", name, LABELS[name], brief[name] || "", rows,
+    name === "caption" ? 5000 : name === "creativeDirection" ? 1800 : 800,
+    next => { setBrief(current => ({ ...current, [name]: next })); setNotice(""); },
+    name === "objective" ? "What should this post achieve?" : name === "targetAudience" ? "Who is this post for?" : undefined,
   );
   const tabs = [
     { id: "copy", label: "Post copy", icon: FileText },
@@ -357,7 +414,7 @@ export default function CreativeBriefEditor({
           </select>
           <button
             type="button"
-            disabled={busy || dirty || missingContext}
+            disabled={busy || dirty || missingContext || !!editing}
             onClick={() => void run("brief", true, aiField)}
             className="min-h-11 rounded-lg border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-600 disabled:opacity-40"
           >
@@ -413,7 +470,7 @@ export default function CreativeBriefEditor({
           {!readOnly && hasContent && (
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !!editing || dirty || developmentDirty}
               onClick={() => void run("brief", true, undefined, true)}
               className="mt-2 flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 font-semibold disabled:opacity-40"
             >
@@ -451,10 +508,12 @@ export default function CreativeBriefEditor({
             {guided && <summary><span className="inline-flex items-center gap-2"><Target size={16}/>Strategy {missingContext && <small>Needs attention</small>}</span><span>+</span></summary>}
             <div className="space-y-4">
             {guided && missingContext && <p className="text-xs text-amber-700">Add the hook, objective and audience before team review.</p>}
-            {guided && missingContext && !readOnly && hasContent && <button type="button" disabled={busy || dirty} onClick={() => void run("brief", true, undefined, true)} className="min-h-11 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-600 disabled:opacity-40">{busy ? "Completing…" : "Complete missing fields with AI"}</button>}
+            {guided && missingContext && !readOnly && hasContent && <button type="button" disabled={busy || dirty || !!editing} onClick={() => void run("brief", true, undefined, true)} className="min-h-11 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-600 disabled:opacity-40">{busy ? "Completing…" : "Complete missing fields with AI"}</button>}
             <p className="text-xs text-slate-500">
-              The thinking behind this post.
+              Who this post speaks to, why it belongs in the calendar, and what it should achieve.
             </p>
+            {improveSection("strategy", "Improve Strategy")}
+            {brief.sourceAnchor && <p className="rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600"><strong>Based on</strong> <q>{brief.sourceAnchor}</q></p>}
             {field("hook")}
             {field("objective")}
             {field("targetAudience")}
@@ -486,7 +545,7 @@ export default function CreativeBriefEditor({
               Format
               <select
                 aria-label="Format"
-                disabled={readOnly || busy}
+                disabled={readOnly || busy || !!editing}
                 value={brief.format}
                 onChange={(e) =>
                   setBrief((current) => ({
@@ -502,13 +561,14 @@ export default function CreativeBriefEditor({
               </select>
             </label>
             {field("creativeDirection", 3)}
+            {improveSection("creativeDirection", "Improve Creative Direction")}
             <details className="border-t border-slate-200 pt-4">
               <summary className="cursor-pointer text-xs font-semibold text-slate-600">
                 Production tools · optional
               </summary>
               <div className="mt-3 space-y-3">
                 {EXECUTION_KINDS.filter(
-                  (kind) => !["script", "caption", "hashtags"].includes(kind),
+                  (kind) => !["caption", "hashtags"].includes(kind),
                 ).map((kind) => (
                   <div
                     key={kind}
@@ -533,41 +593,20 @@ export default function CreativeBriefEditor({
                               regenerate when needed.
                             </p>
                           )}
-                        <GrowingTextarea
-                          aria-label={TOOLS[kind]}
-                          disabled={busy || readOnly}
-                          value={text[kind] || ""}
-                          onChange={(e) => {
-                            setDirtyKinds((current) =>
-                              current.includes(kind)
-                                ? current
-                                : [...current, kind],
-                            );
-                            setText((current) => ({
-                              ...current,
-                              [kind]: e.target.value,
-                            }));
-                          }}
-                          rows={4}
-                          className="w-full rounded-lg border border-slate-200 p-3 text-[16px] leading-7"
-                        />
+                        {renderTextContainer(kind, kind, TOOLS[kind], text[kind] || "", 4, 18000, next => {
+                          setDirtyKinds(current => current.includes(kind) ? current : [...current, kind]);
+                          setText(current => ({ ...current, [kind]: next }));
+                          setNotice("");
+                        })}
                         {!readOnly && (
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              disabled={busy || dirty}
+                              disabled={busy || dirty || !!editing}
                               onClick={() => void run(kind, true)}
                               className="min-h-11 rounded-lg bg-blue-600 px-3 text-xs text-white disabled:opacity-40"
                             >
                               Generate {TOOLS[kind].toLowerCase()}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => void run(kind)}
-                              className="min-h-11 rounded-lg border px-3 text-xs"
-                            >
-                              Save section
                             </button>
                           </div>
                         )}
@@ -604,7 +643,7 @@ export default function CreativeBriefEditor({
           {!onSaveReady && (
             <button
               type="button"
-              disabled={busy || !dirty}
+              disabled={busy || !dirty || !!editing}
               onClick={() => void run("brief")}
               className="flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 text-xs font-semibold text-blue-600 disabled:opacity-40"
             >

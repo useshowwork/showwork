@@ -32,9 +32,10 @@ export function canAccessContentWorkspace(
     | "compedUntil"
   > & ComplimentaryAccount
 ): boolean {
-  if (account.contentWorkspacePlan === "ENGAGE") return account.contentWorkspaceBillingStatus === "ACTIVE" || (account.contentWorkspaceBillingStatus === "TRIAL" && isContentWorkspaceTrialActive(account));
-  if (isComplimentaryAccessActive(account)) {
-    return true;
+  if (isComplimentaryAccessActive(account)) return true;
+  if (account.contentWorkspacePlan === "ENGAGE") {
+    return account.contentWorkspaceBillingStatus === "ACTIVE" ||
+      (account.contentWorkspaceBillingStatus === "TRIAL" && isContentWorkspaceTrialActive(account));
   }
 
   if (
@@ -60,10 +61,9 @@ export function getContentWorkspacePlan(
     | "contentWorkspaceBillingStatus" | "contentWorkspaceTrialEndsAt"
   > & ComplimentaryAccount
 ): ContentWorkspacePlan | null {
-  if (account.contentWorkspacePlan === "ENGAGE") return "ENGAGE";
-  if (isContentWorkspaceTrialActive(account)) return "UNLIMITED";
-
   const complimentary = workspaceComplimentaryPlan(account);
+  if (account.contentWorkspacePlan === "ENGAGE") return complimentary ?? "ENGAGE";
+  if (isContentWorkspaceTrialActive(account)) return "UNLIMITED";
   if (complimentary) {
     const order = ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"];
     return account.contentWorkspaceBillingStatus === "ACTIVE" && account.contentWorkspacePlan &&

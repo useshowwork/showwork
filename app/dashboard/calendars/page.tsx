@@ -5,6 +5,7 @@ import HelpLink from "@/components/help/HelpLink";
 import { normalizeTeamRole, TEAM_ROLES } from "@/lib/calendarTeamPolicy";
 import { retryDatabaseRead } from "@/lib/retryDatabaseRead";
 import styles from "@/components/calendars/CalendarDashboard.module.css";
+import { getContentWorkspacePlan } from "@/lib/contentWorkspacePolicy";
 import { complimentaryAccessSelect, workspaceComplimentaryPlan } from "@/lib/complimentaryAccess";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -39,15 +40,14 @@ function pageHref(page: number, query: string) {
 export default async function CalendarsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; onboarding?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; onboarding?: string; q?: string; subscriptionPayment?: string }>;
 }) {
   const creator = await getCurrentCreator();
   if (!creator) redirect("/login?next=/dashboard/calendars");
-  if (creator.contentWorkspacePlan === "ENGAGE") {
-    const callback = (await searchParams as Record<string, string>).subscriptionPayment === "callback";
-    redirect(`/dashboard/engage${callback ? "?subscriptionPayment=callback" : ""}`);
-  }
   const params = await searchParams;
+  if (creator.contentWorkspacePlan === "ENGAGE" && !workspaceComplimentaryPlan(creator) && params.subscriptionPayment !== "callback") {
+    redirect("/dashboard/engage");
+  }
   const query = params.q?.trim() ?? "";
   const requestedPage = Number(params.page);
   const currentPage =
@@ -109,9 +109,8 @@ export default async function CalendarsPage({
     include: { _count: { select: { posts: { where: { deletedAt: null } }, collaborators: true } } },
   }));
   const trialEnd = billing?.contentWorkspaceTrialEndsAt;
-  const complimentary = Boolean(
-    billing && workspaceComplimentaryPlan(billing),
-  );
+  const complimentaryPlan = billing && workspaceComplimentaryPlan(billing);
+  const complimentary = Boolean(complimentaryPlan);
   const trialExpired =
     billing?.contentWorkspaceBillingStatus === "TRIAL" &&
     trialEnd &&
@@ -123,10 +122,9 @@ export default async function CalendarsPage({
     ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / 86400000))
     : null;
 
-  const planName = billing?.contentWorkspacePlan
-    ? { ENGAGE: "Showwork Engage", CREATOR: "Creator", GROWTH: "Growth", STUDIO: "Studio", UNLIMITED: "Agency" }[
-        billing.contentWorkspacePlan
-      ]
+  const workspacePlan = billing ? getContentWorkspacePlan(billing) : null;
+  const planName = workspacePlan
+    ? { ENGAGE: "Showwork Engage", CREATOR: "Creator", GROWTH: "Growth", STUDIO: "Studio", UNLIMITED: "Agency" }[workspacePlan]
     : "No plan";
   const billingSummary = complimentary
     ? "Complimentary"
@@ -222,7 +220,7 @@ export default async function CalendarsPage({
             <div><h2>{totalCalendars > 0 ? "Add another workspace" : "Create your first workspace"}</h2><p>One workspace for each business or client.</p></div>
           </div>
           <div className={styles.createForm}>
-            <CreateCalendarForm contentWorkspacePlan={billing?.contentWorkspacePlan ?? null} />
+            <CreateCalendarForm contentWorkspacePlan={workspacePlan} />
           </div>
           <div data-dashboard-tour-slot="create" />
         </section>

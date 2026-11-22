@@ -57,3 +57,55 @@ test('missing-field completion is a no-op when persisted context is already comp
  assert.equal((await f.run({kind:'brief',generate:true,fillMissing:true})).status,200);
  assert.equal(f.modelCalls,0);assert.equal(f.charged,0);assert.equal(f.writes,0);
 });
+
+test('Improve Strategy only writes strategy fields and preserves the saved creative and public copy', async()=>{
+ const generated={objective:'Help studio leads identify handover gaps',targetAudience:'Studio leads training a new team member',keyMessage:'A clear handover gives every file an owner',desiredResponse:'Name a handover owner',brandConnection:'The workspace documents its client handover process',pillar:'Client handover',caption:'Unrequested caption',coreIdea:'Unrequested idea',creativeDirection:'Unrequested direction'};
+ const f=fixture({generated});
+ assert.equal((await f.run({kind:'brief',generate:true,section:'strategy'})).status,200);
+ assert.equal(f.modelInput.section,'strategy');
+ assert.equal(f.post.creativeBrief.objective,generated.objective);
+ assert.equal(f.post.creativeBrief.coreIdea,brief.coreIdea);
+ assert.equal(f.post.creativeBrief.creativeDirection,brief.creativeDirection);
+ assert.equal(f.post.caption,'Manually edited caption');
+ assert.equal(f.post.hook,'Existing hook');
+});
+
+test('Improve Creative Direction only writes the direction and leaves strategy and public copy intact', async()=>{
+ const f=fixture({generated:{creativeDirection:'Show two versions of the same handover, with responsibility visible in the second.',objective:'Unrequested objective',caption:'Unrequested caption'}});
+ assert.equal((await f.run({kind:'brief',generate:true,section:'creativeDirection'})).status,200);
+ assert.equal(f.modelInput.section,'creativeDirection');
+ assert.equal(f.post.creativeBrief.objective,brief.objective);
+ assert.match(f.post.creativeBrief.creativeDirection,/two versions/);
+ assert.equal(f.post.caption,'Manually edited caption');
+});
+
+test('incomplete scoped AI responses leave the saved post untouched and restore allowance', async()=>{
+ const f=fixture({generated:{objective:'Only one field'}});
+ assert.equal((await f.run({kind:'brief',generate:true,section:'strategy'})).status,502);
+ assert.equal(f.writes,0);
+ assert.equal(f.charged,0);
+});
+
+test('saving a single text container only writes that field and keeps other copy and strategy',async()=>{
+ const {editablePostBrief}=load('lib/content/brief.ts');
+ const f=fixture();
+ const draft=editablePostBrief(f.post);
+ const updated=await f.run({kind:'brief',field:'creativeDirection',brief:{
+  ...draft,creativeDirection:'A new creative direction',caption:'Unrelated caption',objective:'Unrelated objective',
+ }});
+ assert.equal(updated.status,200);
+ assert.equal(f.post.creativeBrief.creativeDirection,'A new creative direction');
+ assert.equal(f.post.creativeBrief.objective,draft.objective);
+ assert.equal(f.post.caption,'Manually edited caption');
+ assert.equal(f.post.script,'Existing script');
+ assert.equal(f.modelCalls,0);
+});
+
+test('single field editing can save the first piece of a partial brief',async()=>{
+ const {editablePostBrief}=load('lib/content/brief.ts');
+ const f=fixture({initialBrief:{...brief,version:2,objective:'',targetAudience:''}});
+ const draft=editablePostBrief(f.post);
+ assert.equal((await f.run({kind:'brief',field:'objective',brief:{...draft,objective:'A specific reason for the post'}})).status,200);
+ assert.equal(f.post.creativeBrief.objective,'A specific reason for the post');
+ assert.equal(f.post.creativeBrief.targetAudience,'');
+});

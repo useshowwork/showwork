@@ -371,7 +371,7 @@ test("Engage checkout charges the selected cycle and never grants unpaid access"
     assert.equal(response.status, 200);
     assert.equal(checkout[0].amount, cycle === "ANNUAL" ? 14900000 : 1490000);
     assert.equal(checkout[0].metadata.contentWorkspacePlan, "ENGAGE");
-    assert.ok(updates.every((data) => !data.contentWorkspaceBillingStatus));
+    assert.deepEqual(Object.keys(updates[0]), ["contentWorkspacePendingSubscriptionRef"]);
     assert.equal(
       policy.canAccessContentWorkspace({ ...account, ...updates[0] }),
       false,
@@ -493,4 +493,22 @@ test("an Engage account can open the All tools dashboard", async () => {
   assert.match(html, /href="\/dashboard\/engage"/);
   assert.match(html, /href="\/dashboard\/portfolio"/);
   assert.match(html, /href="\/dashboard\/billing\?product=content-workspace"/);
+});
+
+test("a current Marketing Workspace grant restores access after an Engage trial expires", () => {
+  const now = new Date();
+  const grantEnd = new Date(now.getTime() + 86400000);
+  const account = owner({
+    contentWorkspaceBillingStatus: "TRIAL",
+    contentWorkspaceTrialEndsAt: new Date(now.getTime() - 86400000),
+    billingComplimentaryGrants: [{ product: "CONTENT_WORKSPACE", plan: "STUDIO", endsAt: grantEnd.toISOString() }],
+  });
+  const { workspaceEligibility } = load("lib/publishing/eligibilityPolicy.ts");
+  assert.equal(policy.canAccessContentWorkspace(account), true);
+  assert.equal(policy.getContentWorkspacePlan(account), "STUDIO");
+  assert.equal(policy.canUseContentWorkspaceFeature(account, "performanceRecommendations"), true);
+  assert.deepEqual(workspaceEligibility(account, 1, now), { allowed: true, plan: "STUDIO" });
+  const expired = { ...account, billingComplimentaryGrants: [{ product: "CONTENT_WORKSPACE", plan: "STUDIO", endsAt: now.toISOString() }] };
+  assert.equal(policy.canAccessContentWorkspace(expired), false);
+  assert.equal(policy.getContentWorkspacePlan(expired), "ENGAGE");
 });

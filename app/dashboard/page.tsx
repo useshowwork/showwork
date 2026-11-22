@@ -1,3 +1,4 @@
+import { workspaceComplimentaryPlan } from "@/lib/complimentaryAccess";
 import { MessagesSquare } from "lucide-react";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { TOOL_COPY } from "@/components/dashboard/toolCopy";
@@ -189,7 +190,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const usesEngage = creator.contentWorkspacePlan === "ENGAGE";
+  const usesEngage = creator.contentWorkspacePlan === "ENGAGE" && !workspaceComplimentaryPlan(creator);
 
   const [portfolio, calendar, projectCount] = await Promise.all([
     db.portfolio.findFirst({

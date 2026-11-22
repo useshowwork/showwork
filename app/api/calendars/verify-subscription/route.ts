@@ -68,6 +68,7 @@ export async function POST() {
     return NextResponse.json({
       ok: true,
       alreadyActive: true,
+      plan: creator.contentWorkspacePlan,
     });
   }
 
@@ -140,9 +141,7 @@ export async function POST() {
         : null;
 
     const plan =
-      planFromPaystack?.plan ??
-      metadataPlan ??
-      creator.contentWorkspacePlan;
+      planFromPaystack?.plan ?? metadataPlan;
 
     const cycle =
       planFromPaystack?.cycle ??

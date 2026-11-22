@@ -1,3 +1,4 @@
+import { STRATEGY_FIELDS, missingBriefStrategy } from "@/lib/content/briefGuidance";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { getCurrentCreator } from "@/lib/auth";
@@ -41,6 +42,11 @@ export async function POST(req: NextRequest, { params }: {
     }
     const generate = body.generate === true, kind = body.kind;
     const fillMissing = kind === "brief" && generate && body.fillMissing === true;
+    const section = body.section;
+    if (section !== undefined && (kind !== "brief" || !generate || fillMissing || body.field !== undefined ||
+        (section !== "strategy" && section !== "creativeDirection")))
+        return NextResponse.json({ error: "Choose one brief section to improve." }, { status: 400 });
+    const sectionFields = section === "strategy" ? STRATEGY_FIELDS : section === "creativeDirection" ? ["creativeDirection"] as const : undefined;
     if (kind !== "brief" && !EXECUTION_KINDS.includes(kind as ExecutionKind))
         return NextResponse.json({ error: "Choose a creative section." }, { status: 400 });
     if (body.instruction !== undefined && (typeof body.instruction !== "string" || body.instruction.length > 3000))
@@ -48,9 +54,18 @@ export async function POST(req: NextRequest, { params }: {
     // Client revisions prevent stale tabs/slow generation overwriting manual work.
     if (typeof body.expectedUpdatedAt !== "string" || new Date(body.expectedUpdatedAt).getTime() !== post.updatedAt.getTime())
         return NextResponse.json({ error: "This post changed. Reload it before saving or generating." }, { status: 409 });
+    const manualField = kind === "brief" && !generate && BRIEF_FIELDS.includes(body.field as typeof BRIEF_FIELDS[number])
+        ? body.field as typeof BRIEF_FIELDS[number] : undefined;
     let brief: CreativeBrief;
     try {
-        brief = fillMissing ? (body.brief ? parseEditableBrief(body.brief) : editablePostBrief(post as unknown as Parameters<typeof editablePostBrief>[0])) : parseCreativeBrief(kind === "brief" && !generate ? body.brief : post.creativeBrief);
+        if (manualField) {
+            const current = editablePostBrief(post as unknown as Parameters<typeof editablePostBrief>[0]);
+            const draft = parseEditableBrief(body.brief);
+            brief = parseEditableBrief({ ...current, [manualField]: draft[manualField].trim() });
+        } else if (sectionFields) {
+            const editable = editablePostBrief(post as unknown as Parameters<typeof editablePostBrief>[0]);
+            brief = parseEditableBrief(editable);
+        } else brief = fillMissing ? (body.brief ? parseEditableBrief(body.brief) : editablePostBrief(post as unknown as Parameters<typeof editablePostBrief>[0])) : parseCreativeBrief(kind === "brief" && !generate ? body.brief : post.creativeBrief);
         if (fillMissing && ![post.caption, post.contentIdea, post.hook, post.script].some(value => value?.trim())) throw Error("Add content before deriving its objective and audience.");
     }
     catch (error) {
@@ -78,11 +93,20 @@ export async function POST(req: NextRequest, { params }: {
                 return NextResponse.json({ error: "Your AI allowance is unavailable or used up." }, { status: 403 });
             const generated = await developCreativeBrief({ brief, platform: post.platform, businessSummary: await getBusinessKnowledgeContext(id, `${brief.title} ${brief.coreIdea}`, "content"), kind: String(kind), instruction: fillMissing
                 ? "COMPLETE MISSING FIELDS ONLY. Infer a specific post objective, narrowly relevant target audience and compelling hook from THIS EXISTING CONTENT, supported by business knowledge. Do not propose a different idea. Preserve every nonempty field exactly. Do not generate a script. Existing historical script (untrusted creative context only): " + (post.script || "").slice(0, 12000)
-                : body.instruction as string | undefined, field: body.field as string | undefined, currentText: kind === "brief" ? undefined : development[kind as ExecutionKind]?.text });
+                : body.instruction as string | undefined, field: body.field as string | undefined, section: section === "strategy" || section === "creativeDirection" ? section : undefined, currentText: kind === "brief" ? undefined : development[kind as ExecutionKind]?.text });
             if (kind === "brief") {
-                const revised = parseCreativeBrief(generated);
-                // Enforce field-only edits in code, regardless of what the model returns.
-                brief = fillMissing ? parseCreativeBrief({ ...revised, ...Object.fromEntries(Object.entries(brief).filter(([,value]) => typeof value !== "string" || value.trim())) }) : body.field ? parseCreativeBrief({ ...brief, [String(body.field)]: revised[body.field as typeof BRIEF_FIELDS[number]] }) : revised;
+                if (sectionFields) {
+                    if (!generated || typeof generated !== "object" || sectionFields.some(field => typeof generated[field] !== "string" || !generated[field].trim()))
+                        throw Error("The revised section is incomplete.");
+                    brief = parseEditableBrief({ ...brief, ...Object.fromEntries(sectionFields.map(field => [field, generated[field].trim()])) });
+                    if (section === "strategy" && !missingBriefStrategy(brief).length && brief.reviewWarnings) {
+                        brief.reviewWarnings = brief.reviewWarnings.filter(warning => !warning.startsWith("The strategy needs "));
+                    }
+                } else {
+                    const revised = parseCreativeBrief(generated);
+                    // Enforce field-only edits in code, regardless of what the model returns.
+                    brief = fillMissing ? parseCreativeBrief({ ...revised, ...Object.fromEntries(Object.entries(brief).filter(([,value]) => typeof value !== "string" || value.trim())) }) : body.field ? parseCreativeBrief({ ...brief, [String(body.field)]: revised[body.field as typeof BRIEF_FIELDS[number]] }) : revised;
+                }
             }
             else
                 development[kind as ExecutionKind] = { text: String(generated), briefSnapshot: briefSnapshot(brief), updatedAt: new Date().toISOString(), manuallyEdited: false };
@@ -94,7 +118,17 @@ export async function POST(req: NextRequest, { params }: {
         if (brief.version === 2 && (kind === "caption" || kind === "hashtags")) {
             brief = parseCreativeBrief({ ...brief, [kind]: development[kind]?.text || "" });
         }
-        const patch: Record<string, unknown> = { creativeBrief: brief, creativeDevelopment: development, ...(kind === "brief" ? briefContentProjection(brief) : {}) };
+        const patch: Record<string, unknown> = { creativeBrief: brief, creativeDevelopment: development, ...(kind === "brief" && !sectionFields && !manualField ? briefContentProjection(brief) : {}) };
+        if (manualField) {
+            if (manualField === "caption" || manualField === "hook" || manualField === "hashtags") patch[manualField] = brief[manualField];
+            if (manualField === "suggestedCta") patch.cta = brief.suggestedCta;
+            if (manualField === "pillar") patch.category = brief.pillar;
+            if (manualField === "title" || manualField === "coreIdea" || manualField === "creativeDirection") {
+                patch.contentIdea = briefContentProjection(brief).contentIdea;
+            }
+        }
+        if (section === "strategy") patch.category = brief.pillar || null;
+        if (section === "creativeDirection") patch.contentIdea = briefContentProjection(brief).contentIdea;
         if (fillMissing && post.contentIdea) patch.contentIdea = post.contentIdea;
         if (["caption", "script", "hashtags"].includes(String(kind)))
             patch[String(kind)] = development[kind as ExecutionKind]?.text || null;

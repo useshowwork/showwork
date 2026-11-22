@@ -1866,6 +1866,7 @@ model CalendarBusinessDocument {
   originalName   String
   websiteUrl     String? @db.Text
   websiteUrlHash String? @db.VarChar(64)
+  websiteRefreshedAt DateTime?
   sizeBytes      BigInt  @default(0)
   extractedText  String? @db.Text
 

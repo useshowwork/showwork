@@ -1,4 +1,5 @@
 "use client";
+import { buildCaption } from "@/lib/publishing/state";
 import type { CreativeBrief } from "@/lib/content/brief";
 import { clientReviewLocked } from "@/lib/clientPostReview";
 import BulkApprovalBubble from "./BulkApprovalBubble";
@@ -398,6 +399,7 @@ useEffect(() => {
 };
 
   const reviewLocked = clientReviewLocked(post);
+  const caption = buildCaption({ ...post, linkUrl: undefined });
   const canReview = !reviewLocked && (post.assets.length > 0 || (["FACEBOOK", "LINKEDIN", "X"].includes(post.platform) && !!post.caption?.trim()));
   return (
     <dialog ref={dialogRef} className={styles.reviewDialog} aria-labelledby="post-review-title" aria-busy={submitting}
@@ -421,7 +423,7 @@ useEffect(() => {
             {activeAsset?.mediaType === "VIDEO" ? <video key={activeAsset.id} ref={videoRef} src={activeAsset.contentUrl} poster={activeAsset.posterUrl ?? undefined} controls playsInline preload="metadata" />
               : activeAsset?.mediaType === "PHOTO" ? <img src={activeAsset.contentUrl} alt={post.contentIdea || "Post creative"} />
               : activeAsset ? <div className={styles.reviewEmpty}><FileText size={36} /><h3>Document preview</h3><a href={activeAsset.contentUrl} target="_blank" rel="noopener noreferrer">Open document <ArrowUpRight size={16} /></a></div>
-              : <div className={styles.reviewEmpty}><FileText size={36} /><h3>{post.caption ? "Text post" : "Your creative is on its way"}</h3><p>{post.caption || "The preview will appear here when your team uploads it."}</p></div>}
+              : <div className={styles.reviewEmpty}><FileText size={36} /><h3>{post.caption ? "Text post" : "Your creative is on its way"}</h3><p className="whitespace-pre-wrap break-words">{caption || "The preview will appear here when your team uploads it."}</p></div>}
           </div>
           {post.assets.length > 1 && <div className={styles.reviewThumbnails} aria-label="Choose an asset">{post.assets.map((asset, index) => <button key={asset.id} type="button" aria-label={`View asset ${index + 1}`} aria-pressed={index === activeAssetIdx} onClick={() => setActiveAssetIdx(index)}>{asset.mediaType === "PHOTO" ? <img src={asset.contentUrl} alt="" /> : asset.mediaType === "VIDEO" ? <Play size={20} /> : <FileText size={20} />}<span>{index + 1}</span></button>)}</div>}
           {activeAsset?.mediaType === "VIDEO" && <div className={styles.reviewVideoComments}><CalendarVideoComments comments={comments} readOnly={false} getCurrentTime={() => videoRef.current?.currentTime ?? 0} onSeekTo={(time) => { if (videoRef.current) { videoRef.current.currentTime = time; void videoRef.current.play(); } }} onAddComment={addComment} /></div>}
@@ -431,12 +433,9 @@ useEffect(() => {
           {section === "content" && <>
           {brief?.title && <section><h4>Post title</h4><p>{brief.title}</p></section>}
           {post.hook && <section><h4>Hook</h4><p>{post.hook}</p></section>}
-          {post.caption && <section><h4>Caption</h4><p>{post.caption}</p></section>}
+          {caption && <section><h4>Caption</h4><p className="whitespace-pre-wrap break-words">{caption}</p></section>}
           {!brief && post.contentIdea && <section><h4>Content idea</h4><p>{post.contentIdea}</p></section>}
           {post.category && <section><h4>Category</h4><p>{post.category}</p></section>}
-          {post.cta && <section><h4>Call to action</h4><p>{post.cta}</p></section>}
-          {post.hashtags && <section><h4>Hashtags</h4><p>{post.hashtags}</p></section>}
-          {post.taggedAccounts && <section><h4>Tagged accounts</h4><p>{post.taggedAccounts}</p></section>}
           {post.linkUrl && <section><h4>Link</h4><a href={post.linkUrl} target="_blank" rel="noopener noreferrer">{post.linkUrl} ↗</a></section>}
           {post.customFields.map(field => <section key={field.id}><h4>{field.label}</h4><p>{field.value}</p></section>)}
           {!post.caption && !post.contentIdea && <p>Your team has not added a caption yet.</p>}

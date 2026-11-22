@@ -204,7 +204,9 @@ export async function POST(req: NextRequest) {
    * as the source of truth.
    */
   let plan: ContentWorkspacePlan | null =
-    creator.contentWorkspacePlan ?? workspaceComplimentaryPlan(creator);
+    creator.contentWorkspacePlan === "ENGAGE"
+      ? workspaceComplimentaryPlan(creator) ?? "ENGAGE"
+      : creator.contentWorkspacePlan ?? workspaceComplimentaryPlan(creator);
 
   if (!plan) {
     if (
@@ -448,7 +450,7 @@ if (
       email: creator.email,
       reference,
       callbackUrl:
-        `${appUrl()}/dashboard/calendars` +
+        `${appUrl()}${plan === "ENGAGE" ? "/dashboard/engage" : "/dashboard/calendars"}` +
         `?subscriptionPayment=callback` +
         `&calendarId=${calendar.id}`,
 
@@ -470,8 +472,6 @@ if (
         id: creator.id,
       },
       data: {
-        contentWorkspacePlan: plan,
-        contentWorkspaceBillingCycle: billingCycle,
         contentWorkspacePendingSubscriptionRef: reference,
       },
     });

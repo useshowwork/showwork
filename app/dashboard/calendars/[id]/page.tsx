@@ -178,6 +178,7 @@ compedUntil: true,
           originalName: true,
           createdAt: true,
           websiteUrl: true,
+          websiteRefreshedAt: true,
         },
       },
       posts: {
@@ -390,7 +391,7 @@ contentIdea: p.contentIdea,
             aiActive,
             businessSummary: calendar.aiBusinessSummary,
             summaryUpdatedAt: calendar.aiBusinessSummaryUpdatedAt?.toISOString() ?? null,
-            documents: calendar.businessDocuments.map(doc => ({ id: doc.id, originalName: doc.originalName, createdAt: doc.createdAt.toISOString(), websiteUrl: doc.websiteUrl })),
+            documents: calendar.businessDocuments.map(doc => ({ id: doc.id, originalName: doc.originalName, createdAt: doc.createdAt.toISOString(), websiteUrl: doc.websiteUrl, websiteRefreshedAt: doc.websiteRefreshedAt?.toISOString() ?? null })),
           } : undefined}
         />
         </div>
@@ -478,6 +479,7 @@ contentIdea: p.contentIdea,
                   originalName: doc.originalName,
                   createdAt: doc.createdAt.toISOString(),
                   websiteUrl: doc.websiteUrl,
+                  websiteRefreshedAt: doc.websiteRefreshedAt?.toISOString() ?? null,
                 }))}
               />} voice={<BrandPersonalityCard reviewOnSave key={calendar.id} calendarId={calendar.id} canEdit={can("knowledge.manage")} hasKnowledge={setup?.hasKnowledge ?? false} />} />
             ),

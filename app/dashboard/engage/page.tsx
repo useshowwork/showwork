@@ -17,7 +17,6 @@ import {
 import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
-  canAccessContentWorkspace,
   isContentWorkspaceTrialActive,
   getContentWorkspaceUsage,
 } from "@/lib/contentWorkspaceUsage";
@@ -41,11 +40,11 @@ export default async function EngagePage({
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
   const engage = creator.contentWorkspacePlan === "ENGAGE";
-  const active = engage && canAccessContentWorkspace(creator);
   const trial =
     engage &&
     creator.contentWorkspaceBillingStatus === "TRIAL" &&
     isContentWorkspaceTrialActive(creator);
+  const active = engage && (creator.contentWorkspaceBillingStatus === "ACTIVE" || trial);
   const trialAvailable =
     !creator.contentWorkspaceTrialUsedAt &&
     creator.contentWorkspaceBillingStatus !== "ACTIVE" &&

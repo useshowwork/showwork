@@ -225,7 +225,7 @@ export async function POST(
         reference,
 
         callbackUrl:
-          `${appUrl()}/dashboard/calendars` +
+          `${appUrl()}${plan === "ENGAGE" ? "/dashboard/engage" : "/dashboard/calendars"}` +
           `?subscriptionPayment=callback` +
           `&calendarId=${calendar.id}`,
 
@@ -247,9 +247,6 @@ export async function POST(
         id: creator.id,
       },
       data: {
-        contentWorkspacePlan: plan,
-        contentWorkspaceBillingCycle:
-          billingCycle,
         contentWorkspacePendingSubscriptionRef:
           reference,
       },

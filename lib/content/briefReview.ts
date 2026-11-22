@@ -1,3 +1,4 @@
+import { formatGeneratedCaption } from "./captionStyle";
 import { BRIEF_FIELDS, parseCreativeBrief, type CreativeBrief, platformBriefFormats } from "./brief";
 export interface ReviewablePost { contentUnit: number; platform: string; brief: CreativeBrief }
 const REVIEW_NEEDED = "Automated review could not approve the whole batch. Review this draft's facts, originality and creative direction before approving it.";
@@ -10,7 +11,7 @@ export function applyBriefReview(posts: ReviewablePost[], value: unknown, stream
     const warning = () => original.map(post=>({...post,brief:reviewWarning(post.brief)}));
     if (!value || typeof value !== "object") return warning();
     const result = value as {acceptable?:unknown;revisions?:unknown};
-    if (typeof result.acceptable !== "boolean" || !Array.isArray(result.revisions) || result.revisions.length > 6) return warning();
+    if (typeof result.acceptable !== "boolean" || !Array.isArray(result.revisions) || result.revisions.length > posts.length) return warning();
     const replacements = new Map<number, CreativeBrief>();
     for (const candidate of result.revisions) {
         try {
@@ -32,7 +33,7 @@ export function applyBriefReview(posts: ReviewablePost[], value: unknown, stream
             const brief=parseCreativeBrief(candidateBrief);
             const stream=streams.find(stream=>stream.platforms[0]===current.platform);
             if (brief.version!==2 || !stream?.platforms.every(platform=>platformBriefFormats(platform).includes(brief.format))) return warning();
-            replacements.set(index,brief);
+            replacements.set(index,{ ...brief, caption: formatGeneratedCaption(brief.caption) });
         } catch { return warning(); }
     }
     return original.map((post,index)=>({...post,brief:result.acceptable===true ? replacements.get(index)||post.brief : reviewWarning(replacements.get(index)||post.brief)}));

@@ -55,7 +55,7 @@ export async function getBusinessKnowledgeContext(calendarId: string, query: str
     connectedChannels.length ? `- Connected Social Channels: ${connectedChannels.join(', ')}` : null,
   ].filter(Boolean).join('\n') : "";
 
-  const overview = calendar?.aiBusinessSummary?.trim()
+  const overview = calendar?.aiBusinessSummary?.trim() && (!fullContent || calendar.aiBusinessSummarySourceHash === hash)
     ? `\n\nBUSINESS OVERVIEW (current workspace summary of business, audience and products):\n${calendar.aiBusinessSummary.slice(0, 6000)}`
     : "";
 

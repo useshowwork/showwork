@@ -799,7 +799,7 @@ export default function BillingSubscriptions({
     { key: "portfolio", title: "Portfolio" },
   ];
   const selected = products.find((product) => product.key === selectedProduct);
-  const activeMarketing = workspacePlan && workspacePlan !== "ENGAGE" && workspaceBilling?.contentWorkspaceBillingStatus === "ACTIVE";
+  const activeMarketing = account?.workspacePlan && account.workspacePlan !== "ENGAGE" && workspaceBilling?.contentWorkspaceBillingStatus === "ACTIVE";
   const engage = CONTENT_WORKSPACE_PLANS.ENGAGE;
   const engageOffer = offerPrices?.[`CONTENT_WORKSPACE:ENGAGE:${selectedCycle}`];
   const engagePrice = selectedCycle === "ANNUAL" ? engage.priceNgnAnnual : engage.priceNgnMonthly;
@@ -969,7 +969,7 @@ export default function BillingSubscriptions({
                 {!engageOffer && <p className="mt-2 text-sm text-slate-600">{selectedCycle === "ANNUAL" ? "Save ₦29,800 compared with monthly billing." : `Annual billing is ${formatNaira(engage.priceNgnAnnual)} per year.`}</p>}
                 {activeMarketing && <p className="mt-4 text-sm text-slate-700">Your account has an active Marketing Workspace subscription. Your account can have one of these subscriptions at a time.</p>}
                 <Link href={`/dashboard/engage?billing=1&cycle=${selectedCycle}`} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#155FC7] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">
-                  {workspacePlan === "ENGAGE" ? "Manage Engage" : "View Engage options"} <ArrowRightIcon />
+                  {actualWorkspacePlan === "ENGAGE" ? "Manage Engage" : "View Engage options"} <ArrowRightIcon />
                 </Link>
               </div>
             </div>

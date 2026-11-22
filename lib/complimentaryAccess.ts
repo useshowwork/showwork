@@ -2,6 +2,7 @@ import type { PaidTier } from "@/lib/subscriptionTiers";
 import type { ContentWorkspacePlan } from "@/lib/contentWorkspaceEntitlements";
 export type ComplimentaryAccount = {
   billingComplimentaryGrants?: unknown;
+  contentWorkspacePlan?: ContentWorkspacePlan | null;
   isComped?: boolean; compedUntil?: Date | null;
   deliveryCompedTier?: string | null; deliveryCompedUntil?: Date | null;
   workspaceCompedPlan?: ContentWorkspacePlan | null; workspaceCompedUntil?: Date | null;
@@ -22,17 +23,17 @@ export function deliveryComplimentaryTier(account: ComplimentaryAccount, now = n
 }
 export function workspaceComplimentaryPlan(account: ComplimentaryAccount, now = new Date()): ContentWorkspacePlan | null {
   const projected = projectedPlan(account, "CONTENT_WORKSPACE", ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"], now);
-  const cached = account.workspaceCompedPlan && account.workspaceCompedUntil && account.workspaceCompedUntil > now ? account.workspaceCompedPlan : null;
-  const legacy = account.isComped && (!account.compedUntil || account.compedUntil > now) ? "STUDIO" : null;
+  const cached = account.workspaceCompedPlan && account.workspaceCompedPlan !== "ENGAGE" && account.workspaceCompedUntil && account.workspaceCompedUntil > now ? account.workspaceCompedPlan : null;
+  const legacy = account.contentWorkspacePlan !== "ENGAGE" && account.isComped && (!account.compedUntil || account.compedUntil > now) ? "STUDIO" : null;
   const order = ["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"];
   return [projected, cached, legacy].filter((p): p is ContentWorkspacePlan => !!p).sort((a,b) => order.indexOf(b) - order.indexOf(a))[0] ?? null;
 }
 export function workspaceComplimentaryEndsAt(account: ComplimentaryAccount, now = new Date()): Date | null {
   const plan = workspaceComplimentaryPlan(account, now);
   if (!plan) return null;
-  if (plan === "STUDIO" && account.isComped && !account.compedUntil) return null;
+  if (plan === "STUDIO" && account.contentWorkspacePlan !== "ENGAGE" && account.isComped && !account.compedUntil) return null;
   const dates: Date[] = [];
-  if (plan === "STUDIO" && account.isComped && account.compedUntil && account.compedUntil > now) dates.push(account.compedUntil);
+  if (plan === "STUDIO" && account.contentWorkspacePlan !== "ENGAGE" && account.isComped && account.compedUntil && account.compedUntil > now) dates.push(account.compedUntil);
   if (account.workspaceCompedPlan === plan && account.workspaceCompedUntil && account.workspaceCompedUntil > now) dates.push(account.workspaceCompedUntil);
   if (Array.isArray(account.billingComplimentaryGrants)) for (const grant of account.billingComplimentaryGrants) {
     if (grant.product === "CONTENT_WORKSPACE" && grant.plan === plan && new Date(grant.endsAt) > now) dates.push(new Date(grant.endsAt));

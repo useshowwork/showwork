@@ -1,4 +1,5 @@
 "use client";
+import { buildCaption } from "@/lib/publishing/state";
 import { calendarWorkflow } from "@/lib/calendarWorkflow";
 
 import UiSymbol from "@/components/ui/UiSymbol";
@@ -20,6 +21,9 @@ interface PreviewPost {
   postType: string | null;
   caption: string | null;
   hashtags: string | null;
+  cta?: string | null;
+  taggedAccounts?: string | null;
+  linkUrl?: string | null;
   approvalStatus: ApprovalStatus;
   assets: PreviewAsset[];
 }
@@ -402,6 +406,10 @@ function TikTokSlide({
   clientName: string;
 }) {
   const [assetIndex, setAssetIndex] = useState(0);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+  const caption = buildCaption(post);
+  const canExpandCaption = caption.length > 90 || caption.split("\n").length > 3;
+  const captionOverflow = captionExpanded ? "max-h-40 overflow-y-auto" : canExpandCaption ? "line-clamp-3" : "";
 
   const active = post.assets[assetIndex];
 
@@ -786,18 +794,18 @@ function TikTokSlide({
           </span>
         </div>
 
-        {post.caption && (
-          <p className="mt-1.5 line-clamp-3 text-[11px] leading-[1.45] text-white/90 drop-shadow-lg">
-            {post.caption}
-          </p>
+        {caption && (
+          <div className="mt-1.5 rounded-lg bg-black/55 px-2 py-1.5">
+            <p className={`whitespace-pre-wrap break-words text-[11px] leading-[1.45] text-white ${captionOverflow}`} tabIndex={captionExpanded ? 0 : undefined}>
+              {caption}
+            </p>
+            {canExpandCaption && (
+              <button type="button" onClick={() => setCaptionExpanded(expanded => !expanded)} aria-expanded={captionExpanded} className="mt-1 text-xs font-semibold text-white underline">
+                {captionExpanded ? "Show less" : "Read full caption"}
+              </button>
+            )}
+          </div>
         )}
-
-        {post.hashtags && (
-          <p className="mt-1 text-[10px] leading-relaxed text-white/85">
-            {post.hashtags}
-          </p>
-        )}
-
         <div className="mt-2 flex items-center gap-1.5 text-white/70">
           <span className="text-xs"><><UiSymbol name="music" /></></span>
 

@@ -1,11 +1,12 @@
 "use client";
+import { buildCaption } from "@/lib/publishing/state";
 import { calendarWorkflow } from "@/lib/calendarWorkflow";
 
 import { useState } from "react";
 import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, Heart, MessageCircle, Repeat2, Send, ThumbsUp } from "lucide-react";
 type PreviewPost = {
   internalReviewStatus?: string; publishStatus?: string; instagramPublishStatus?: string; tikTokPublishStatus?: string; isAiDraft?: boolean;
-  id: string; postDate: string; platform: string; caption: string | null;
+  id: string; postDate: string; platform: string; caption: string | null; cta?: string | null;
   contentIdea: string | null; hashtags: string | null; taggedAccounts: string | null;
   linkUrl: string | null; approvalStatus: "PENDING" | "APPROVED" | "NEEDS_REVISION";
   assets: { id: string; mediaType: "PHOTO" | "VIDEO" | "DOCUMENT" | "PDF"; contentUrl: string; posterUrl?: string | null }[];
@@ -27,7 +28,7 @@ function FeedPost({ post, clientName, channel, onOpen }: { post: PreviewPost; cl
   const [assetIndex, setAssetIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const asset = post.assets[Math.min(assetIndex, post.assets.length - 1)];
-  const caption = [post.caption, post.hashtags, post.taggedAccounts].filter(Boolean).join("\n\n");
+  const caption = buildCaption({ ...post, linkUrl: undefined });
   const status = STATUS[post.approvalStatus];
   const isX = channel === "x";
   return (
@@ -43,7 +44,7 @@ function FeedPost({ post, clientName, channel, onOpen }: { post: PreviewPost; cl
       </div>
       <div className="px-4 pb-4 sm:px-5">
         {!caption && <p className="text-sm text-slate-500">{post.contentIdea || "Add a caption in the post editor."}</p>}
-        {caption && <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{expanded || caption.length <= 320 ? caption : `${caption.slice(0, 320)}…`}</p>}
+        {caption && <p className={`whitespace-pre-wrap break-words text-sm leading-relaxed ${!expanded && caption.length > 320 ? "line-clamp-5" : ""}`}>{caption}</p>}
         {caption.length > 320 && <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="mt-2 min-h-9 text-xs font-semibold text-[#1768E8] hover:underline">{expanded ? "Show less" : "Read more"}</button>}
         {post.linkUrl && <a href={/^https?:\/\//i.test(post.linkUrl) ? post.linkUrl : `https://${post.linkUrl}`} target="_blank" rel="noopener noreferrer" className="mt-3 block truncate text-sm text-[#1768E8] hover:underline">{post.linkUrl}</a>}
       </div>

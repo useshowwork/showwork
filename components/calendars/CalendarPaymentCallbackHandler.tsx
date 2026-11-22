@@ -31,10 +31,16 @@ export default function CalendarPaymentCallbackHandler() {
           data,
         }))
       )
-      .then(({ ok }) => {
+      .then(({ ok, data }) => {
         setStatus(ok ? "done" : "failed");
 
-        if (ok) {
+        if (!ok) return;
+        const current = window.location.pathname;
+        if (data.plan === "ENGAGE" && current !== "/dashboard/engage") {
+          router.replace("/dashboard/engage");
+        } else if (["CREATOR", "GROWTH", "STUDIO", "UNLIMITED"].includes(data.plan) && current === "/dashboard/engage") {
+          router.replace("/dashboard/calendars");
+        } else {
           router.refresh();
         }
       })

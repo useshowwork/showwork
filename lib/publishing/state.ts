@@ -14,9 +14,12 @@ export function statusUpdate(platform: SocialPlatform, status: InstagramPublishS
   const errorField = platform === "INSTAGRAM" ? "instagramPublishError" : platform === "TIKTOK" ? "tikTokPublishError" : "publishError";
   return { [statusField(platform)]: status, [errorField]: error };
 }
-export function buildCaption(post: { caption: string | null; cta: string | null; hashtags: string | null; taggedAccounts: string | null; linkUrl?: string | null }) {
+export function buildCaption(post: { caption: string | null; cta?: string | null; hashtags?: string | null; taggedAccounts?: string | null; linkUrl?: string | null }) {
   const mentions = post.taggedAccounts?.split(/[\s,]+/).filter(Boolean).map(value => value.startsWith("@") ? value : `@${value}`).join(" ");
-  return [post.caption, mentions, post.cta, post.hashtags, post.linkUrl].map(value => value?.trim()).filter(Boolean).join("\n\n");
+  const caption = post.caption?.trim();
+  const cta = post.cta?.trim();
+  const lastLine = caption?.split(/\r?\n/).at(-1)?.trim();
+  return [caption, mentions, cta === lastLine ? undefined : cta, post.hashtags, post.linkUrl].map(value => value?.trim()).filter(Boolean).join("\n\n");
 }
 export function validatePublishContent(platform: SocialPlatform, assets: { mediaType: string }[], caption: string, postType?: string | null, executionReady = true) {
   if (!executionReady && !assets.length) throw new Error("This creative brief needs finished copy or the required media before publishing. Open Creative development to prepare it.");

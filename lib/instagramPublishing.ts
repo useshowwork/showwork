@@ -1,3 +1,4 @@
+import { buildCaption } from "@/lib/publishing/state";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import type { Prisma } from "@prisma/client";
 import { db as defaultDb } from "@/lib/db";
@@ -10,36 +11,6 @@ import {
   publishContainer,
   getMediaPermalink,
 } from "@/lib/instagram";
-
-/**
- * Builds one combined caption string from the post's separate
- * fields — Instagram's API only accepts a single `caption`, so
- * cta and hashtags get folded in below it. taggedAccounts is free
- * text (not coordinate-based tagging data), so rather than claim to
- * support Instagram's real photo-tagging feature, it's written into
- * the caption itself as plain @-mentions, which Instagram auto-links
- * from caption text on its own.
- */
-function buildCaption(post: {
-  caption: string | null;
-  cta: string | null;
-  hashtags: string | null;
-  taggedAccounts: string | null;
-}): string {
-  const parts: string[] = [];
-  if (post.caption) parts.push(post.caption.trim());
-  if (post.taggedAccounts) {
-    const mentions = post.taggedAccounts
-      .split(/[\s,]+/)
-      .filter(Boolean)
-      .map((h) => (h.startsWith("@") ? h : `@${h}`))
-      .join(" ");
-    if (mentions) parts.push(mentions);
-  }
-  if (post.cta) parts.push(post.cta.trim());
-  if (post.hashtags) parts.push(post.hashtags.trim());
-  return parts.join("\n\n");
-}
 
 /**
  * Publishes one CalendarPost to Instagram — single image, single
@@ -104,7 +75,7 @@ export function createInstagramPublisher(database: typeof defaultDb, reporting: 
   }
 
   if (post.creativeBrief && !post.caption?.trim() && !post.assets.length) throw new Error("Add finished media to this creative brief before publishing.");
-  const caption = buildCaption(post);
+  const caption = buildCaption({ ...post, linkUrl: undefined });
 
   try {
     let mediaId: string;

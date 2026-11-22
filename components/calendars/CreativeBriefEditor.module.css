@@ -95,3 +95,17 @@
 .reviewSteps [role=tab]{min-width:0;white-space:normal}
 @media(prefers-reduced-motion:reduce){.reviewSteps [role=tab]{transition:none}}
 @media(max-width:639px){.reviewSteps [role=tab]{flex-direction:row;gap:5px;min-height:46px}.reviewSteps [role=tab]>svg{display:block;flex-shrink:0;width:14px;height:14px}}
+
+.textContainer { min-width: 0; }
+.textContainerHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; margin-bottom: 6px; }
+.textContainerHeader label { color: #475569; font-size: .75rem; font-weight: 650; }
+.textContainerActions { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.textContainerActions button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 40px; min-width: 36px; padding-inline: 8px; border-radius: 8px; color: #155fc7; font-size: .75rem; font-weight: 600; }
+.textContainerActions button:hover:not(:disabled) { background: #eff6ff; }
+.textContainerActions button:focus-visible { outline: 2px solid #2478ff; outline-offset: 2px; }
+.textContainerActions button:disabled { opacity: .42; }
+.textContainerValue, .textContainerInput { display: block; width: 100%; min-height: 60px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; color: #1e293b; font-size: 1rem; line-height: 1.75; }
+.textContainerValue { background: #f8fafc; white-space: pre-wrap; overflow-wrap: anywhere; }
+.textContainerValue > span { color: #64748b; }
+.textContainerInput { background: white; resize: vertical; overflow: hidden; }
+.textContainerInput:focus { outline: 2px solid #2478ff; outline-offset: 2px; }

@@ -6,6 +6,7 @@ export interface CreativeBrief extends Record<BriefField, string> {
     version: 1 | 2;
     format: string;
     reviewWarnings?: string[];
+    sourceAnchor?: string;
 }
 export const FORMATS = ["Reel", "Carousel", "Static graphic", "Story", "Text post", "Video"] as const;
 export function parseCreativeBrief(value: unknown): CreativeBrief {
@@ -18,10 +19,11 @@ export function parseCreativeBrief(value: unknown): CreativeBrief {
     for (const key of b.version === 1 ? LEGACY_FIELDS : BRIEF_FIELDS) {
         if (typeof b[key] !== "string" || (b[key] as string).length > (key === "caption" ? 5000 : key === "creativeDirection" ? 1800 : 800))
             throw Error(`Invalid brief field: ${key}`);
-        if (!["brandConnection", "hashtags", ...(b.version === 2 ? ["coreIdea", "keyMessage", "desiredResponse", "pillar"] : ["suggestedCta"])].includes(key) && !(b[key] as string).trim())
+        if (!["brandConnection", "hashtags", "suggestedCta", ...(b.version === 2 ? ["coreIdea", "keyMessage", "desiredResponse", "pillar"] : [])].includes(key) && !(b[key] as string).trim())
             throw Error(`Complete the brief field: ${key}`);
         result[key] = (b[key] as string).trim();
     }
+    if (typeof b.sourceAnchor === "string" && b.sourceAnchor.trim() && b.sourceAnchor.length <= 400) result.sourceAnchor = b.sourceAnchor.trim();
     if (b.reviewWarnings !== undefined) {
         if (!Array.isArray(b.reviewWarnings) || b.reviewWarnings.length > 8 || b.reviewWarnings.some(value => typeof value !== "string" || value.length > 500)) throw Error("Invalid review warnings.");
         result.reviewWarnings = b.reviewWarnings;
@@ -55,7 +57,7 @@ export function editablePostBrief(post: {
     const old = post.creativeBrief;
     const text = (value: unknown) => typeof value === "string" ? value : "";
     return {
-        version: 2, ...(old?.reviewWarnings ? {reviewWarnings:old.reviewWarnings} : {}), format: old?.format || (FORMATS.includes(post.postType as typeof FORMATS[number]) ? String(post.postType) : platformBriefFormats(post.platform || "INSTAGRAM")[0] || "Static graphic"),
+        version: 2, ...(old?.sourceAnchor ? { sourceAnchor: old.sourceAnchor } : {}), ...(old?.reviewWarnings ? {reviewWarnings:old.reviewWarnings} : {}), format: old?.format || (FORMATS.includes(post.postType as typeof FORMATS[number]) ? String(post.postType) : platformBriefFormats(post.platform || "INSTAGRAM")[0] || "Static graphic"),
         title: old?.title || (text(post.hook) || text(post.caption) || text(post.contentIdea)).split("\n")[0].slice(0,120) || "Untitled post",
         objective: old?.objective || "", targetAudience: old?.targetAudience || "",
         hook: text(post.hook) || old?.hook || "",
@@ -84,6 +86,7 @@ export function parseEditableBrief(value: unknown): CreativeBrief {
     if(input.version!==2 || !FORMATS.includes(input.format as typeof FORMATS[number])) throw Error("Invalid brief format.");
     const clean:Record<string,unknown>={version:2,format:input.format};
     for(const name of BRIEF_FIELDS){const max=name==="caption"?5000:name==="creativeDirection"?1800:800;if(typeof input[name]!=="string" || (input[name] as string).length>max)throw Error(`Invalid brief field: ${name}`);clean[name]=input[name];}
+    if (typeof input.sourceAnchor === "string" && input.sourceAnchor.trim() && input.sourceAnchor.length <= 400) clean.sourceAnchor = input.sourceAnchor.trim();
     if (input.reviewWarnings !== undefined) {
         if (!Array.isArray(input.reviewWarnings) || input.reviewWarnings.length > 8 || input.reviewWarnings.some(value => typeof value !== "string" || value.length > 500)) throw Error("Invalid review warnings.");
         clean.reviewWarnings = input.reviewWarnings;

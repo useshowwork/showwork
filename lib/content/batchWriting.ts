@@ -3,9 +3,10 @@ export async function writeContentBatches(
   call: (request: { instructions: string; input: string; maxOutputTokens: number; jsonSchema: { name: string; schema: Record<string, unknown> } }) => Promise<string>,
   request: { instructions: string; input: string; jsonSchema: { name: string; schema: Record<string, unknown> } },
   identities: { contentUnit: number; platform: string }[],
-  options: { concurrency?: number; onBatch?: (posts: unknown[], completed: number, total: number) => Promise<void> | void } = {},
+  options: { concurrency?: number; batchSize?: number; onBatch?: (posts: unknown[], completed: number, total: number) => Promise<void> | void } = {},
 ) {
-  const batches = Array.from({ length: Math.ceil(identities.length / 3) }, (_, i) => identities.slice(i * 3, i * 3 + 3));
+  const batchSize = options.batchSize ?? 3;
+  const batches = Array.from({ length: Math.ceil(identities.length / batchSize) }, (_, i) => identities.slice(i * batchSize, (i + 1) * batchSize));
   const concurrency = options.concurrency ?? 3;
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) throw Error("Content writing concurrency must be between 1 and 4.");
   const results: unknown[][] = new Array(batches.length);
@@ -20,7 +21,7 @@ export async function writeContentBatches(
       const instructions = request.instructions
         .replace(/The final response MUST contain exactly \d+ canonical content objects\./, `The final response MUST contain exactly ${batch.length} canonical content objects.`)
         .replace(/For every contentUnit from 1 through \d+, create exactly one object for every content stream\./, "Generate only the assigned contentUnit/platform pairs listed in the current writing batch.");
-      const raw = await call({ ...request, instructions: instructions + "\nCURRENT WRITING BATCH: Return ONLY the assigned contentUnit/platform pairs. Preserve their original numbers. The full campaign plan is context; do not generate its other slots. Do not renumber, add or duplicate items. Each slot must develop a distinct idea appropriate to its place in the campaign.", input: request.input + `\n\nASSIGNED CONTENT ITEMS FOR THIS CALL:\n${JSON.stringify(batch)}`, maxOutputTokens: Math.max(4096, batch.length * 1800 + 1024) });
+      const raw = await call({ ...request, instructions: instructions + "\nCURRENT WRITING BATCH: Return ONLY the assigned contentUnit/platform pairs. Preserve their original numbers. The full campaign plan is context; do not generate its other slots. Do not renumber, add or duplicate items.", input: request.input + `\n\nASSIGNED CONTENT ITEMS FOR THIS CALL:\n${JSON.stringify(batch)}`, maxOutputTokens: Math.max(4096, batch.length * 1800 + 1024) });
       let parsed: { posts?: { contentUnit: number; platform: string }[] };
       try { parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/, "").replace(/```\s*$/, "")); }
       catch { throw Error("The AI returned invalid batch content. Please try a smaller date range."); }

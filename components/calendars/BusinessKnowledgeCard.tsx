@@ -21,6 +21,7 @@ export interface BusinessDocumentData {
   originalName: string;
   createdAt: string;
   websiteUrl?: string | null;
+  websiteRefreshedAt?: string | null;
 }
 
 type BusinessKnowledgeCardProps = {
@@ -185,6 +186,8 @@ export default function BusinessKnowledgeCard({
     finally { setRebuilding(false); }
   }
   const [uploadFile, setUploadFile] = useState<{ index: number; total: number; name: string } | null>(null);
+  const [refreshingWebsiteId, setRefreshingWebsiteId] = useState<string | null>(null);
+  const [websiteStatus, setWebsiteStatus] = useState<{ id: string; message: string; failed?: boolean } | null>(null);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [addingWebsite, setAddingWebsite] = useState(false);
   const [uploadPercent, setUploadPercent] = useState(0);
@@ -349,37 +352,50 @@ if (presignContentType.includes("application/json")) {
     }
   };
 
-  const addWebsite = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!websiteUrl.trim() || !canEdit) return;
-    setAddingWebsite(true);
+  const readWebsite = async (source?: BusinessDocumentData) => {
+    if (!canEdit || addingWebsite || refreshingWebsiteId || (!source && !websiteUrl.trim())) return;
+    if (source) setRefreshingWebsiteId(source.id);
+    else setAddingWebsite(true);
+    setWebsiteStatus(null);
     setError(null);
     try {
       const response = await calendarMutationFetch(`/api/calendars/${calendarId}/business-documents/website`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: websiteUrl.trim() }),
+        body: JSON.stringify(source ? { documentId: source.id } : { url: websiteUrl.trim() }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not read that website.");
-      if (data.document) {
-        const source = data.document as BusinessDocumentData;
-        setDocumentsState((current) => [source, ...current.filter((item) => item.id !== source.id)]);
-      }
+      const document = data.document as BusinessDocumentData;
+      setDocumentsState(current => current.some(item => item.id === document.id)
+        ? current.map(item => item.id === document.id ? document : item)
+        : [document, ...current]);
+      if (!source) setWebsiteUrl("");
       if (data.summaryUpdated && typeof data.businessSummary === "string") {
         setBusinessSummaryState(data.businessSummary);
         setSummaryUpdatedAtState(data.summaryUpdatedAt ?? new Date().toISOString());
         window.sessionStorage.setItem(`calendar:${calendarId}:has-business-summary`, "true");
-        setWebsiteUrl("");
-        router.refresh();
-      } else {
-        setError("The website was saved, but the AI couldn't update its business summary. Try again shortly.");
       }
+      if (data.changed === false) {
+        setWebsiteStatus({ id: document.id, message: "Checked successfully. No changes found." });
+      } else if (data.summaryUpdated) {
+        setWebsiteStatus({ id: document.id, message: "Website refreshed." });
+      } else {
+        setWebsiteStatus({ id: document.id, message: "Website saved. Refresh the overview from sources to update the summary.", failed: true });
+      }
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read that website.");
+      const message = err instanceof Error ? err.message : "Could not read that website.";
+      if (source) setWebsiteStatus({ id: source.id, message: `${message} Your last saved version is still available.`, failed: true });
+      else setError(message);
     } finally {
       setAddingWebsite(false);
+      setRefreshingWebsiteId(null);
     }
+  };
+  const addWebsite = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void readWebsite();
   };
 
   const removeDocument = async (documentId: string) => {
@@ -526,7 +542,7 @@ if (presignContentType.includes("application/json")) {
         <h2 className={knowledgeStyles.addSourceTitle}>Add a source</h2>
         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || addingWebsite || !canEdit} className={knowledgeStyles.upload}><span className={knowledgeStyles.uploadIcon}><UploadCloud size={24}/></span><strong>{uploading ? `Uploading ${uploadPercent}% & reading…` : "Upload documents"}</strong><span>PDF · Word · Excel · CSV · Text</span></button>
         <div className={knowledgeStyles.or}><span/>or<span/></div>
-        <form onSubmit={event => void addWebsite(event)} className={knowledgeStyles.websiteForm}><label htmlFor={`knowledge-website-${calendarId}`}>Website address</label><div><Globe2 size={15}/><input id={`knowledge-website-${calendarId}`} type="text" inputMode="url" placeholder="yourbusiness.com" value={websiteUrl} onChange={event => setWebsiteUrl(event.target.value)} disabled={addingWebsite || uploading || !canEdit}/></div><button type="submit" disabled={addingWebsite || uploading || !canEdit || !websiteUrl.trim()}>{addingWebsite ? "Reading website…" : "Add website"}<Plus size={14}/></button><p>Use your business website or a page about your services.</p></form>
+        <form onSubmit={event => void addWebsite(event)} className={knowledgeStyles.websiteForm}><label htmlFor={`knowledge-website-${calendarId}`}>Website address</label><div><Globe2 size={15}/><input id={`knowledge-website-${calendarId}`} type="text" inputMode="url" placeholder="yourbusiness.com" value={websiteUrl} onChange={event => setWebsiteUrl(event.target.value)} disabled={addingWebsite || uploading || !canEdit}/></div><button type="submit" disabled={addingWebsite || !!refreshingWebsiteId || uploading || !canEdit || !websiteUrl.trim()}>{addingWebsite ? "Reading website…" : "Add website"}<Plus size={14}/></button><p>Use your business website or a page about your services.</p></form>
         {uploadFile && <p role="status" className={knowledgeStyles.uploadProgress}>File {uploadFile.index} of {uploadFile.total} · {uploadFile.name}</p>}
       </aside>
       <details className={knowledgeStyles.sourcesDisclosure}>
@@ -535,8 +551,22 @@ if (presignContentType.includes("application/json")) {
         {documentsState.length > 0 && indexStatus}
         {documentsState.length ? <ul className={knowledgeStyles.sourceList}>{documentsState.map(doc => <li key={doc.id} className={knowledgeStyles.sourceRow}>
           <span className={knowledgeStyles.fileIcon} data-website={!!doc.websiteUrl}>{doc.websiteUrl ? <Globe2 size={19}/> : <FileText size={19}/>}</span>
-          <div className={knowledgeStyles.fileCopy}><p title={doc.originalName}>{doc.originalName}</p><span>{doc.websiteUrl ? "Website" : "Document"} · Added {formatDate(doc.createdAt)}</span>{doc.websiteUrl && <a href={doc.websiteUrl} target="_blank" rel="noopener noreferrer">Visit website <ArrowUpRight size={11}/></a>}</div>
-          {canEdit && (confirmingDeleteId === doc.id ? <div className={knowledgeStyles.confirm}><button disabled={deletingId === doc.id} onClick={() => void removeDocument(doc.id)}>{deletingId === doc.id ? "Removing…" : "Remove"}</button><button disabled={deletingId === doc.id} onClick={() => setConfirmingDeleteId(null)}>Cancel</button></div> : <button type="button" aria-label={`Remove ${doc.originalName}`} onClick={() => setConfirmingDeleteId(doc.id)} className={knowledgeStyles.remove}><Trash2 size={15}/></button>)}
+          <div className={knowledgeStyles.fileCopy}>
+            <p title={doc.originalName}>{doc.originalName}</p>
+            <span>{doc.websiteUrl ? "Website" : "Document"} · Added {formatDate(doc.createdAt)}</span>
+            {doc.websiteUrl && <>
+              <span className="block">Last refreshed {formatDate(doc.websiteRefreshedAt ?? null) ?? "—"}</span>
+              <div className={knowledgeStyles.websiteSourceActions}>
+                <a href={doc.websiteUrl} target="_blank" rel="noopener noreferrer">Visit website <ArrowUpRight size={11}/></a>
+                {canEdit && <button type="button" onClick={() => void readWebsite(doc)} disabled={addingWebsite || !!refreshingWebsiteId || deletingId === doc.id}>
+                  <RefreshCw size={13} aria-hidden="true" className={refreshingWebsiteId === doc.id ? "animate-spin" : ""}/>
+                  {refreshingWebsiteId === doc.id ? "Refreshing…" : "Refresh website"}
+                </button>}
+              </div>
+              {websiteStatus?.id === doc.id && <span role={websiteStatus.failed ? "alert" : "status"} className="block">{websiteStatus.message}</span>}
+            </>}
+          </div>
+          {canEdit && (confirmingDeleteId === doc.id ? <div className={knowledgeStyles.confirm}><button disabled={deletingId === doc.id} onClick={() => void removeDocument(doc.id)}>{deletingId === doc.id ? "Removing…" : "Remove"}</button><button disabled={deletingId === doc.id} onClick={() => setConfirmingDeleteId(null)}>Cancel</button></div> : <button type="button" aria-label={`Remove ${doc.originalName}`} disabled={refreshingWebsiteId === doc.id} onClick={() => setConfirmingDeleteId(doc.id)} className={knowledgeStyles.remove}><Trash2 size={15}/></button>)}
         </li>)}</ul> : <div className={knowledgeStyles.empty}><BookOpenText size={31}/><h3>No sources yet</h3><p>Add a business profile, price list, FAQ or website above.</p></div>}
 
     <details className={knowledgeStyles.understanding}>

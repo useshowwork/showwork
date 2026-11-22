@@ -94,9 +94,11 @@ export default async function BillingPage({
     productParam === "delivery" || productParam === "content-workspace" ||
     productParam === "engage" || productParam === "portfolio"
       ? productParam
-      : selectedTierParam === "ENGAGE" || creator?.contentWorkspacePlan === "ENGAGE"
+      : selectedTierParam === "ENGAGE"
         ? "engage"
-        : "delivery";
+        : creator?.contentWorkspacePlan === "ENGAGE"
+          ? workspaceComplimentaryPlan(creator) ? "content-workspace" : "engage"
+          : "delivery";
 
   if (!creator) {
     const params = new URLSearchParams();

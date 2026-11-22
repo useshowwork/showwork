@@ -1,4 +1,5 @@
 "use client";
+import { buildCaption } from "@/lib/publishing/state";
 import styles from "./InstagramPreview.module.css";
 import { calendarWorkflow } from "@/lib/calendarWorkflow";
 
@@ -21,6 +22,8 @@ interface PreviewPost {
   postType: string | null;
   caption: string | null;
   hashtags: string | null;
+  cta?: string | null;
+  taggedAccounts?: string | null;
   approvalStatus: ApprovalStatus;
   assets: PreviewAsset[];
 }
@@ -404,6 +407,7 @@ function FeedCard({
 }) {
   const isReel = post.postType === "Reel";
 
+  const caption = buildCaption({ caption: post.caption, cta: post.cta, hashtags: post.hashtags, taggedAccounts: post.taggedAccounts });
   const handle = useMemo(
     () =>
       clientName
@@ -477,16 +481,10 @@ function FeedCard({
           </span>
         </div>
 
-        {post.caption && (
-          <p className="pt-2 text-[11px] leading-[1.55] text-white/85">
+        {caption && (
+          <p className="whitespace-pre-wrap break-words pt-2 text-[11px] leading-[1.55] text-white/85">
             <span className="font-semibold">{handle}</span>{" "}
-            {post.caption}
-          </p>
-        )}
-
-        {post.hashtags && (
-          <p className="pt-1 text-[11px] leading-[1.55] text-[#6cb2eb]">
-            {post.hashtags}
+            {caption}
           </p>
         )}
       </div>

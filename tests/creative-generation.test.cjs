@@ -9,8 +9,8 @@ const post=(platform='INSTAGRAM',contentUnit=1)=>({platform,contentUnit,postType
 const api=()=>load('lib/content/creativeGeneration.ts',{'@/lib/db':{db:{}}});
 test('memory reads only the workspace and deduplicates shared-platform copies',async()=>{
  process.env.CONTENT_CREATIVE_PIPELINE_ENABLED='true';let query;
- const mod=load('lib/content/creativeGeneration.ts',{'@/lib/db':{db:{calendarPost:{findMany:async q=>{query=q;return [{platform:'INSTAGRAM',hook:'h',contentIdea:'idea',caption:'caption'},{platform:'FACEBOOK',hook:'h',contentIdea:'idea',caption:'caption'}];}}}}});
- const rows=await mod.recentContentMemory('workspace-a');assert.deepEqual(query.where,{calendarId:'workspace-a',deletedAt:null});assert.equal(query.take,60);assert.equal(rows.length,1);
+ const mod=load('lib/content/creativeGeneration.ts',{'@/lib/db':{db:{calendarPost:{findMany:async q=>{query=q;return [{platform:'INSTAGRAM',hook:'h',contentIdea:'idea',caption:'caption'},{platform:'FACEBOOK',hook:'h',contentIdea:'idea',caption:'different caption'}];}}}}});
+ const rows=await mod.recentContentMemory('workspace-a');assert.deepEqual(query.where,{calendarId:'workspace-a',deletedAt:null});assert.equal(query.take,450);assert.equal(rows.length,1);
 });
 test('disabled creative pipeline does not read content memory',async()=>{delete process.env.CONTENT_CREATIVE_PIPELINE_ENABLED;assert.deepEqual(await api().recentContentMemory('workspace'),[]);});
 test('planner receives business facts, request, history and stream boundaries',async()=>{
@@ -41,13 +41,14 @@ for(const [strategy,groups,expectedCanonical] of [['SAME_CONTENT',undefined,1],[
    if(name==='creative_campaign_brief')output=brief;
    else if(name==='content_calendar'){assert.match(body.input,/CREATIVE CAMPAIGN PLAN/);output={posts:expectedCanonical===1?[post()]:[post(),post('FACEBOOK')]};}
    else if(name==='creative_content_edits'){const input=JSON.parse(body.input);output={edits:input.items.map(item=>({id:item.id,changes:[{field:'caption',value:`Edited for ${item.platform}`}]}))};}
+   else if(name==='shared_platform_captions'){const seeds=JSON.parse(body.input.split('ASSIGNED CONTENT ITEMS FOR THIS CALL:\n')[1]);output={posts:seeds.map(seed=>({contentUnit:seed.contentUnit,platform:seed.platform,caption:`Adapted for ${seed.platform}`,cta:'',hashtags:''}))};}
    else assert.fail(`Unexpected model call: ${name}`);
    return Response.json({output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(output)}]}]});
   };
   const {generateContentCalendar}=load('lib/openai.ts',{'@/lib/db':{db:{}}});
   const posts=await generateContentCalendar({clientName:'Studio',businessSummary:'Studio services',startDate:'2026-10-26',endDate:'2026-11-01',postsPerWeek:1,platforms:['INSTAGRAM','FACEBOOK'],contentStrategy:strategy,contentGroups:groups});
-  assert.deepEqual(stages,['creative_campaign_brief','content_calendar','creative_content_edits']);assert.equal(posts.length,2);assert.ok(posts.every(p=>p.postDate==='2026-10-28'));
-  if(expectedCanonical===1)assert.equal(posts[0].caption,posts[1].caption);else assert.notEqual(posts[0].caption,posts[1].caption);
+  assert.deepEqual(stages,['creative_campaign_brief','content_calendar','creative_content_edits',...(expectedCanonical===1?['shared_platform_captions']:[])]);assert.equal(posts.length,2);assert.ok(posts.every(p=>p.postDate==='2026-10-28'));
+  assert.notEqual(posts[0].caption,posts[1].caption);if(expectedCanonical===1)assert.equal(posts[0].contentIdea,posts[1].contentIdea);
  });
 }
 test('sparse review preserves strong posts and rejects edits to protected fields',async()=>{

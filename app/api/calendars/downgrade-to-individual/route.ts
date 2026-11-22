@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
       reference,
 
       callbackUrl:
-        await calendarPaymentReturn(req, creator.id),
+        await calendarPaymentReturn(req, creator.id, targetPlan),
 
       planCode: creatorPlanCode,
 
@@ -187,7 +187,6 @@ export async function POST(req: NextRequest) {
       },
       data: {
         contentWorkspacePendingSubscriptionRef: reference,
-        contentWorkspaceBillingCycle: billingCycle,
       },
     });
 
