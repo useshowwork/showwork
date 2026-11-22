@@ -26,6 +26,7 @@ export async function handoffSocialConversation(conversationId: string, reason: 
 export function explicitHumanRequest(text: string): boolean {
   return /\b(?:speak|talk|chat|connect|transfer)\s+(?:me\s+)?(?:to|with)\s+(?:a\s+|an\s+|your\s+|the\s+)?(?:real\s+|human\s+)?(?:human|person|agent|representative|manager|owner|someone)\b/i.test(text)
     || /\b(?:want|need|prefer|like)\s+(?:to\s+(?:speak|talk|chat)\s+(?:to|with)\s+)?(?:a\s+|your\s+|a member of (?:your|the)\s+)?(?:human|person|sales rep(?:resentative)?|team member|team)\b/i.test(text)
+    || /^\s*yes[\s,.:!–—-]+(?:please\s+)?connect me(?:\s+please)?[.!?\s]*$/i.test(text)
     || /^\s*(?:human|real person|human agent|agent|representative)(?:\s+please)?[.!?\s]*$/i.test(text)
     || /\b(?:stop|don['’]?t|do not)\s+(?:using\s+)?(?:the\s+)?(?:bot|ai|automated replies)\b/i.test(text);
 }

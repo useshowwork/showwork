@@ -135,3 +135,20 @@ test('an unsupported request clearly needs the team and asks for consent rather 
  const f=fixture({text:'Please process my refund',result:{shouldReply:false,replyText:'',handoffNeeded:true,handoffReason:'Refund processing needs the team'}});
  await f.api.processSocialInboxAutoReplies();assert.match(f.sendInputs[0].text,/I can’t complete this request here/);assert.match(f.sendInputs[0].text,/team needs to handle the next step/);assert.match(f.sendInputs[0].text,/respond in this conversation when available/);assert.match(f.sendInputs[0].text,/Yes, connect me/);assert.equal(f.state.aiPausedAt,null);assert.equal(f.notifications.length,0);
 });
+
+test('explicit connect-me reply pauses AI and queues emails even if the earlier offer was not tracked',async()=>{
+ const f=fixture({text:'Yes, connect me'});
+ await f.api.processSocialInboxAutoReplies();
+ assert.ok(f.state.aiPausedAt);
+ assert.deepEqual(f.notifications.map(row=>row.recipientId),['owner','agent']);
+ assert.deepEqual(f.counts(),{generated:0,sent:1,quota:0});
+ assert.match(f.sendInputs[0].text,/notified our team/);
+});
+
+test('an unrelated yes without a tracked offer keeps the inbox with AI',async()=>{
+ const f=fixture({text:'Yes'});
+ await f.api.processSocialInboxAutoReplies();
+ assert.equal(f.state.aiPausedAt,null);
+ assert.equal(f.notifications.length,0);
+ assert.equal(f.counts().generated,1);
+});

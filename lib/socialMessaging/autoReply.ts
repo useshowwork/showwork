@@ -78,8 +78,9 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
       };
       const handoff = async (reason: string) => {
         // Pause first: a persistence failure must never leave automation running.
-        await handoffSocialConversation(inbound.conversationId, reason, controlVersion);
+        const changed = await handoffSocialConversation(inbound.conversationId, reason, controlVersion);
         await retire(reason);
+        return changed.count > 0;
       };
       try {
         const priorSend = await findInboxSend(inbound.conversationId, `ai:${inbound.id}`);
@@ -122,8 +123,8 @@ async function processSocialInboxAutoRepliesInternal(messageIds?: string[]) {
         const choice = handoffChoice(inbound.text, {offeredAt:control.aiHandoffOfferedAt, offerMessageId:control.aiHandoffOfferMessageId, latestOutboundId:latestOutbound?.id});
         if (detectedHandoff || choice === "yes") {
           const reason = detectedHandoff || "The customer accepted an offer to speak with the team.";
-          await handoff(reason);
-          if (inbound.conversation.connection && supportsMessaging(inbound.conversation.platform)) {
+          const handedOff = await handoff(reason);
+          if (handedOff && inbound.conversation.connection && supportsMessaging(inbound.conversation.platform)) {
             const acknowledgement = TEAM_ACKNOWLEDGEMENT;
             const operation = await sendDurableInboxReply({
               conversationId: inbound.conversationId, operationKey: `ai:${inbound.id}`, text: acknowledgement, isAiGenerated: false,
