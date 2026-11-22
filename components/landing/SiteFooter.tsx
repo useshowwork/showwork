@@ -1,6 +1,8 @@
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import Image from "next/image";
 import Link from "next/link";
+import { productNavigation } from "@/lib/productPages";
+import { solutionNavigation } from "@/lib/solutionNavigation";
 import { ArrowUpRight, MessageCircle } from "lucide-react";
 
 const socials = [
@@ -13,11 +15,7 @@ const socials = [
 ];
 
 const navigation = [
-  { title: "Your work", links: [
-    { label: "Portfolio", href: "/portfolio" },
-    { label: "Project delivery", href: "/delivery" },
-    { label: "Marketing Workspace", href: "/content-workspace" },
-  ] },
+  { title: "Products", links: productNavigation.map(({ name: label, href }) => ({ label, href })) },
   { title: "Your community", links: [
     { label: "Creativo", href: "/creativo" },
     { label: "Blog", href: "/blog" },
@@ -28,28 +26,18 @@ const navigation = [
     { label: "Create an account", href: "/signup" },
     { label: "Log in", href: "/login" },
     { label: "Help & guides", href: "/help/workspace" },
-    { label: "Email us", href: "mailto:hello@useshowwork.com" },
+    { label: "Contact us", href: "/contact" },
   ] },
 ];
 
 const homepageNavigation = [
-  { title: "Products", links: [
-    { label: "Marketing Workspace", href: "#workspace" },
-    { label: "Project Delivery", href: "/delivery" },
-    { label: "Portfolio", href: "/portfolio" },
-  ] },
-  { title: "Solutions", links: [
-    { label: "Businesses", href: "#businesses" },
-    { label: "Customer enquiries", href: "#customer-replies" },
-    { label: "Marketing agencies", href: "#agencies" },
-    { label: "Social media managers", href: "#managers" },
-    { label: "Creative professionals", href: "/delivery" },
-  ] },
+  navigation[0],
+  { title: "Solutions", links: solutionNavigation },
   { title: "Company", links: [
-    { label: "About Showwork", href: "#company" },
+    { label: "About Showwork", href: "/#company" },
     { label: "Resources", href: "/blog" },
     { label: "Help & guides", href: "/help/workspace" },
-    { label: "Contact", href: "mailto:hello@useshowwork.com" },
+    { label: "Contact", href: "/contact" },
   ] },
 ];
 
@@ -58,11 +46,12 @@ const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outli
 export default function SiteFooter({ homepage = false, compact = false }: { homepage?: boolean; compact?: boolean }) {
   return (
     <footer
+      data-marketing-motion
       className="relative z-10 isolate overflow-hidden border-t border-white/10 bg-[#07080A] px-5 text-white sm:px-8 lg:px-16"
       style={{ fontFamily: "var(--font-sans), sans-serif" }}
     >
       <div aria-hidden="true" className="pointer-events-none absolute -right-48 -top-48 h-[600px] w-[600px] rounded-full bg-[#2478FF]/10 blur-[120px]" />
-      <div className="relative mx-auto max-w-7xl">
+      <div className="relative mx-auto max-w-7xl" data-marketing-footer-content>
         <div className={homepage || compact ? "hidden" : "flex flex-col gap-8 border-b border-white/10 py-12 sm:py-16 md:flex-row md:items-end md:justify-between"}>
           <div>
             <p className="mb-5 flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-300">
@@ -91,7 +80,7 @@ export default function SiteFooter({ homepage = false, compact = false }: { home
               <ShowworkLogo tone="white" width={136}/>
             </Link>
             <p className="mt-5 max-w-xs text-sm leading-7 text-slate-400">
-              {homepage ? "Intelligent systems for how modern marketing and creative work gets done." : "Portfolios, project delivery and marketing workspaces for creators, agencies and social media teams."}
+              {homepage ? "Intelligent systems for how modern marketing and creative work gets done." : "Tools for portfolios, project delivery, marketing operations and customer conversations."}
             </p>
             <a
               href="https://wa.me/2347018819588"
@@ -146,12 +135,20 @@ export default function SiteFooter({ homepage = false, compact = false }: { home
           </ul>
         </nav>
 
-        <div className="flex flex-col gap-4 py-7 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Showwork. All rights reserved.</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 py-7 text-[11px] text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <p className="inline-flex items-center gap-2 rounded-full border border-lime-200/25 bg-lime-200/10 py-1.5 pl-2.5 pr-3.5 text-xs font-semibold text-[#d8f3a5]">
+              <svg width="22" height="22" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true" focusable="false">
+                <path d="m10 2 5-1 4 3 3 1 2 5 4 3 3-1-2 4-4 4-1 5-4 5-3 1-2-3-1-5-2-3v-4l-4-1-4 1-3-4 1-4 4-5zM29 22l1 3-2 4-2-1 1-4z" />
+              </svg>
+              Made in Africa
+            </p>
+            <p>© {new Date().getFullYear()} Showwork. All rights reserved.</p>
+          </div>
           <div className="flex flex-wrap items-center gap-6">
             <Link href="/privacy" className={`rounded-sm transition-colors hover:text-white ${focus}`}>Privacy</Link>
             <Link href="/terms" className={`rounded-sm transition-colors hover:text-white ${focus}`}>Terms</Link>
-            <a href="mailto:hello@useshowwork.com" className={`rounded-sm transition-colors hover:text-white ${focus}`}>Contact</a>
+            <Link href="/contact" className={`rounded-sm transition-colors hover:text-white ${focus}`}>Contact</Link>
           </div>
         </div>
         {homepage && <p className="border-t border-white/10 py-7 text-sm text-slate-300">Great creative work deserves a better system.</p>}

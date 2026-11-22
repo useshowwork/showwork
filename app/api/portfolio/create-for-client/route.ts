@@ -4,12 +4,9 @@ import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { initializeSubscription } from "@/lib/paystack";
 import { appUrl } from "@/lib/url";
+import { PORTFOLIO_YEARLY_NGN } from "@/lib/portfolioPricing";
 
 const PORTFOLIO_PLAN_CODE = process.env.PAYSTACK_PORTFOLIO_PLAN_CODE;
-// Paystack requires a non-zero amount on the request even though the
-// plan's own configured price (₦5,000/year) is what actually gets
-// charged.
-const PORTFOLIO_YEARLY_NGN = 5000;
 
 function slugify(input: string): string {
   return input

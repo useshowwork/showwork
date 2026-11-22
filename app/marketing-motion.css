@@ -1,0 +1,114 @@
+:root {
+  --marketing-ink: #173455;
+  --marketing-muted: #526780;
+  --marketing-blue: #155fc7;
+  --marketing-green: #102a29;
+  --marketing-lime: #d8f3a5;
+  --marketing-paper: #f7faff;
+  --marketing-line: #dfe8f4;
+  --marketing-heading-weight: 500;
+  --marketing-action-weight: 600;
+  --marketing-hero-size: clamp(40px, 4vw, 59px);
+  --marketing-hero-leading: 1.08;
+  --marketing-section-size: clamp(34px, 3.5vw, 49px);
+}
+
+@media (max-width: 760px) {
+  :root {
+    --marketing-hero-size: clamp(38px, 7.5vw, 54px);
+    --marketing-hero-leading: 1.12;
+    --marketing-section-size: 34px;
+  }
+}
+
+[data-marketing-motion] :is(h1, h2, h3) { font-weight: var(--marketing-heading-weight); }
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-marketing-motion] [data-marketing-hero-copy] > :is(span, p, h1, div, small) {
+    animation: marketing-hero-rise 980ms cubic-bezier(.22,.8,.2,1) backwards;
+  }
+
+  [data-marketing-motion] [data-marketing-hero-copy] > h1 {
+    animation-duration: 1400ms;
+    animation-delay: 85ms;
+  }
+
+  [data-marketing-motion] [data-marketing-hero-copy] > h1 em {
+    animation: marketing-hero-emphasis 1250ms 290ms ease-out backwards;
+  }
+
+  [data-marketing-motion] [data-marketing-hero-copy] > p { animation-delay: 245ms; }
+  [data-marketing-motion] [data-marketing-hero-copy] > div { animation-delay: 370ms; }
+  [data-marketing-motion] [data-marketing-hero-copy] > small { animation-delay: 450ms; }
+
+  [data-marketing-motion] [data-marketing-hero-visual] {
+    animation: marketing-visual 1550ms 100ms cubic-bezier(.22,.8,.2,1) backwards;
+  }
+
+  [data-marketing-hero-in-place] [data-marketing-hero-copy] > :is(span, p, h1, small),
+  [data-marketing-hero-in-place] [data-marketing-hero-visual] {
+    animation-name: marketing-fade-in-place;
+    animation-delay: 0ms;
+  }
+
+  [data-marketing-hero-in-place] [data-marketing-hero-copy] > div {
+    animation: none;
+  }
+
+  [data-marketing-motion] [data-marketing-swap] {
+    animation: marketing-fade 450ms ease-out backwards;
+  }
+
+  [data-marketing-motion] [data-marketing-visible] {
+    animation: marketing-section-rise 860ms cubic-bezier(.2,.76,.25,1) backwards;
+  }
+
+  [data-marketing-motion] h2[data-marketing-visible] { animation-duration: 1000ms; }
+  [data-marketing-motion] p[data-marketing-visible] { animation-delay: 105ms; }
+
+  [data-marketing-motion] :is([data-marketing-reveal], [data-marketing-photo])[data-marketing-visible] {
+    animation: marketing-visual 1120ms 70ms cubic-bezier(.2,.76,.25,1) backwards;
+  }
+
+  [data-marketing-motion] [data-marketing-visible]:focus-within,
+  [data-marketing-motion] [data-marketing-hero-copy] > div:focus-within {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  [data-marketing-motion] a > svg:last-child { transition: translate 180ms ease-out; }
+  [data-marketing-motion] a:hover > svg:last-child { translate: 3px 0; }
+  [data-marketing-motion] [data-marketing-photo] img { transition: scale 280ms ease-out; }
+  [data-marketing-motion] article:has(a:hover) [data-marketing-photo] img { scale: 1.028; }
+}
+
+@keyframes marketing-hero-rise {
+  from { opacity: 0; translate: 0 34px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes marketing-hero-emphasis {
+  from { opacity: .2; }
+  to { opacity: 1; }
+}
+
+@keyframes marketing-section-rise {
+  from { opacity: .25; translate: 0 20px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes marketing-fade {
+  from { opacity: .64; }
+  to { opacity: 1; }
+}
+
+@keyframes marketing-fade-in-place {
+  from { opacity: .4; }
+  to { opacity: 1; }
+}
+
+@keyframes marketing-visual {
+  from { opacity: .38; scale: 1.03; }
+  to { opacity: 1; scale: 1; }
+}

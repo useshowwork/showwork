@@ -48,6 +48,8 @@ const nextConfig = {
 };
 export default (phase) => ({
   ...nextConfig,
-  // Keep production builds from overwriting a running dev server's assets.
-  distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+  // Use a separate output directory when running a second local dev server.
+  distDir: phase === PHASE_DEVELOPMENT_SERVER
+    ? process.env.SHOWWORK_DEV_DIST_DIR || ".next-dev"
+    : ".next",
 });

@@ -4,9 +4,9 @@ import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { initializeSubscription } from "@/lib/paystack";
 import { appUrl } from "@/lib/url";
+import { PORTFOLIO_YEARLY_NGN } from "@/lib/portfolioPricing";
 
 const PORTFOLIO_PLAN_CODE = process.env.PAYSTACK_PORTFOLIO_PLAN_CODE;
-const PORTFOLIO_YEARLY_NGN = 5000;
 
 // POST — for a portfolio that already exists but never completed its
 // first ₦5,000/year charge (checkout was abandoned, failed, or the

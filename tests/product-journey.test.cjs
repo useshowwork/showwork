@@ -121,3 +121,19 @@ test('Engage checkout opens with the annual cycle selected after authentication'
  const checkout=nodes(tree,node=>node.props?.plan==='ENGAGE')[0];
  assert.ok(checkout);assert.equal(checkout.props.cycle,'ANNUAL');
 });
+
+for (const [product, expectedPrice] of [['workspace', '4,900'], ['delivery', '5,900'], ['engage', '14,900']]) {
+ test(`${product} landing pricing shows only its plans and routes signed-in buyers directly`, () => {
+  const Pricing = load('components/landing/PricingSection.tsx', {
+   react: {...React, useState: initial => [initial, () => {}]},
+  }).default;
+  const pricing = Pricing({compact: true, fixedProduct: product, signedIn: true});
+  const words = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(words).join('') : node?.props ? words(node.props.children) : '';
+  assert.ok(words(pricing).includes(expectedPrice));
+  assert.deepEqual(nodes(pricing, node => node.type === 'button').map(words), ['Monthly', 'Annual']);
+  const links = nodes(pricing, node => typeof node.props?.href === 'string').map(node => node.props.href);
+  const expectedDestination = journey.productDestination(product, {workspace: 'CREATOR', delivery: 'STARTER', engage: 'ENGAGE'}[product], 'MONTHLY');
+  assert.ok(links.includes(expectedDestination));
+  assert.ok(links.every(href => href.startsWith('/dashboard/')));
+ });
+}

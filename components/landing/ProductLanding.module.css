@@ -1,0 +1,246 @@
+.page {
+  --marketing-header-height: 86px;
+  --ink: var(--marketing-ink);
+  --muted: var(--marketing-muted);
+  --blue: var(--marketing-blue);
+  --line: var(--marketing-line);
+  --wash: #edf4ff;
+  color: var(--ink);
+  background: #fff;
+  font-family: var(--font-sans), sans-serif;
+}
+
+.page[data-product="portfolio"] { --wash: #eef2fa; }
+.page[data-product="engage"] { --wash: #eaf7f4; }
+.page[data-product="delivery"] { --wash: #e8eef9; }
+
+.page main :is(a, summary, button):focus-visible {
+  outline: 2px solid #2478ff;
+  outline-offset: 4px;
+}
+
+.skip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 55;
+  transform: translateY(-150%);
+  padding: 12px 16px;
+  background: white;
+}
+
+.skip:focus { transform: none; }
+
+.container {
+  width: min(1260px, calc(100% - 80px));
+  margin-inline: auto;
+}
+
+.hero {
+  padding-block: clamp(52px, 8vw, 116px);
+  background: radial-gradient(ellipse at 88% 24%, var(--wash), transparent 65%), var(--marketing-paper);
+  border-bottom: 1px solid var(--line);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--blue);
+  font-size: .875rem;
+  font-weight: var(--marketing-action-weight);
+}
+
+.copy h1, .workflow h2, .story h2, .freePricing h2, .faq h2, .closing h2 {
+  font-weight: var(--marketing-heading-weight);
+  letter-spacing: -.055em;
+  line-height: 1.13;
+  text-wrap: balance;
+}
+
+.copy h1 { margin-top: 20px; font-size: var(--marketing-hero-size); line-height: var(--marketing-hero-leading); letter-spacing: -.058em; }
+.copy em { display: block; color: var(--blue); font-style: normal; }
+.description { margin-top: 22px; max-width: 48ch; color: var(--muted); font-size: 1.0625rem; line-height: 1.75; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.primary, .secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 11px 17px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: .875rem;
+  font-weight: var(--marketing-action-weight);
+}
+
+.primary { color: white; background: var(--blue); }
+.primary:hover { background: #0044b5; }
+.secondary { background: white; border-color: var(--line); }
+.secondary:hover { background: #edf4ff; }
+.trial { margin-top: 13px; color: var(--muted); font-size: .8125rem; line-height: 1.55; }
+
+.preview { min-width: 0; }
+.example {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 24px 56px #12346620;
+}
+
+.exampleBar, .example figcaption, .fileRow, .fileRow span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exampleBar { padding: 13px 16px; font-size: .875rem; font-weight: var(--marketing-action-weight); }
+.example figcaption { padding: 11px 16px; color: var(--muted); font-size: .8125rem; }
+.portfolioPreview, .deliveryPreview { position: relative; background: #0a111d; }
+.portfolioPreview { aspect-ratio: 1.65; min-height: 220px; }
+.deliveryPreview { aspect-ratio: 2.1; }
+.portfolioPreview img, .deliveryPreview img { object-fit: cover; }
+.portfolioPreview::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #060913d9, #06091355 74%); }
+.portfolioPreview div { position: absolute; z-index: 1; bottom: 12%; left: 7%; color: white; }
+.portfolioPreview p { font-size: .875rem; }
+.portfolioPreview strong { display: block; margin-top: 9px; font-family: var(--font-sans), sans-serif; font-size: clamp(1.85rem, 4vw, 3.5rem); font-weight: 400; line-height: 1; }
+.fileRow { justify-content: space-between; flex-wrap: wrap; padding: 13px 16px; border-bottom: 1px solid var(--line); font-size: .875rem; }
+.fileRow span + span { color: #205d43; }
+
+.workflow { padding-block: clamp(55px, 8vw, 100px); scroll-margin-top: var(--marketing-header-height); }
+.workflow h2, .story h2, .freePricing h2, .faq h2, .closing h2 { font-size: var(--marketing-section-size); }
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(18px, 3vw, 38px);
+  margin-top: 34px;
+  list-style: none;
+}
+
+.steps li { padding-top: 19px; border-top: 2px solid #bfd8ff; }
+.steps h3 { font-size: 1.125rem; font-weight: var(--marketing-heading-weight); }
+.steps p, .closing p { margin-top: 8px; line-height: 1.7; }
+.steps p { color: var(--muted); }
+
+.closing { background: var(--marketing-blue); color: white; }
+.closingInner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 22px; padding-block: 42px; }
+.closingInner h2 { max-width: 650px; }
+.closing p { color: #d6e6fa; }
+.closing .actions { margin-top: 0; }
+.closing .secondary { color: var(--ink); }
+.closing .primary { background: #fff; color: var(--blue); }
+.closing .primary:hover { background: #e8f2ff; }
+
+.related { padding-block: 45px 55px; }
+.related h2 { margin-bottom: 16px; font-size: 1.125rem; font-weight: var(--marketing-heading-weight); }
+.related ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.related a { display: grid; height: 100%; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 9px; }
+.related a:hover { background: #f4f8ff; border-color: #bfd8ff; }
+.related span { color: var(--muted); font-size: .875rem; }
+
+@media (max-width: 900px) {
+  .heroGrid { grid-template-columns: minmax(0, 1fr); }
+  .preview { width: min(100%, 680px); }
+}
+
+@media (max-width: 700px) {
+  .container { width: calc(100% - 36px); }
+  .steps, .related ul { grid-template-columns: minmax(0, 1fr); }
+}
+
+.audience {
+  margin-top: 14px;
+  color: var(--ink);
+  font-size: .875rem;
+  font-weight: var(--marketing-action-weight);
+  line-height: 1.55;
+}
+
+.heroPhoto {
+  position: relative;
+  overflow: hidden;
+  min-height: 330px;
+  aspect-ratio: 1.35;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--wash);
+  box-shadow: 0 24px 56px #12346620;
+}
+
+.heroPhoto img { object-fit: cover; }
+
+.story {
+  padding-block: clamp(44px, 7vw, 86px);
+  border-block: 1px solid var(--line);
+  background: var(--wash);
+}
+
+.storyGrid, .freePricing, .faq {
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 74px);
+}
+
+.story h2 { margin-top: 12px; }
+.page section[id="pricing"] { scroll-margin-top: var(--marketing-header-height); }
+.freePricing, .faq { padding-block: clamp(48px, 7vw, 88px); }
+
+.freePricing { grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); }
+.portfolioPlans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+.freePlan {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #f7faff;
+}
+
+.freePlan h3 { font-size: 1.125rem; font-weight: var(--marketing-heading-weight); }
+.price { margin-top: 8px; font-size: clamp(2.5rem, 5vw, 3.375rem); font-weight: var(--marketing-action-weight); letter-spacing: -.055em; }
+.freePlan ul { display: grid; gap: 10px; margin-block: 16px 22px; }
+.freePlan li { display: flex; align-items: center; gap: 9px; }
+.freePlan .price small { font-size: .875rem; letter-spacing: 0; }
+.freePlan :is(.primary, .secondary) { margin-top: auto; }
+.planNote { margin-block: 16px 22px; color: var(--muted); line-height: 1.65; }
+.freePlan li svg { flex-shrink: 0; color: var(--blue); }
+
+.faq { align-items: start; border-top: 1px solid var(--line); }
+.questions { border-bottom: 1px solid var(--line); }
+.questions details { border-top: 1px solid var(--line); }
+.questions summary { padding: 16px 4px; cursor: pointer; font-weight: var(--marketing-action-weight); }
+.questions p { padding: 0 4px 18px; color: var(--muted); line-height: 1.7; }
+
+@media (max-width: 900px) {
+  .storyGrid, .freePricing, .faq { grid-template-columns: minmax(0, 1fr); }
+  .heroPhoto { aspect-ratio: 1.6; min-height: 0; max-height: 480px; }
+}
+
+@media (max-width: 999px) {
+  .page { --marketing-header-height: 76px; }
+}
+
+@media (max-width: 700px) {
+  .portfolioPlans { grid-template-columns: minmax(0, 1fr); }
+}
+
+.planDetailsLink {
+  margin-top: 12px;
+  color: var(--blue);
+  font-size: .875rem;
+  font-weight: var(--marketing-action-weight);
+  text-underline-offset: 3px;
+}
+
+.planDetailsLink:hover { text-decoration: underline; }

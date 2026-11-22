@@ -1,0 +1,112 @@
+.page { --editorial-rule: #d9e3df; }
+
+.hero { background: var(--marketing-paper); padding-block: clamp(45px, 6vw, 92px) clamp(62px, 8vw, 114px); }
+.heroLayout { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: clamp(26px, 5vw, 80px); }
+.heroCopy h1 { margin-top: 17px; }
+.heroCopy h1 em { display: block; }
+.heroCopy > p:nth-of-type(2) { margin-top: 22px; }
+.heroCopy > div { margin-top: 25px; }
+
+.heroVisual { position: relative; min-width: 0; padding: 0 0 105px 39px; }
+.portrait { position: relative; overflow: hidden; aspect-ratio: 1.16; border-radius: 8px; background: #c5bb9d; }
+.portrait img { object-fit: cover; object-position: 58% center; }
+.heroWorkspace, .reviewScreen { overflow: hidden; border: 1px solid #cad6d9; border-radius: 7px; background: #f4f7fb; box-shadow: 0 17px 36px #102a2927; }
+.heroWorkspace { position: absolute; left: 0; bottom: 0; width: 66%; z-index: 1; animation: settle .65s .12s ease-out both; }
+.heroWorkspace img, .reviewScreen img { width: 100%; aspect-ratio: 2.05; object-fit: cover; object-position: 50% 3%; }
+.heroWorkspace figcaption, .reviewScreen figcaption { padding: 9px 11px; border-top: 1px solid #d9e3df; background: #fff; color: #48605d; font-size: .75rem; }
+.heroBrands { position: absolute; right: 0; bottom: 8px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; width: 32%; animation: settle .65s .21s ease-out both; }
+.heroBrands div { overflow: hidden; border-radius: 4px; }
+.heroBrands img { width: 100%; aspect-ratio: .85; object-fit: cover; }
+
+.worlds, .experience { padding-block: clamp(62px, 8vw, 112px); }
+.sectionIntro { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(0, .82fr); align-items: end; gap: 22px 8%; }
+.sectionIntro h2 { text-wrap: pretty; }
+.collage { display: grid; grid-template-columns: 1.18fr 1fr 1fr; grid-auto-rows: clamp(152px, 18vw, 253px); gap: 10px; margin-top: 32px; }
+.clientWorld { position: relative; overflow: hidden; border-radius: 6px; background: #d9e3df; isolation: isolate; }
+.clientWorld:first-child { grid-row: span 2; }
+.clientWorld img { object-fit: cover; transition: transform .42s ease; }
+.clientWorld:hover img { transform: scale(1.035); }
+.clientWorld[data-world="fashion"] img { object-position: 49% center; }
+.clientWorld[data-world="real-estate"] img { object-position: center 43%; }
+.clientWorld figcaption { position: absolute; z-index: 1; bottom: 10px; left: 10px; padding: 6px 9px; border-radius: 4px; color: #152727; background: #fffffff2; font-size: .8125rem; font-weight: 700; }
+
+.workflowLead { max-width: 58ch; margin-top: 16px; color: #c6d9d2; line-height: 1.7; font-size: 1.0625rem; }
+.advantages { padding-block: clamp(58px, 8vw, 112px); border-bottom: 1px solid var(--editorial-rule); }
+.advantages h2 { margin-bottom: clamp(24px, 4vw, 40px); }
+.advantageGrid { display: grid; grid-template-columns: 1.18fr .82fr; grid-template-rows: auto auto; gap: 12px; }
+.advantageGrid article { position: relative; overflow: hidden; border-radius: 7px; }
+.advantageGrid h3, .clientJourney h3 { font-size: clamp(1.28rem, 2vw, 1.9rem); line-height: 1.15; letter-spacing: -.04em; }
+.advantageGrid p, .clientJourney p { margin-top: 9px; color: var(--muted); line-height: 1.65; }
+.capacity { display: grid; grid-row: span 2; align-items: end; min-height: 390px; padding: clamp(24px, 4vw, 43px); background: var(--business-green); color: white; }
+.capacity img { object-fit: cover; }
+.capacity::after { position: absolute; inset: 0; content: ""; background: linear-gradient(0deg, #0b1b1aed, transparent 75%); }
+.capacity div { position: relative; z-index: 1; max-width: 46ch; }
+.capacity p { color: #edf4ef; }
+.brandContext { padding: clamp(25px, 4vw, 48px); background: #e8f4df; }
+.brandContext h3 { max-width: 11ch; font-size: clamp(2rem, 3.5vw, 3.5rem); }
+.approval { padding: clamp(24px, 4vw, 39px); background: #f7f8fa; border: 1px solid var(--editorial-rule); }
+.approval summary { min-height: 44px; padding-top: 12px; color: var(--business-blue); cursor: pointer; font-size: .875rem; font-weight: 700; }
+.approval details img { max-height: 190px; border-radius: 5px; object-fit: cover; object-position: top; }
+.reporting { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); align-items: center; gap: clamp(18px, 4vw, 55px); padding: clamp(22px, 4.5vw, 48px); background: #eef4fb; }
+.reporting img { max-height: 250px; border: 1px solid var(--editorial-rule); border-radius: 6px; object-fit: cover; object-position: top; }
+
+.experience { background: #f7f8fa; }
+.experienceScene { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr); align-items: end; margin-top: 33px; }
+.experiencePhoto { position: relative; aspect-ratio: 1.78; overflow: hidden; border-radius: 7px; background: #c8b49e; }
+.experiencePhoto img { object-fit: cover; object-position: 50% 45%; }
+.reviewScreen { position: relative; z-index: 1; margin: 0 0 24px -36px; }
+.reviewScreen img { aspect-ratio: 1.82; }
+.clientJourney { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 28px; }
+.clientJourney li { padding-top: 15px; border-top: 1px solid #b7cbc4; }
+.closing img { filter: brightness(0) saturate(100%) invert(92%) sepia(26%) saturate(602%) hue-rotate(24deg) brightness(102%) contrast(90%); opacity: .35; }
+
+@keyframes settle { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 900px) {
+  .heroLayout, .sectionIntro { grid-template-columns: minmax(0, 1fr); }
+  .heroCopy { max-width: 650px; }
+  .heroVisual { width: min(100%, 710px); }
+  .portrait { aspect-ratio: 1.45; }
+}
+@media (max-width: 720px) {
+  .heroVisual { padding: 0 0 62px 10px; }
+  .heroCopy h1 { margin-top: 12px; }
+  .heroCopy > p:nth-of-type(2) { margin-top: 17px; }
+  .heroCopy > div { margin-top: 21px; }
+  .portrait { aspect-ratio: 1.28; }
+  .heroWorkspace { width: 76%; }
+  .heroBrands { width: 21%; grid-template-columns: 1fr; gap: 4px; bottom: 0; }
+  .heroBrands div:last-child { display: none; }
+  .heroBrands img { aspect-ratio: 1.55; }
+  .collage { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: clamp(117px, 39vw, 220px); gap: 7px; margin-top: 23px; }
+  .clientWorld:first-child { grid-column: span 2; grid-row: span 1; }
+  .clientWorld:first-child img { object-position: 50% 38%; }
+  .clientWorld figcaption { bottom: 6px; left: 6px; padding: 5px 7px; }
+  .advantageGrid, .reporting, .experienceScene, .clientJourney { grid-template-columns: minmax(0, 1fr); }
+  .capacity { grid-row: auto; min-height: 260px; }
+  .reporting { grid-column: auto; }
+  .experiencePhoto { aspect-ratio: 1.35; }
+  .reviewScreen { width: 86%; margin: -43px 0 0 10%; }
+  .clientJourney { gap: 12px; margin-top: 23px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heroWorkspace, .heroBrands { animation: none; }
+  .clientWorld:hover img { transform: none; }
+}
+
+.planIntro { max-width: 775px; margin-bottom: clamp(24px, 4vw, 44px); }
+.planIntro > p { margin-top: 16px; }
+.planGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(12px, 2vw, 25px); }
+.recommendedPlan { display: flex; flex-direction: column; align-items: flex-start; }
+.recommendedPlan[data-plan="CREATOR"] { background: #edf3f7; color: var(--ink); border: 1px solid var(--editorial-rule); }
+.recommendedPlan[data-plan="CREATOR"] :is(p, small) { color: var(--muted); }
+.recommendedPlan[data-plan="CREATOR"] p:has(small), .recommendedPlan[data-plan="CREATOR"] li svg { color: var(--business-blue); }
+.recommendedPlan[data-plan="CREATOR"] a { background: var(--business-blue); color: white; }
+.recommendedPlan[data-plan="CREATOR"] a:hover { background: #114ea6; }
+.recommendedPlan a { margin-top: auto; }
+.planTrial { margin-top: 20px; color: var(--muted); line-height: 1.65; }
+.planTrial a { color: var(--business-blue); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 720px) {
+  .planGrid { grid-template-columns: minmax(0, 1fr); }
+}

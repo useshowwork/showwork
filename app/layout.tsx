@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import Script from "next/script";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import "./marketing-motion.css";
 import RouteTransitionIndicator from "@/components/RouteTransitionIndicator";
 import ShowworkSupport from "@/components/support/ShowworkSupport";
 

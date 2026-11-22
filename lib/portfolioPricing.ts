@@ -1,0 +1,1 @@
+export const PORTFOLIO_YEARLY_NGN = 5_000;

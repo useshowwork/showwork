@@ -5,6 +5,7 @@ import UiSymbol from "@/components/ui/UiSymbol";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { PORTFOLIO_YEARLY_NGN } from "@/lib/portfolioPricing";
 
 interface AgencyPortfolio {
   id: string;
@@ -561,7 +562,7 @@ export default function AgencyPortfolioList({
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/45">
-                ₦5,000/year, billed automatically to a saved card. No
+                ₦{PORTFOLIO_YEARLY_NGN.toLocaleString("en-NG")}/year, billed automatically to a saved card. No
                 separate setup fee.
               </p>
 
@@ -624,7 +625,7 @@ export default function AgencyPortfolioList({
                   </>
                 ) : (
                   <>
-                    Create & pay ₦5,000/year
+                    Create & pay ₦{PORTFOLIO_YEARLY_NGN.toLocaleString("en-NG")}/year
                     <ArrowIcon />
                   </>
                 )}

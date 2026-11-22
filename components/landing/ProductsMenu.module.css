@@ -1,0 +1,49 @@
+.menu {
+  position: relative;
+  color: #173455;
+}
+
+.menu > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding-inline: 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-size: .875rem;
+  font-weight: 600;
+}
+
+.menu > summary::-webkit-details-marker { display: none; }
+.menu[open] > summary { background: #edf4ff; color: #155fc7; }
+.menu[open] > summary svg { transform: rotate(180deg); }
+
+.panel {
+  position: absolute;
+  z-index: 3;
+  top: 100%;
+  left: 0;
+  width: min(310px, calc(100vw - 40px));
+  padding: 8px;
+  border: 1px solid #dce7f4;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 40px #112b501b;
+}
+
+.panel a {
+  display: grid;
+  gap: 4px;
+  padding: 11px 13px;
+  border-radius: 8px;
+}
+
+.panel a:is(:hover, :focus-visible, [aria-current="page"]) { background: #edf4ff; }
+.panel strong { font-size: .875rem; font-weight: 700; }
+.panel span { color: #536780; font-size: .8125rem; line-height: 1.5; }
+
+@media (max-width: 700px) {
+  .panel { left: auto; right: 0; }
+}

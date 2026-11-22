@@ -5,13 +5,20 @@ import { ArrowRight, BookOpenText, Check, MessageCircle, Sparkles, UsersRound } 
 import PlatformBrandIcon from "@/components/calendars/PlatformBrandIcon";
 import styles from "./ConnectedInboxVisual.module.css";
 
-const channels = [
+const defaultChannels = [
   { name: "WhatsApp", platform: "WHATSAPP", question: "Can you tell me about your services?", preview: "A question about your services", answer: "Happy to help. Tell me what you’re looking for, and I’ll guide you to the right service." },
   { name: "Instagram", platform: "INSTAGRAM", question: "I saw your campaign. How do I get started?", preview: "An enquiry from your campaign", answer: "Thanks for reaching out. What would you like help with? I can explain our services and the next steps." },
   { name: "Facebook", platform: "FACEBOOK", question: "Can someone help me choose the right option?", preview: "A customer needs guidance", answer: "Of course. Share a little about what you need, and I’ll help you find the right fit." },
 ];
 
-export default function ConnectedInboxVisual() {
+const retailChannels = [
+  { name: "WhatsApp", platform: "WHATSAPP", question: "Is the black tote still in stock? Can I pick it up today?", preview: "Stock and store pickup", answer: "Yes, the black tote is in stock. You can collect it at the shop before 6 p.m. Would you like the pickup address?" },
+  { name: "Instagram", platform: "INSTAGRAM", question: "Do you deliver to Surulere? How do I order?", preview: "Delivery and how to order", answer: "Yes, we deliver to Surulere. Send us the items you’d like and your delivery area so the team can confirm the total and next steps." },
+  { name: "Facebook", platform: "FACEBOOK", question: "How do I book a consultation?", preview: "Booking a service", answer: "Tell us which service you’re interested in and your preferred day. The team can confirm the next available time." },
+];
+
+export default function ConnectedInboxVisual({ scenario = "default" }: { scenario?: "default" | "retail" }) {
+  const channels = scenario === "retail" ? retailChannels : defaultChannels;
   const [selected, setSelected] = useState(0);
   const channel = channels[selected];
   return <figure className={styles.visual} aria-label="WhatsApp, Instagram and Facebook enquiries connected to one Showwork inbox with AI replies">

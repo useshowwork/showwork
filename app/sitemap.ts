@@ -1,14 +1,17 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+import { productNavigation } from "@/lib/productPages";
+import { solutionNavigation } from "@/lib/solutionNavigation";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://useshowwork.com";
+  const productPaths = productNavigation.map(product => product.href);
   const staticRoutes = [
     "",
-    "/portfolio",
-    "/delivery",
-    "/content-workspace",
+    ...productPaths,
+    ...solutionNavigation.map(solution => solution.href),
     "/book-demo",
+    "/contact",
     "/help/workspace",
     "/help/project-delivery",
     "/help/portfolio",
@@ -24,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages: MetadataRoute.Sitemap = staticRoutes.map((path) => ({
     url: `${baseUrl}${path}`,
     changeFrequency: path === "" ? "weekly" : "monthly",
-    priority: path === "" ? 1 : path === "/portfolio" || path === "/delivery" || path === "/content-workspace" ? 0.8 : 0.5,
+    priority: path === "" ? 1 : productPaths.includes(path) ? 0.8 : 0.5,
   }));
 
   // The project database pool is configured for one connection; keep

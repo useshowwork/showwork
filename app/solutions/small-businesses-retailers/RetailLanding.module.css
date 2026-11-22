@@ -1,0 +1,35 @@
+.heroPhotos {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(0, .8fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  aspect-ratio: 1.33;
+}
+
+.heroPhotos img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.heroMain { grid-row: span 2; }
+.inbox { scroll-margin-top: 86px; background: #edf4f1; }
+.pricing section { scroll-margin-top: 86px; }
+.note { max-width: 54ch; margin-block: 16px 20px; color: var(--muted); line-height: 1.65; }
+.useCases { padding-block: clamp(54px, 7vw, 96px); }
+.useCases h2 { max-width: 900px; }
+.useCaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 25px; }
+.useCaseGrid li { padding-top: 15px; border-top: 1px solid var(--rule); }
+.useCaseGrid h3 { font-size: 1.125rem; }
+.useCaseGrid p { margin-top: 7px; color: var(--muted); line-height: 1.65; }
+
+@media (max-width: 999px) {
+  .inbox, .pricing section { scroll-margin-top: 76px; }
+}
+
+@media (max-width: 720px) {
+  .heroPhotos { aspect-ratio: 1.4; gap: 6px; }
+  .useCaseGrid { grid-template-columns: minmax(0, 1fr); gap: 15px; }
+}

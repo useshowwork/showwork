@@ -1,18 +1,19 @@
 "use client";
 
+import { productPages } from "@/lib/productPages";
 import { productEntryHref } from "@/lib/productJourney";
-import { TIERS } from "@/lib/subscriptionTiers";
+import { FREE_TIER_LIMIT, TIERS } from "@/lib/subscriptionTiers";
 import {
   CONTENT_WORKSPACE_PLANS,
   CONTENT_WORKSPACE_PLAN_ORDER,
   formatWorkspaceLimit,
   getContentWorkspaceFeatureList,
   ENGAGE_TRIAL_AI_REPLY_LIMIT,
+  CONTENT_WORKSPACE_TRIAL_DAYS,
 } from "@/lib/contentWorkspaceEntitlements";
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 
 type Product = "delivery" | "workspace" | "engage";
 type BillingCycle = "monthly" | "annual";
@@ -39,7 +40,7 @@ const ENGAGE_PLANS: PricingPlan[] = [
       "1 business",
       "Facebook, Instagram & WhatsApp",
       "3 users including you",
-      "1,000 AI replies per month",
+      `${CONTENT_WORKSPACE_PLANS.ENGAGE.aiGenerations.toLocaleString("en-NG")} AI replies per month`,
       "Business knowledge for AI responses",
       "Conversations and lead management",
       "Human replies and team handoff",
@@ -56,7 +57,7 @@ const DELIVERY_PLANS: PricingPlan[] = [
     annual: 0,
     description: "A simple way to start delivering your work.",
     features: [
-      "1 project per 30 days",
+      `${FREE_TIER_LIMIT} project per 30 days`,
       "Basic client delivery",
       "Secure project links",
     ],
@@ -69,7 +70,7 @@ const DELIVERY_PLANS: PricingPlan[] = [
     annual: TIERS.STARTER.priceNgnAnnual,
     description: "For creators starting to manage more client work.",
     features: [
-      "5 projects per billing cycle",
+      `${TIERS.STARTER.limit} projects per billing cycle`,
       "Client collaboration",
       "File delivery",
       "Project feedback",
@@ -83,7 +84,7 @@ const DELIVERY_PLANS: PricingPlan[] = [
     annual: TIERS.GROWTH.priceNgnAnnual,
     description: "For busy creatives handling work at scale.",
     features: [
-      "15 projects per billing cycle",
+      `${TIERS.GROWTH.limit} projects per billing cycle`,
       "Advanced client delivery",
       "Client feedback & approvals",
       "Project collaboration",
@@ -150,31 +151,6 @@ function formatNaira(amount: number) {
   }
 
   return `₦${amount.toLocaleString("en-NG")}`;
-}
-
-function buildHref(
-  product: Product,
-  cycle: BillingCycle,
-  tier?: string,
-  plan?: string,
-) {
-  const params = new URLSearchParams();
-
-  params.set("product", product);
-  params.set("cycle", cycle === "monthly" ? "MONTHLY" : "ANNUAL");
-
-  if (tier) {
-    params.set("tier", tier);
-  }
-
-  if (plan) {
-    params.set("plan", plan);
-  }
-
-  return productEntryHref(product, {
-    plan: tier ?? plan,
-    cycle: params.get("cycle"),
-  });
 }
 
 function CheckIcon() {
@@ -294,10 +270,19 @@ function ProductIcon({ product }: { product: Product }) {
 
 export default function PricingSection({
   compact = false,
+  fixedProduct,
+  signedIn = false,
+  heading,
+  intro,
 }: {
   compact?: boolean;
+  fixedProduct?: Product;
+  signedIn?: boolean;
+  heading?: string;
+  intro?: string;
 }) {
-  const [product, setProduct] = useState<Product>("workspace");
+  const [selectedProduct, setProduct] = useState<Product>("workspace");
+  const product = fixedProduct ?? selectedProduct;
 
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
 
@@ -311,7 +296,7 @@ export default function PricingSection({
   return (
     <section
       id="pricing"
-      className={`relative overflow-hidden bg-white px-5 sm:px-8 lg:px-16 ${compact ? "py-16 sm:py-20" : "py-28 sm:py-36 lg:py-40"}`}
+      className={`relative overflow-hidden bg-white px-5 sm:px-8 lg:px-16 ${fixedProduct ? "py-12 sm:py-20" : compact ? "py-16 sm:py-20" : "py-28 sm:py-36 lg:py-40"}`}
     >
       {/* Background atmosphere */}
 
@@ -337,7 +322,7 @@ export default function PricingSection({
         {/* Header */}
 
         <div className="mx-auto max-w-[760px] text-center">
-          <div className="flex items-center justify-center gap-3">
+          {!fixedProduct && <div className="flex items-center justify-center gap-3">
             <span className="h-px w-8 bg-[#155FC7]" />
 
             <span className="font-[var(--font-fraunces)] text-sm italic text-[#626974]">
@@ -345,7 +330,7 @@ export default function PricingSection({
             </span>
 
             <span className="h-px w-8 bg-[#155FC7]" />
-          </div>
+          </div>}
 
           <h2
             className={
@@ -354,24 +339,29 @@ export default function PricingSection({
                 : "mt-6 font-[var(--font-fraunces)] text-[clamp(3rem,6vw,6rem)] font-normal leading-[0.92] tracking-[-0.05em] text-[#101216]"
             }
           >
-            {compact ? "A plan for every" : "One connected platform."}
-            <br />
-            <span className="text-[#155FC7]">
-              {compact
-                ? "stage of your work."
-                : "Plans for different ways of working."}
-            </span>
+            {heading ?? (fixedProduct ? `${productPages[fixedProduct].name} pricing` : <>
+              {compact ? "A plan for every" : "One connected platform."}
+              <br />
+              <span className="text-[#155FC7]">
+                {compact ? "stage of your work." : "Plans for different ways of working."}
+              </span>
+            </>)}
           </h2>
 
           <p className="mx-auto mt-7 max-w-[590px] text-sm leading-7 text-[#626974] sm:text-base">
-            Choose the client capacity, AI allowance and tools that fit your
-            team.
+            {intro ?? (fixedProduct === "engage"
+              ? "One plan for your shared inbox, AI replies and team handoff."
+              : fixedProduct === "delivery"
+                ? "Start free or choose the project capacity and review tools you need."
+                : fixedProduct === "workspace"
+                  ? "Choose the workspace, collaboration and AI capacity your team needs."
+                  : "Choose the client capacity, AI allowance and tools that fit your team.")}
           </p>
         </div>
 
         {/* Product switcher */}
 
-        <div className="mx-auto mt-12 flex w-fit max-w-full flex-wrap justify-center rounded-full border border-[#E1E4E9] bg-[#F7F8FA] p-1.5">
+        {!fixedProduct && <div className="mx-auto mt-12 flex w-fit max-w-full flex-wrap justify-center rounded-full border border-[#E1E4E9] bg-[#F7F8FA] p-1.5">
           <button
             type="button"
             aria-pressed={product === "workspace"}
@@ -408,15 +398,13 @@ export default function PricingSection({
             <ProductIcon product="engage" />
             Customer Messaging
           </button>
-        </div>
+        </div>}
 
         {/* Product description */}
 
-        <motion.div
+        {!fixedProduct && <div
           key={product}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
+          data-marketing-swap
           className="mx-auto mt-8 max-w-[700px] text-center"
         >
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#155FC7]">
@@ -434,14 +422,15 @@ export default function PricingSection({
                 ? "Showwork Engage brings customer messages, AI replies, leads and business knowledge together."
                 : "Manage client content, approvals, publishing, conversations, leads and analytics."}
           </p>
-        </motion.div>
+        </div>}
 
         {/* Billing toggle */}
 
-        <div className="mt-8 flex items-center justify-center gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <div className="flex rounded-full border border-[#E1E4E9] bg-white p-1">
             <button
               type="button"
+              aria-pressed={cycle === "monthly"}
               onClick={() => setCycle("monthly")}
               className={`rounded-full px-4 py-2 text-[11px] font-semibold transition ${
                 cycle === "monthly"
@@ -454,6 +443,7 @@ export default function PricingSection({
 
             <button
               type="button"
+              aria-pressed={cycle === "annual"}
               onClick={() => setCycle("annual")}
               className={`rounded-full px-4 py-2 text-[11px] font-semibold transition ${
                 cycle === "annual"
@@ -472,31 +462,31 @@ export default function PricingSection({
 
         {/* Pricing cards */}
 
-        <motion.div
+        <div
           key={`${product}-${cycle}`}
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          data-marketing-swap
           className={`mt-12 grid gap-4 ${
             product === "engage"
               ? "mx-auto max-w-lg"
               : product === "delivery"
-                ? "lg:grid-cols-4"
+                ? "md:grid-cols-2 xl:grid-cols-4"
                 : "mx-auto max-w-[1440px] md:grid-cols-2 xl:grid-cols-4"
           }`}
         >
           {plans.map((plan) => {
+            const billingCycle = cycle === "monthly" ? "MONTHLY" : "ANNUAL";
             const amount = cycle === "monthly" ? plan.monthly : plan.annual;
 
             let href = plan.href;
 
             if (product === "engage") {
               href = productEntryHref("engage", {
-                cycle: cycle === "monthly" ? "MONTHLY" : "ANNUAL",
+                signedIn,
+                cycle: billingCycle,
               });
             } else if (product === "delivery") {
               if (plan.name === "Free") {
-                href = productEntryHref("delivery");
+                href = productEntryHref("delivery", { signedIn });
               } else {
                 const tierMap: Record<string, string> = {
                   Starter: "STARTER",
@@ -504,7 +494,7 @@ export default function PricingSection({
                   Unlimited: "UNLIMITED",
                 };
 
-                href = buildHref("delivery", cycle, tierMap[plan.name]);
+                href = productEntryHref("delivery", { plan: tierMap[plan.name], cycle: billingCycle, signedIn });
               }
             } else {
               const workspacePlanMap: Record<string, string> = {
@@ -517,19 +507,14 @@ export default function PricingSection({
               const workspacePlan = workspacePlanMap[plan.name];
 
               href = productEntryHref("workspace", {
+                signedIn,
                 plan: workspacePlan,
-                cycle: cycle === "monthly" ? "MONTHLY" : "ANNUAL",
+                cycle: billingCycle,
               });
             }
             return (
-              <motion.div
+              <div
                 key={plan.name}
-                whileHover={{ y: -4 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 25,
-                }}
                 className={`relative flex min-h-[500px] flex-col rounded-[26px] border p-7 transition-shadow sm:p-8 ${
                   plan.popular
                     ? "border-[#2478FF] bg-[#111317] text-white shadow-[0_25px_80px_rgba(36,120,255,.13)]"
@@ -538,7 +523,7 @@ export default function PricingSection({
               >
                 {/* Popular badge */}
 
-                <div className="mb-4 flex min-h-7 items-center">
+                {(!fixedProduct || plan.popular) && <div className="mb-4 flex min-h-7 items-center">
                   {plan.popular && (
                     <span className="inline-flex max-w-full items-center rounded-full bg-[#155FC7] px-3 py-1.5 text-[9px] font-bold uppercase leading-4 tracking-[0.08em] text-white">
                       {product === "workspace"
@@ -546,7 +531,7 @@ export default function PricingSection({
                         : "Most popular"}
                     </span>
                   )}
-                </div>
+                </div>}
 
                 {/* Plan heading */}
 
@@ -690,9 +675,9 @@ export default function PricingSection({
                       : "border border-[#D9DDE3] bg-white text-[#111317] hover:border-[#2478FF] hover:text-[#155FC7]"
                   }`}
                 >
-                  {plan.cta}
+                  {signedIn && product === "engage" ? "Open Engage" : signedIn && product === "workspace" ? `Choose ${plan.name}` : plan.cta}
 
-                  <ArrowRightIcon />
+                  {!fixedProduct && <ArrowRightIcon />}
                 </Link>
 
                 {/* Trial note */}
@@ -704,18 +689,18 @@ export default function PricingSection({
                     }`}
                   >
                     {product === "engage"
-                      ? `3-day free trial · ${ENGAGE_TRIAL_AI_REPLY_LIMIT} AI replies · no card required`
-                      : "3-day Agency trial · no payment required to start"}
+                      ? `${CONTENT_WORKSPACE_TRIAL_DAYS}-day free trial · ${ENGAGE_TRIAL_AI_REPLY_LIMIT} AI replies · no card required`
+                      : `${CONTENT_WORKSPACE_TRIAL_DAYS}-day Agency trial · no payment required to start`}
                   </p>
                 )}
-              </motion.div>
+              </div>
             );
           })}
-        </motion.div>
+        </div>
 
         {/* Portfolio inclusion */}
 
-        <div className="mx-auto mt-10 max-w-[1000px] rounded-[24px] border border-[#E3E6EA] bg-[#F7F8FA] p-6 sm:p-7">
+        {!fixedProduct && <div className="mx-auto mt-10 max-w-[1000px] rounded-[24px] border border-[#E3E6EA] bg-[#F7F8FA] p-6 sm:p-7">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#155FC7] shadow-sm ring-1 ring-[#E2E6EB]">
@@ -767,14 +752,14 @@ export default function PricingSection({
             </div>
 
             <Link
-              href={productEntryHref("portfolio")}
+              href={productEntryHref("portfolio", { signedIn })}
               className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-[#155FC7]"
             >
               Create portfolio
               <ArrowRightIcon />
             </Link>
           </div>
-        </div>
+        </div>}
 
         {/* Reassurance */}
 

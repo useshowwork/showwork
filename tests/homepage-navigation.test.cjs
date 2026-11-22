@@ -11,31 +11,50 @@ const component=load('app/HomeClient.tsx',{
 test('homepage leads new visitors to a workspace trial and keeps secondary tool paths available',()=>{
  const html=renderToStaticMarkup(React.createElement(component));
  assert.match(html,/href="\/signup\?next=%2Fdashboard%2Fcalendars"/);
- assert.match(html,/Start your free trial/);assert.match(html,/href="\/delivery"/);assert.match(html,/href="\/portfolio"/);
+ assert.match(html,/Get Started with Showwork/);assert.match(html,/href="\/delivery"/);assert.match(html,/href="\/portfolio"/);
  assert.equal((html.match(/<h1\b/g)||[]).length,1);
  for(const id of ['main-content','how-it-works','tools','pricing','questions'])assert.ok(html.includes(`id="${id}"`),id);
- assert.match(html,/Illustrative example/);
- assert.ok(!html.includes("/images/landing/product/"));
- assert.ok(!html.includes("/images/deli.png"));
+ assert.match(html,/Showwork Marketing Workspace · Sample data/);
+ assert.match(html,/\/images\/landing\/business\/knowledge.webp/);
  assert.match(html,/<source media="\(max-width: 760px\)" srcSet="\/images\/landing\/1mobile.webp"/);
  assert.match(html,/fetchpriority="high"/i);
  assert.ok(!html.includes("dashboard.webp"),"do not substitute an illustrated dashboard for real screenshots");
+});
+test('Products menu links to four dedicated landing pages', () => {
+ const html = renderToStaticMarkup(React.createElement(component));
+ const products = html.match(/<details[^>]*><summary[^>]*>Products[\s\S]*?<\/details>/)?.[0];
+ assert.ok(products, 'Products disclosure is present');
+ assert.deepEqual(
+  [...products.matchAll(/href="([^"]+)"/g)].map(([, href]) => href),
+  ['/content-workspace', '/engage', '/delivery', '/portfolio'],
+ );
+});
+test('Solutions menu retains five routes and the homepage has four illustrated audience cards', () => {
+ const html = renderToStaticMarkup(React.createElement(component));
+ const menu = html.match(/<details[^>]*><summary[^>]*>Solutions[\s\S]*?<\/details>/)?.[0];
+ assert.ok(menu, 'Solutions disclosure is present');
+ const routes = ['/solutions/marketing-agencies', '/solutions/businesses', '/solutions/social-media-managers', '/solutions/small-businesses-retailers', '/solutions/creatives'];
+ assert.deepEqual([...menu.matchAll(/href="([^"]+)"/g)].map(([, href]) => href), routes);
+ assert.match(menu, /href="\/solutions\/creatives">Creatives</);
+ assert.doesNotMatch(menu, /Videographers|Photographers/);
+ const cards = html.match(/<section id="solutions"[\s\S]*?<\/section>/)?.[0];
+ assert.ok(cards);
+ for (const route of routes.slice(0, 4)) assert.ok(cards.includes(`href="${route}"`), route);
+ assert.ok(!cards.includes('href="/solutions/creatives"'));
+ assert.equal((cards.match(/<article\b/g)||[]).length,4);
+ assert.equal((cards.match(/<img\b/g)||[]).length,4);
 });
 test('signed-in visitors receive a direct route to their workspaces',()=>{
  const html=renderToStaticMarkup(React.createElement(component,{isLoggedIn:true}));
  assert.match(html,/href="\/dashboard\/calendars"/);assert.match(html,/Open your workspaces/);assert.ok(!html.includes('href="/signup?next='));
 });
-test('Randy is presented as Growth and above, with explicit confirmation and review boundaries',()=>{
- const html=renderToStaticMarkup(React.createElement(component));
- assert.match(html,/Included from Growth/);assert.match(html,/12,900/);assert.match(html,/Research and knowledge updates need your confirmation/);assert.match(html,/Generating content creates drafts for review/);
-});
-test('workspace evaluation exposes intelligence and conversations before secondary products, with access limits',()=>{
+test('pricing and reply eligibility remain accessible and page anchors resolve',()=>{
  const html=renderToStaticMarkup(React.createElement(component));
  assert.ok(html.indexOf('id="workspace"') < html.indexOf('id="tools"'));
- assert.match(html,/Advanced reporting &amp; AI recommendations from Studio/);
+ assert.match(html,/Randy starts at Growth/);
+ assert.match(html,/12,900/);
+ assert.match(html,/inbox drafts start at Studio/);
  assert.match(html,/Agency adds opt-in automatic replies/);
- assert.match(html,/metrics depend on the channel, permissions and synced history/);
- assert.match(html,/Explore Business Solutions/);
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(match=>match[1]);
  assert.equal(ids.length,new Set(ids).size,'section destinations must be unique');
  for(const [,anchor] of html.matchAll(/href="#([^"]+)"/g))assert.ok(ids.includes(anchor),`Missing destination: ${anchor}`);
@@ -56,36 +75,26 @@ test('supplied photography remains available with the dedicated mobile hero',()=
  for(const name of ['1mobile',...Array.from({length:9},(_,i)=>String(i+1))])assert.ok(fs.existsSync(`public/images/landing/${name}.webp`));
 });
 
-test('problem stays text-only and the workflow avoids another repeated image showcase',()=>{
+test('the problem highlights three issues and the flagship demo shows the five-step workflow once',()=>{
  const html=renderToStaticMarkup(React.createElement(component));
  const problem=html.match(/<section[^>]*aria-labelledby="problem-heading"[\s\S]*?<\/section>/)?.[0];
- assert.ok(problem);assert.ok(!/<img|<picture|<figure/.test(problem));
- const workflow=html.match(/<section[^>]*id="how-it-works"[\s\S]*?<\/section>/)?.[0];
- assert.ok(workflow);assert.ok(!/<img|<picture|<figure/.test(workflow));
- assert.ok(!html.includes('foundation-panel'));
+ assert.ok(problem);
+ for (const title of ['Knowledge gets lost.','Work gets delayed.','Customers get missed.']) assert.ok(problem.includes(title),title);
+ const workflow=html.match(/<section[^>]*id="workspace"[\s\S]*?<\/section>/)?.[0];
+ assert.ok(workflow);
+ for (const title of ['Business Knowledge','Content Planning','Approvals','Publishing','Reporting']) assert.ok(workflow.includes(title),title);
+ assert.equal((workflow.match(/role="tab"/g)||[]).length,5);
+ assert.ok(html.includes('/images/landing/9.webp'));
 });
 
-test('process is a connected five-step accordion and team photography is restored',()=>{
+test('customer messaging and creative products use Showwork captures and link to their product pages',()=>{
  const html=renderToStaticMarkup(React.createElement(component));
- const workflow=html.match(/<section[^>]*id="how-it-works"[\s\S]*?<\/section>/)?.[0];
- assert.match(workflow,/<ol[^>]*aria-label="The five-stage marketing workflow"/);
- assert.equal((workflow.match(/aria-expanded="true"/g)||[]).length,1);
- assert.equal((workflow.match(/role="region"/g)||[]).length,5);
- for(let i=0;i<5;i++){assert.ok(workflow.includes(`aria-controls="stage-panel-${i}"`));assert.ok(workflow.includes(`id="stage-panel-${i}"`));}
- assert.match(html,/\/images\/landing\/4.webp/);
- assert.match(html,/\/images\/landing\/9.webp/);
- assert.ok(!html.includes('/images/landing/product/'));
-});
-
-test('after-hours enquiry solution leads directly to Engage signup without starting payment',()=>{
- const html=renderToStaticMarkup(React.createElement(component));
- assert.match(html,/Enquiries go unanswered/);
- const section=html.match(/<section[^>]*id="customer-replies"[\s\S]*?<\/section>/)?.[0];
- assert.ok(section);assert.match(section,/Your next customer/);assert.match(section,/Try Customer Messaging free/);assert.match(section,/Book a demo/);
- assert.match(section,/href="\/signup\?next=%2Fdashboard%2Fengage"/);
- assert.match(section,/14,900/);assert.match(section,/1,000 AI replies included/);assert.match(section,/reply windows apply/);
- assert.match(section,/Automatic reply · example/);
- for(const platform of ["whatsapp","instagram","facebook"])assert.ok(section.includes(`/images/integrations/${platform}.svg`));
- assert.match(section,/Connect your channels. One place for your team/);
+ const inbox=html.match(/<section[^>]*id="customer-replies"[\s\S]*?<\/section>/)?.[0];
+ assert.ok(inbox);
+ assert.match(inbox,/href="\/engage"[^>]*>Explore AI Inbox/);
+ assert.match(inbox,/inbox.webp/);
+ assert.match(inbox,/WhatsApp, Instagram and Facebook/);
+ assert.match(inbox,/Automatic replies are opt-in/);
  assert.match(html,/data-scroll-panel="replies"/);
+ for (const asset of ['delivery','portfolio']) assert.ok(html.includes(`/images/landing/product/${asset}.webp`));
 });
