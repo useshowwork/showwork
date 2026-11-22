@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Layers3, ArrowRight, X } from "lucide-react";
+import { calendarUploadBatch } from "@/lib/calendarUploadNoticeClient";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import type { CalendarPostData } from "./CalendarGrid";
 import { mediaDestinationLocked, sameDayMediaDestinations, reusePostMedia } from "@/lib/calendarMediaReuse";
@@ -29,14 +30,16 @@ export default function ReusePostMedia({ calendarId, source, posts, canReplace, 
     setBusy(true); setErrors([]); setMessage("");
     const failures: string[] = [];
     const completed: string[] = [];
+    const batch = calendarUploadBatch(calendarId);
     for (const destination of candidates.filter(post => selected.includes(post.id))) {
       try {
-        await reusePostMedia({ calendarId, source, destination, fileKeys: files, replace, canReplace, request: calendarMutationFetch, onUpdated });
+        await reusePostMedia({ calendarId, source, destination, fileKeys: files, replace, canReplace, request: calendarMutationFetch, onUpdated, batch });
         completed.push(destination.id);
       } catch (error) {
         failures.push(`${destination.platform} · ${new Date(destination.postDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}: ${error instanceof Error ? error.message : "Unable to apply media."}`);
       }
     }
+    void batch.notify();
     setSelected(previous => previous.filter(id => !completed.includes(id)));
     setErrors(failures);
     setMessage(completed.length ? `Media applied to ${completed.length} ${completed.length === 1 ? "post" : "posts"}.` : "");

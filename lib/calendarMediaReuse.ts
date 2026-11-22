@@ -10,11 +10,12 @@ export function sameDayMediaDestinations(source: Post, posts: Post[]) {
   return posts.filter(post => post.id !== source.id && !post.isAiDraft && new Date(post.postDate).toDateString() === new Date(source.postDate).toDateString()).sort((a, b) => new Date(a.postDate).getTime() - new Date(b.postDate).getTime());
 }
 
-export async function reusePostMedia({ calendarId, source, destination, fileKeys, replace, canReplace, request, onUpdated }: {
+export async function reusePostMedia({ calendarId, source, destination, fileKeys, replace, canReplace, request, onUpdated, batch }: {
   calendarId: string; source: Post; destination: Post; fileKeys: string[];
   replace: boolean; canReplace: boolean;
   request: (url: string, init: RequestInit) => Promise<Response>;
   onUpdated: (post: Post) => void;
+  batch?: { id: string; record: (receipt: unknown) => void };
 }) {
   if (mediaDestinationLocked(destination)) throw new Error("This post is locked. Request a revision first.");
   if (source.id === destination.id) throw new Error("Choose another post.");
@@ -25,10 +26,11 @@ export async function reusePostMedia({ calendarId, source, destination, fileKeys
   for (const asset of assets) {
     if (current.assets.some(existing => existing.fileKey === asset.fileKey)) continue;
     const response = await request(`/api/calendars/${calendarId}/posts/${destination.id}/attach-asset`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sourcePostId: source.id, fileKey: asset.fileKey }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sourcePostId: source.id, fileKey: asset.fileKey, ...(batch ? { batchId: batch.id } : {}) }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to reuse this file.");
+    batch?.record(data.uploadNotice);
     current = { ...data.post, assets: data.post.assets ?? [], videoComments: data.post.videoComments ?? [], customFields: data.post.customFields ?? [] };
     onUpdated(current);
   }

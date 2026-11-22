@@ -1,3 +1,5 @@
+import { uploadNoticeBatchId, uploadNoticeReceipt } from "@/lib/calendarUploadNotice";
+import { notifyCalendarWorkflow } from "@/lib/calendarWorkflowEmails";
 import { assertWorkspaceFileAttachable, WorkspaceDeletionConflict } from "@/lib/workspaceStorageCleanup";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { postContentEditError } from "@/lib/publishing/editGuard";
@@ -55,6 +57,8 @@ export async function POST(
   let body: {
     sourcePostId?: unknown;
     fileKey?: unknown;
+    batchId?: unknown;
+    timeZone?: unknown;
   };
 
   try {
@@ -67,6 +71,7 @@ export async function POST(
   }
 
   const { sourcePostId, fileKey } = body;
+  const batchId = uploadNoticeBatchId(body.batchId);
 
   if (
     typeof sourcePostId !== "string" ||
@@ -82,8 +87,9 @@ export async function POST(
     );
   }
 
+  let uploadedVersion: number | undefined;
   try {
-    return await db.$transaction(async tx => {
+    const response = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM "SocialCalendar" WHERE id=${calendarId} FOR UPDATE`;
       await tx.$queryRaw`SELECT id FROM "CalendarPost" WHERE "calendarId"=${calendarId} AND id IN (${postId},${sourcePostId}) ORDER BY id FOR UPDATE`;
       await assertWorkspaceFileAttachable(tx, fileKey);
@@ -283,7 +289,9 @@ export async function POST(
     },
   });
 
+  uploadedVersion = updatedPost.internalReviewVersion;
   return NextResponse.json({
+    uploadNotice: batchId ? uploadNoticeReceipt(calendarId, creator.id, batchId, postId) : undefined,
     post: {
       ...updatedPost,
       assets: updatedPost.assets.map((asset) => ({
@@ -298,6 +306,10 @@ export async function POST(
     },
   });
     }, { maxWait: 15000, timeout: 15000 });
+    if (uploadedVersion !== undefined && !batchId) await notifyCalendarWorkflow({
+      kind: "uploaded", calendarId, key: `${postId}-${uploadedVersion}`, postId, actorId: creator.id, timeZone: body.timeZone,
+    });
+    return response;
   } catch (error) {
     return NextResponse.json({ error: error instanceof WorkspaceDeletionConflict ? error.message : "Unable to attach this file. Please retry." }, { status: error instanceof WorkspaceDeletionConflict ? 409 : 500 });
   }

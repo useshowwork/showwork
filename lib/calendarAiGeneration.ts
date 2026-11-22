@@ -1,3 +1,4 @@
+import { notifyCalendarWorkflow } from "@/lib/calendarWorkflowEmails";
 import { brandPersonalityDocumentId } from "@/lib/knowledge/brandPersonality";
 import { databaseUnavailable } from "@/lib/databaseAvailability";
 import { ContentGenerationError } from "@/lib/content/generationError";
@@ -191,6 +192,11 @@ const posts = await db.$transaction(async tx=>{
   if(snapshots.length)await tx.calendarPostAiGeneration.createMany({data:snapshots});
   return created;
 },{timeout:20000});
+
+await notifyCalendarWorkflow({
+  kind: "generated", calendarId: id, key: jobId ?? posts[0]?.id ?? "",
+  postIds: posts.map(post => post.id), range: [startDate, endDate],
+});
 
 return NextResponse.json({
   created: posts.length,

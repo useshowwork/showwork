@@ -1848,8 +1848,34 @@ export async function sendInternalReviewEmail(input: {to:string;calendarId:strin
   const url = `${APP_URL}/dashboard/calendars/${encodeURIComponent(input.calendarId)}?view=content&post=${encodeURIComponent(input.postId)}`;
   await sendEmail({from:FROM,to:input.to,subject:`${title} · Showwork`,html:emailShell({
     eyebrow:'Your content workflow',headline:title,
-    body:input.action==='approve'?'Your team has approved this content for client review. Client approval is still required before publishing.':'Your team has updated the internal review. Open the post to read the feedback and continue the workflow.',
+    body:input.action==='approve'?'This post is ready for client approval. Open it to see the approved creative and share it for review.' : input.action === 'request_changes' ? 'The team requested edits. Update the post and return it to internal review before sharing it with the client.' : 'There’s an update to the internal review. Open the post to see its status and next steps.',
     detailsHtml:input.note?`<div style="padding:18px;border-radius:12px;background:#EFF6FF;color:#1E3A8A;line-height:1.6"><strong>Private team feedback</strong><p style="white-space:pre-wrap">${escapeHtml(input.note)}</p></div>`:undefined,
     ctaLabel:'Open content & workflow',ctaUrl:url,
   })},`review-${input.postId}-${input.version}-${createHash('sha256').update(input.to).digest('hex').slice(0,24)}`,transport);
+}
+
+export async function sendWorkspaceWorkflowEmail(input: {
+  to: string;
+  calendarId: string;
+  postId?: string;
+  eventKey: string;
+  title: string;
+  message: string;
+  details: Array<[string, string]>;
+}, transport?: NonNullable<ReturnType<typeof nativeApplicationContext>>["notify"]) {
+  const calendarUrl = `${APP_URL}/dashboard/calendars/${encodeURIComponent(input.calendarId)}`;
+  const key = createHash("sha256").update(JSON.stringify([input.calendarId, input.eventKey, input.to])).digest("hex");
+  await sendEmail({
+    from: FROM,
+    to: input.to,
+    subject: `${input.title} · Showwork`,
+    html: emailShell({
+      eyebrow: "Your content workflow",
+      headline: input.title,
+      body: escapeHtml(input.message),
+      detailsHtml: input.details.map(([label, value]) => infoBox(label, value, "#155fc7")).join(""),
+      ctaLabel: input.postId ? "Open post" : "Open content calendar",
+      ctaUrl: input.postId ? `${calendarUrl}?view=content&post=${encodeURIComponent(input.postId)}` : `${calendarUrl}?view=content`,
+    }),
+  }, `workspace-workflow-${key}`, transport);
 }

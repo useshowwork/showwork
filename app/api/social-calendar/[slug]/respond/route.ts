@@ -1,3 +1,4 @@
+import { notifyCalendarWorkflow } from "@/lib/calendarWorkflowEmails";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { canAccessCalendarById } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
@@ -35,21 +36,25 @@ export async function POST(
 
   const { action, note } = await req.json();
 
-  if (action === "approve") {
-    const updated = await db.socialCalendar.update({
-      where: { id: calendar.id },
-      data: { planStatus: "PLAN_APPROVED", planApprovedAt: new Date(), planApprovalNote: null },
-    });
-    return NextResponse.json({ calendar: updated });
+  if (action !== "approve" && action !== "request_changes") {
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
-
-  if (action === "request_changes") {
-    const updated = await db.socialCalendar.update({
-      where: { id: calendar.id },
-      data: { planStatus: "PLAN_NEEDS_CHANGES", planApprovalNote: note?.trim() || null },
-    });
-    return NextResponse.json({ calendar: updated });
-  }
-
-  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  const approved = action === "approve";
+  const reviewedAt = new Date();
+  const reviewNote = !approved && typeof note === "string" ? note.trim() || null : null;
+  const result = await db.socialCalendar.updateMany({
+    where: { id: calendar.id, planStatus: "AWAITING_APPROVAL" },
+    data: {
+      planStatus: approved ? "PLAN_APPROVED" : "PLAN_NEEDS_CHANGES",
+      planApprovalNote: reviewNote,
+      ...(approved ? { planApprovedAt: reviewedAt } : {}),
+    },
+  });
+  if (!result.count) return NextResponse.json({ error: "This plan has already been reviewed" }, { status: 409 });
+  await notifyCalendarWorkflow({
+    kind: approved ? "client-approved" : "client-feedback", calendarId: calendar.id,
+    key: `plan-${reviewedAt.toISOString()}`, note: reviewNote,
+  });
+  const updated = await db.socialCalendar.findUniqueOrThrow({ where: { id: calendar.id } });
+  return NextResponse.json({ calendar: updated });
 }

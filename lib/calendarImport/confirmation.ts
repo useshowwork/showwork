@@ -1,3 +1,4 @@
+import { notifyCalendarWorkflow } from "@/lib/calendarWorkflowEmails";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
@@ -32,7 +33,7 @@ export async function confirmImport(
   const payloadHash = createHash("sha256")
     .update(JSON.stringify(input))
     .digest("hex");
-  return db.$transaction(
+  const result = await db.$transaction(
     async (tx) => {
       await lockCalendar(tx, calendarId);
       const previous = await tx.calendarImport.findUnique({
@@ -141,6 +142,13 @@ export async function confirmImport(
     },
     { maxWait: 10000, timeout: 30000 },
   );
+  if (result && typeof result === "object" && "postIds" in result && Array.isArray(result.postIds)) {
+    const postIds = (result.postIds as unknown[]).filter((id): id is string => typeof id === "string");
+    await notifyCalendarWorkflow({
+      kind: "imported", calendarId, key: input.requestId, postIds, timeZone: input.options.timezone,
+    });
+  }
+  return result;
 }
 
 function importCustomFields(row: ImportRow) {

@@ -1,3 +1,5 @@
+import { uploadNoticeBatchId, uploadNoticeReceipt } from "@/lib/calendarUploadNotice";
+import { notifyCalendarWorkflow } from "@/lib/calendarWorkflowEmails";
 import { measureUploadStage, timeWorkspaceUpload } from "@/lib/workspaceUploadTiming";
 import { lockWorkspaceUploadReservation } from "@/lib/workspaceUploadLocks";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
@@ -74,6 +76,8 @@ async function handleUpload(
     mediaType?: unknown;
     fileSize?: unknown;
     reservationId?: unknown;
+    batchId?: unknown;
+    timeZone?: unknown;
   };
 
   try {
@@ -86,6 +90,8 @@ async function handleUpload(
   }
 
   const { fileKey, mediaType, fileSize, reservationId } = body;
+  const batchId = uploadNoticeBatchId(body.batchId);
+  const notice = () => batchId ? uploadNoticeReceipt(id, creator.id, batchId, postId) : undefined;
   if (
   typeof mediaType !== "string" ||
   !Object.values(MediaType).includes(mediaType as MediaType)
@@ -245,6 +251,7 @@ const validatedMediaType = mediaType as MediaType;
 
 return NextResponse.json({
   post: serializedPost,
+  uploadNotice: notice(),
 });
   }
 
@@ -408,6 +415,7 @@ return NextResponse.json({
    * create the asset without accounting for its storage.
    */
   try {
+    let attached = false;
     const updated = await measureUploadStage("save", () => db.$transaction(
   async (tx) => {
       /*
@@ -541,6 +549,7 @@ return NextResponse.json({
        * A fresh upload means the post needs a fresh client review,
        * even if it was previously approved.
        */
+      attached = true;
       return tx.calendarPost.update({
         where: { id: postId },
         data: {
@@ -565,6 +574,9 @@ return NextResponse.json({
     }
   ));
 
+    if (attached && !batchId) await notifyCalendarWorkflow({
+      kind: "uploaded", calendarId: id, key: reservation.id, postId, actorId: creator.id, timeZone: body.timeZone,
+    });
     const serializedPost = {
   ...updated,
   assets: updated.assets.map((asset) => ({
@@ -577,6 +589,7 @@ return NextResponse.json({
 
 return NextResponse.json({
   post: serializedPost,
+  uploadNotice: notice(),
 });
   } catch (error) {
     if (error instanceof Error && ["UPLOAD_RESERVATION_EXPIRED_OR_CHANGED", "UPLOAD_POST_LOCKED", "UPLOAD_FILE_ALREADY_ATTACHED"].includes(error.message)) {

@@ -1,3 +1,5 @@
+import { uploadNoticeBatchId, uploadNoticeReceipt, verifiedUploadNoticePosts } from "../calendarUploadNotice";
+import type { WorkflowEmailEvent } from "../calendarWorkflowEmails";
 import type { ReviewNotice } from "../calendarReviewNotifications";
 import { withoutInternalReview } from '../calendarInternalReview';
 /** Local-only route composition. Every unported path fails closed; no legacy fallback. */
@@ -14,6 +16,7 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
  resolveCalendar(request:Request,params:Record<string,string>):Promise<string>;
  confirmCreatorDeletion?:(actor:string,password:unknown)=>Promise<{passwordHash:string}|null>;
  publicUrlFor?:(key:string)=>string;
+ notifyCalendarWorkflow?:(event:WorkflowEmailEvent)=>Promise<void>;
  notifyInternalReview?:(event:ReviewNotice)=>Promise<{sent:number;failed:number}>;
  nativePolicyHandlers?:Record<string,(...args:any[])=>Promise<unknown>>;
  serverOperationId?:()=>Promise<string>;
@@ -30,7 +33,14 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    });
    return runNativePublishingPolicy(entrypoint,()=>native(...args));
   }
-  if(path==='lib/calendarImport/confirmation.ts'){const actor=await deps.authenticateCreator(new Request('http://localhost/internal-import'));if(!actor||actor.id!==args[1])throw Error('Unauthorized import actor');return deps.actions.importPosts(String(args[0]),actor.id,args[2]);}
+  if(path==='lib/calendarImport/confirmation.ts'){
+   const actor=await deps.authenticateCreator(new Request('http://localhost/internal-import'));
+   if(!actor||actor.id!==args[1])throw Error('Unauthorized import actor');
+   const calendarId=String(args[0]), input=args[2] as {requestId:string;options?:{timezone?:string}};
+   const result=await deps.actions.importPosts(calendarId,actor.id,input);
+   await deps.notifyCalendarWorkflow?.({kind:'imported',calendarId,key:input.requestId,postIds:result.postIds,timeZone:input.options?.timezone});
+   return result;
+  }
   if(path==='lib/calendarTeamService.ts'&&/\#(editTeammate|removeTeammate)@/.test(entrypoint)){
    const actor=await deps.authenticateCreator(new Request('http://localhost/internal-team'));if(!actor||actor.id!==(args[2] as {id:string})?.id)throw Error('Unauthorized team actor');const operationId=await deps.serverOperationId?.();if(!operationId)throw Error('Stable operation ID required');
    return deps.actions.membershipById({operationId,actor:actor.id,calendarId:String(args[0]),collaboratorId:String(args[1]),assignment:args[3]??{},remove:entrypoint.includes('#removeTeammate@')});
@@ -62,18 +72,38 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
     await deps.actions.eraseCreator({operationId,actor:actor.id,confirmedPasswordHash:proof.passwordHash});return Response.json({ok:true},{headers:{'Set-Cookie':'spotlite_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'}});
    }
    const calendarId=await deps.resolveCalendar(request,params);
-   if(path.endsWith('/social-calendar/[slug]/respond/route.ts'))return Response.json(await deps.actions.plan({operationId,calendarId,credential:await deps.viewerCredential(request),action:body.action,note:body.note}));
+   if(path.endsWith('/social-calendar/[slug]/respond/route.ts')){
+    const result=await deps.actions.plan({operationId,calendarId,credential:await deps.viewerCredential(request),action:body.action,note:body.note});
+    await deps.notifyCalendarWorkflow?.({kind:body.action==='approve'?'client-approved':'client-feedback',calendarId,key:operationId,note:result.calendar.planApprovalNote});
+    return Response.json(result);
+   }
    if(path.includes('social-calendar/')&&path.includes('/review/')){
-    if(!['approve','request_revision'].includes(body.action))throw Error('INVALID_REVIEW_ACTION');await deps.actions.review({operationId,calendarId,postId:params.postId,credential:await deps.viewerCredential(request),approved:body.action==='approve',note:body.note});return Response.json({post:withoutInternalReview(await view(calendarId,params.postId))});
+    if(!['approve','request_revision'].includes(body.action))throw Error('INVALID_REVIEW_ACTION');
+    const approved=body.action==='approve';
+    await deps.actions.review({operationId,calendarId,postId:params.postId,credential:await deps.viewerCredential(request),approved,note:body.note});
+    const post=await view(calendarId,params.postId);
+    await deps.notifyCalendarWorkflow?.({kind:approved?'client-approved':'client-feedback',calendarId,key:operationId,postId:params.postId,note:approved?null:body.note});
+    return Response.json({post:withoutInternalReview(post)});
    }
    const actor=await deps.authenticateCreator(request);if(!actor)return Response.json({error:'Unauthorized'},{status:401});
+   if(path.endsWith('/uploads/notify/route.ts')){
+    const batchId=uploadNoticeBatchId(body.batchId);
+    const uploadPostIds=batchId&&verifiedUploadNoticePosts(calendarId,actor.id,batchId,body.receipts);
+    if(!uploadPostIds)return Response.json({error:'Invalid upload receipts.'},{status:400});
+    await deps.notifyCalendarWorkflow?.({kind:'uploaded',calendarId,key:`${actor.id}-${batchId}`,actorId:actor.id,uploadPostIds,timeZone:body.timeZone});
+    return Response.json({ok:true});
+   }
    if(path.endsWith('/tiktok/creator-info/route.ts'))return Response.json(await deps.actions.creatorMetadata(actor.id,calendarId),{headers:{'Cache-Control':'no-store'}});
    const postId=params.postId??body.postId;
    if(path.endsWith('/posts/route.ts')&&request.method==='GET'){
     const allowed=['id','updatedAt','creativeBrief','creativeDevelopment','postDate','platform','postType','category','hook','script','caption','contentIdea','cta','hashtags','taggedAccounts','linkUrl','internalReviewStatus','internalReviewNote','internalReviewVersion','internalReviewedAt','approvalStatus','approvalNote','publishStatus','publishError','publishPermalink','instagramPublishStatus','instagramPermalink','instagramPublishError','tikTokPublishStatus','tikTokPrivacyLevel','tikTokSettings','tikTokConsentAt','tikTokInitStartedAt','tikTokPublishId','tikTokPublishError'];
     const rows=await deps.actions.listPosts(actor.id,calendarId);return Response.json({posts:rows.map(p=>({...Object.fromEntries(allowed.map(k=>[k,(p as Record<string,any>)[k]])),assets:p.assets.map(a=>({id:a.id,fileKey:a.fileKey,mediaType:a.mediaType,contentUrl:deps.publicUrlFor?.(a.fileKey)})),videoComments:p.videoComments,customFields:p.customFields,publishing:p.publishing}))},{headers:{'Cache-Control':'no-store'}});
    }
-   if(path.endsWith('/imports/confirm/route.ts'))return Response.json(await deps.actions.importPosts(calendarId,actor.id,body),{headers:{'Cache-Control':'no-store'}});
+   if(path.endsWith('/imports/confirm/route.ts')){
+    const result=await deps.actions.importPosts(calendarId,actor.id,body);
+    await deps.notifyCalendarWorkflow?.({kind:'imported',calendarId,key:body.requestId,postIds:result.postIds,timeZone:body.options?.timezone});
+    return Response.json(result,{headers:{'Cache-Control':'no-store'}});
+   }
    if(path.endsWith('/calendars/[id]/route.ts')&&request.method==='PATCH'&&body.action==='publish')return Response.json(await deps.actions.plan({operationId,actor:actor.id,calendarId,action:body.action}));
    if(path.endsWith('/calendars/[id]/route.ts')&&request.method==='PATCH'&&['update_details','set_password','regenerate_password'].includes(body.action))return Response.json(await deps.actions.workspaceDetails({operationId,actor:actor.id,calendarId,action:body.action,clientName:body.clientName,password:body.password}));
    if(path.endsWith('/calendars/[id]/reset/route.ts'))return Response.json(await deps.actions.resetCalendar({operationId,actor:actor.id,calendarId,confirmation:body.confirmation}));
@@ -100,7 +130,11 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
     const posts=await Promise.all(result.posts.map(p=>view(calendarId,p.postId)));return Response.json({post:posts[0],posts});
    }
    if(path.endsWith('/posts/[postId]/resubmit/route.ts')){await deps.actions.resubmit({operationId,actor:actor.id,calendarId,postId});return Response.json({post:await view(calendarId,postId)});}
-   if(path.includes('/ai-generate/'))return Response.json(await deps.actions.generate({operationId,actor:actor.id,calendarId,body}));
+   if(path.includes('/ai-generate/')){
+    const result=await deps.actions.generate({operationId,actor:actor.id,calendarId,body});
+    if(path.endsWith('/ai-generate/route.ts'))await deps.notifyCalendarWorkflow?.({kind:'generated',calendarId,key:operationId,postIds:result.posts.map((post:{id:string})=>post.id),range:[body.startDate,body.endDate]});
+    return Response.json(result);
+   }
    if(path.includes('/ai-drafts/')){
     if(request.method==='DELETE')return Response.json(await deps.actions.deletePlanningPosts({operationId,actor:actor.id,calendarId,postId,draftOnly:true}));
     if(request.method==='POST'&&path.endsWith('/restore/route.ts')){await deps.actions.restoreDraft({operationId,actor:actor.id,calendarId,postId,generationId:body.generationId});return Response.json({post:await view(calendarId,postId)});}
@@ -114,7 +148,11 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    }
    if(path.includes('/posts/[postId]/')&&(/upload-complete|attach-asset|assets\/\[assetId\]/.test(path))){
     const result=await deps.actions.media({operationId,actor:actor.id,calendarId,postId,assetId:params.assetId??body.assetId??policyHash({operationId,postId}).slice(0,40),remove:request.method==='DELETE',upload:body},deps.verifyUpload);
-    if(request.method==='DELETE')return Response.json({ok:true});const p=await view(calendarId,postId);return Response.json({asset:p.assets.find(a=>a.id===result.assetId),post:p});
+    if(request.method==='DELETE')return Response.json({ok:true});
+    const batchId=uploadNoticeBatchId(body.batchId);
+    if(!batchId)await deps.notifyCalendarWorkflow?.({kind:'uploaded',calendarId,key:operationId,postId,actorId:actor.id,timeZone:body.timeZone});
+    const p=await view(calendarId,postId);
+    return Response.json({asset:p.assets.find(a=>a.id===result.assetId),post:p,uploadNotice:batchId?uploadNoticeReceipt(calendarId,actor.id,batchId,postId):undefined});
    }
    if(path.endsWith('/disconnect/route.ts')){
     const channel=params.channel??(path.includes('/instagram/')?'instagram':path.includes('/tiktok/')?'tiktok':'');

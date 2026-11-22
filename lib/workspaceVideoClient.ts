@@ -242,6 +242,7 @@ export async function uploadWorkspaceAsset<
   file: File,
   task: UploadTaskContext,
   onLoaded: (bytes: number) => void,
+  batch?: { id: string; record: (receipt: unknown) => void },
 ): Promise<T> {
   const { resumableWorkspaceVideo } =
     await import("@/lib/workspaceVideoConfig");
@@ -287,11 +288,14 @@ export async function uploadWorkspaceAsset<
     if (finish) await finish();
     const data = await api(`${base}/upload-complete`, {
       ...receipt,
+      ...(batch ? { batchId: batch.id } : {}),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       fileSize: file.size,
       mediaType: getFileContentType(file).startsWith("video/")
         ? "VIDEO"
         : "PHOTO",
     });
+    batch?.record(data.uploadNotice);
     const post = data.post as T;
     forget?.();
     const asset = post.assets?.find((a) => a.fileKey === receipt.fileKey);

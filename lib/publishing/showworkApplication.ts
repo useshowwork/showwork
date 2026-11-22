@@ -1,3 +1,4 @@
+import { notifyCalendarWorkflow } from "../calendarWorkflowEmails";
 import { recentContentMemory } from "@/lib/content/creativeGeneration";
 import { notifyInternalReview } from "../calendarReviewNotifications";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
@@ -68,6 +69,7 @@ export function createShowworkPublishingApplication(input:{
   nativePolicyHandlers![entrypoint]=(...args:any[])=>withNativeApplicationContext({database:readOnlyApplicationDatabase(input.nativePolicy!.prisma),billingFetch:async(request,init)=>{const url=new URL(typeof request==='string'?request:request instanceof Request?request.url:String(request));if(url.hostname!=='api.paystack.co'||url.protocol!=='https:'||(init?.method??'GET')!=='GET')throw Error('READ_ONLY_BILLING_HTTP_REQUIRED');return input.nativePolicy!.billingFetch(request,{...init,redirect:'error',signal:AbortSignal.timeout(15000)});}},()=>handler(...args));
  }
  const application=createDisabledCanonicalApplication({
+  notifyCalendarWorkflow:input.nativePolicy?.notify ? event=>notifyCalendarWorkflow(event,(sql,args)=>input.database.transaction(tx=>tx.query(sql,args)),input.nativePolicy!.notify) : undefined,
   notifyInternalReview:input.nativePolicy?.notify ? event=>notifyInternalReview(event,(sql,args)=>input.database.transaction(tx=>tx.query(sql,args)),input.nativePolicy!.notify) : undefined,
   database:input.database,worker:input.worker,actions,resolveCalendar,publicUrlFor,nativePolicyHandlers,serverOperationId:async()=>{const id=(await headers()).get('idempotency-key');if(!id)throw Error('Stable operation ID required');return id;},
   authenticateCreator:async()=>{const creator=await currentCreator();return creator?{id:creator.id}:null;},

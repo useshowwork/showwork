@@ -25,6 +25,7 @@ export async function POST(
     where: { slug },
     include: {
       collaborators: {
+        where: { creator: { isDeactivated: false } },
         include: {
           creator: {
             select: {
@@ -36,6 +37,7 @@ export async function POST(
       manager: {
         select: {
           email: true,
+          isDeactivated: true,
         },
       },
     },
@@ -155,29 +157,21 @@ export async function POST(
   // accepted collaborator — gets the same notification, regardless of
   // who actually did the upload being reviewed.
   const recipients = [
-    calendar.manager.email,
+    ...(!calendar.manager.isDeactivated ? [calendar.manager.email] : []),
     ...calendar.collaborators.map(
       (c) => c.creator.email
     ),
   ];
 
-  const calendarUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/calendars/${calendar.id}`;
+  const calendarUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://useshowwork.com"}/dashboard/calendars/${encodeURIComponent(calendar.id)}?view=content&post=${encodeURIComponent(postId)}`;
 
-  for (const email of [...new Set(recipients)]) {
-    try {
-      await sendCalendarPostReviewedEmail({
-        to: email,
-        clientName: calendar.clientName,
-        approved,
-        note: updated.approvalNote,
-        calendarUrl,
-      });
-    } catch (err) {
-      console.error(
-        `Failed to send post-reviewed email to ${email}:`,
-        err
-      );
-    }
+  if (post.approvalStatus !== (approved ? "APPROVED" : "NEEDS_REVISION") || post.approvalNote !== revisionNote) {
+    const addresses = [...new Set(recipients.map(address => address.trim().toLowerCase()).filter(Boolean))];
+    const results = await Promise.allSettled(addresses.map(to => sendCalendarPostReviewedEmail({
+      to, clientName: calendar.clientName, approved, note: revisionNote, calendarUrl,
+    })));
+    const failed = results.filter(result => result.status === "rejected").length;
+    if (failed) console.warn("[Client review email] Delivery incomplete", { failed });
   }
 
   // Prisma returns BigInt for sizeBytes, and JSON.stringify()

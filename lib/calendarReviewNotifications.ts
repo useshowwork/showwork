@@ -18,12 +18,13 @@ export async function notifyInternalReview(
     FROM "SocialCalendar" w JOIN "Creator" c ON c.id=w."managerId" WHERE w.id=$1 AND c."isDeactivated"=false
     UNION ALL SELECT c.email, false AS owner, m.role::text, m.permissions, m."customPermissions"
     FROM "CalendarCollaborator" m JOIN "Creator" c ON c.id=m."creatorId" WHERE m."calendarId"=$1 AND c."isDeactivated"=false`,[event.calendarId])).rows;
-  const recipients=workflowRecipients(rows);
+  const recipients = [...new Set(rows.map(row => String(row.email ?? "").trim().toLowerCase()).filter(Boolean))];
+  const feedbackRecipients = new Set(workflowRecipients(rows));
   const { sendInternalReviewEmail } = await import("@/lib/resend");
   const results=await Promise.allSettled(recipients.map(async to=>{
    // The same review version and recipient use the same provider idempotency key.
    for(let attempt=0;attempt<3;attempt++) {
-    try {await sendInternalReviewEmail({...event,to},transport);return;}
+    try {await sendInternalReviewEmail({...event,to,note:feedbackRecipients.has(to) ? event.note : null},transport);return;}
     catch(error) {if(attempt===2)throw error;await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));}
    }
   }));

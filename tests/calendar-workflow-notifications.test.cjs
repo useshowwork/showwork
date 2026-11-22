@@ -54,3 +54,114 @@ test('legacy API requires explicit internal review access for feedback and appro
   if(expected===200){const body=await result.json();assert.equal(body.post.internalReviewStatus,action==='approve'?'APPROVED':'PENDING');assert.equal(body.notifications.sent,3);if(action==='feedback'){assert.equal(body.post.internalReviewedBy,'original-reviewer');assert.equal(body.post.internalReviewedAt,'2026-10-24T00:00:00Z');}}
  }
 });
+
+test('calendar and upload notices reach the whole team with timeline, count, creative readiness and uploader', async () => {
+ const sent=[];
+ const {notifyCalendarWorkflow}=load('lib/calendarWorkflowEmails.ts', {
+  '@/lib/resend':{sendWorkspaceWorkflowEmail:async message=>{sent.push(message);}},
+ });
+ const query=async(sql,args)=>{
+  if(sql.includes('CalendarCollaborator')){
+   assert.deepEqual(args,['workspace']);
+   assert.match(sql,/NOT c\."isDeactivated"/);
+   return {rows:['Owner@example.test','creative@example.test','owner@example.test'].map(email=>({email,clientName:'Test brand'}))};
+  }
+  if(sql.includes('SELECT id, platform')){
+   assert.deepEqual(args,['workspace',['post']]);
+   return {rows:[{id:'post',platform:'FACEBOOK',postDate:'2025-11-03T12:00:00Z'}]};
+  }
+  if(sql.includes('CalendarPost')){
+   assert.deepEqual(args,['workspace',['a','b'],'Africa/Lagos']);
+   return {rows:[{start:'2026-11-01',end:'2026-11-30',briefed:2}]};
+  }
+  assert.deepEqual(args,['creator']);
+  return {rows:[{name:'Tomi',email:'creative@example.test'}]};
+ };
+ const event={kind:'imported',calendarId:'workspace',key:'import-1',postIds:['a','b'],timeZone:'Africa/Lagos'};
+ await notifyCalendarWorkflow(event,query);
+ assert.deepEqual(sent.map(email=>email.to),['owner@example.test','creative@example.test']);
+ assert.deepEqual(sent[0].details.map(([label,value])=>[label,value.replace(/\s*–\s*/g,'–')]),[['Workspace','Test brand'],['Calendar timeline','1–30 November 2026'],['Content planned','2 posts']]);
+ assert.match(sent[0].message,/begin work/);
+ sent.length=0;
+ await notifyCalendarWorkflow({...event,postIds:[]},()=>assert.fail('Empty imports should not send email'));
+ assert.equal(sent.length,0);
+ await notifyCalendarWorkflow({kind:'uploaded',calendarId:'workspace',key:'batch-1',postId:'post',actorId:'creator'},query);
+ assert.equal(sent.length,2);
+ assert.deepEqual(sent[0].details.at(-1),['Uploaded by','Tomi (creative@example.test)']);
+ assert.deepEqual(sent[0].details[1],['Facebook','Monday, November 3, 2025']);
+ assert.equal(sent[0].postId,'post');
+ assert.match(sent[0].title,/ready for internal review/);
+});
+
+test('one upload batch email lists each successful post with its platform and scheduled local date', async () => {
+ const sent=[];
+ const {notifyCalendarWorkflow}=load('lib/calendarWorkflowEmails.ts', {
+  '@/lib/resend':{sendWorkspaceWorkflowEmail:async message=>{sent.push(message);}},
+ });
+ const read=async(sql,args)=>{
+  if(sql.includes('CalendarCollaborator'))return {rows:[{email:'owner@example.test',clientName:'Brand'}]};
+  if(sql.includes('SELECT id, platform')) {
+   assert.deepEqual(args,['workspace',['facebook','instagram','tiktok']]);
+   return {rows:[
+    {id:'facebook',platform:'FACEBOOK',postDate:'2025-11-02T23:30:00Z'},
+    {id:'instagram',platform:'INSTAGRAM',postDate:'2025-11-03T09:00:00Z'},
+    {id:'tiktok',platform:'TIKTOK',postDate:'2025-11-05T09:00:00Z'},
+   ]};
+  }
+  return {rows:[{name:'Tomi',email:'tomi@example.test'}]};
+ };
+ await notifyCalendarWorkflow({
+  kind:'uploaded',calendarId:'workspace',key:'batch',actorId:'creator',
+  uploadPostIds:['facebook','instagram','tiktok'],timeZone:'Africa/Lagos',
+ },read);
+ assert.equal(sent.length,1);
+ assert.equal(sent[0].postId,undefined);
+ assert.deepEqual(sent[0].details.slice(1),[
+  ['Facebook','Monday, November 3, 2025'],
+  ['Instagram','Monday, November 3, 2025'],
+  ['TikTok','Wednesday, November 5, 2025'],
+  ['Uploaded by','Tomi (tomi@example.test)'],
+ ]);
+});
+
+test('upload receipts scope the completed posts to the uploader, workspace and batch', () => {
+ const {uploadNoticeReceipt,verifiedUploadNoticePosts}=load('lib/calendarUploadNotice.ts');
+ const previous=process.env.JWT_SECRET;
+ process.env.JWT_SECRET='upload-notice-test';
+ try {
+  const receipt=uploadNoticeReceipt('workspace','uploader','batch','post');
+  assert.deepEqual(verifiedUploadNoticePosts('workspace','uploader','batch',[receipt,receipt]),['post']);
+  assert.equal(verifiedUploadNoticePosts('workspace','other','batch',[receipt]),null);
+  assert.equal(verifiedUploadNoticePosts('other','uploader','batch',[receipt]),null);
+  assert.equal(verifiedUploadNoticePosts('workspace','uploader','another-batch',[receipt]),null);
+  assert.equal(verifiedUploadNoticePosts('workspace','uploader','batch',[{...receipt,postId:'other-post'}]),null);
+ } finally {
+  if(previous===undefined)delete process.env.JWT_SECRET;
+  else process.env.JWT_SECRET=previous;
+ }
+});
+
+test('batch submission waits for recorded posts and makes a single notification request', async () => {
+ const calls=[];
+ const {calendarUploadBatch}=load('lib/calendarUploadNoticeClient.ts', {
+  '@/lib/publishing/clientRequests':{calendarMutationFetch:async (url,init)=>{
+   calls.push({url,body:JSON.parse(init.body)});
+   return {ok:true};
+  }},
+ });
+ const batch=calendarUploadBatch('workspace');
+ await batch.notify();
+ assert.equal(calls.length,0);
+ batch.record({postId:'facebook',proof:'first file'});
+ batch.record({postId:'facebook',proof:'second file'});
+ batch.record({postId:'instagram',proof:'attached'});
+ batch.record(undefined);
+ await batch.notify();
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].url,'/api/calendars/workspace/uploads/notify');
+ assert.equal(calls[0].body.batchId,batch.id);
+ assert.deepEqual(calls[0].body.receipts,[
+  {postId:'facebook',proof:'second file'},
+  {postId:'instagram',proof:'attached'},
+ ]);
+});

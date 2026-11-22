@@ -12,8 +12,9 @@ import BulkApprovalBubble from "./BulkApprovalBubble";
 import ReusePostMedia from "./ReusePostMedia";
 import reviewStyles from "./PostReviewFlow.module.css";
 import type { CreativeBrief, CreativeDevelopment } from "@/lib/content/brief";
-import { Upload, FilePenLine, ShieldCheck, Users, MessageSquare, Send, X, Plus, CalendarDays, Layers3, Sparkles, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Upload, FilePenLine, ShieldCheck, Users, MessageSquare, Send, X, Plus, CalendarDays, Layers3, Sparkles, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { calendarWorkflow, matchesCalendarStage, type CalendarStageFilter } from "@/lib/calendarWorkflow";
+import { calendarUploadBatch } from "@/lib/calendarUploadNoticeClient";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 import { mergeSavedCalendarPosts } from "@/lib/calendarPostCollection";
 import type { TeamPermission } from "@/lib/calendarTeamPolicy";
@@ -737,7 +738,8 @@ function AddPostPanel({
   // uploaded across ALL files, so larger files contribute more
   // to the overall percentage than smaller files.
   const uploadFilesToPost = async (
-    postId: string
+    postId: string,
+    batch: ReturnType<typeof calendarUploadBatch>,
   ): Promise<CalendarPostData | null> => {
     const files = pendingFilesRef.current;
 
@@ -783,7 +785,7 @@ function AddPostPanel({
       return uploadWorkspaceAsset<CalendarPostData>(calendarId, postId, file, task, loaded => {
         uploadedBytesByFile[index] = loaded;
         updateOverallProgress();
-      });
+      }, batch);
     });
 
     setUploadingStage(
@@ -828,7 +830,8 @@ function AddPostPanel({
   const attachAssetToPost = async (
     sourcePostId: string,
     destinationPostId: string,
-    fileKey: string
+    fileKey: string,
+    batch: ReturnType<typeof calendarUploadBatch>,
   ): Promise<CalendarPostData> => {
     const response = await calendarMutationFetch(
       `/api/calendars/${calendarId}/posts/${destinationPostId}/attach-asset`,
@@ -840,6 +843,7 @@ function AddPostPanel({
         body: JSON.stringify({
           sourcePostId,
           fileKey,
+          batchId: batch.id,
         }),
       }
     );
@@ -853,6 +857,7 @@ function AddPostPanel({
       );
     }
 
+    batch.record(data.uploadNotice);
     return {
       ...data.post,
       assets: data.post.assets ?? [],
@@ -872,6 +877,7 @@ function AddPostPanel({
     setError(null);
     setUploadingStage(null);
 
+    const batch = calendarUploadBatch(calendarId);
     const finalCategory = addingCustomCategory
       ? customCategory.trim()
       : category;
@@ -947,7 +953,7 @@ function AddPostPanel({
         }
 
         const updatedSourcePost =
-          await uploadFilesToPost(sourcePost.id);
+          await uploadFilesToPost(sourcePost.id, batch);
 
         if (updatedSourcePost) {
           createdPosts[0] = {
@@ -998,7 +1004,8 @@ function AddPostPanel({
                 await attachAssetToPost(
                   sourcePost.id,
                   destinationPost.id,
-                  sourceAsset.fileKey
+                  sourceAsset.fileKey,
+                  batch,
                 );
             }
 
@@ -1023,6 +1030,7 @@ function AddPostPanel({
           : "Something went wrong"
       );
     } finally {
+      void batch.notify();
       setSaving(false);
       setUploadingStage(null);
     }
@@ -2971,7 +2979,7 @@ caption: draftDetails.caption,
     post.assets[0] ??
     null;
 
-  const uploadOne = async (file: File) => workspaceUploadQueue.enqueue(calendarId, file, async (task) => {
+  const uploadOne = async (file: File, batch: ReturnType<typeof calendarUploadBatch>) => workspaceUploadQueue.enqueue(calendarId, file, async (task) => {
     if (!canUpload) throw new Error("You do not have permission to upload creative assets.");
     setUploadPercent(0);
     if (isApproved) {
@@ -2980,7 +2988,7 @@ caption: draftDetails.caption,
       );
     }
 
-    const updated = await uploadWorkspaceAsset<CalendarPostData>(calendarId, post.id, file, task, loaded => setUploadPercent(loaded / file.size * 100));
+    const updated = await uploadWorkspaceAsset<CalendarPostData>(calendarId, post.id, file, task, loaded => setUploadPercent(loaded / file.size * 100), batch);
     onUpdated({ ...updated, assets: updated.assets ?? [], videoComments: updated.videoComments ?? [], customFields: updated.customFields ?? [] });
     return updated;
   });
@@ -2992,8 +3000,9 @@ caption: draftDetails.caption,
     setUploadPercent(0);
     setError(null);
 
+    const batch = calendarUploadBatch(calendarId);
     try {
-      const outcomes = await Promise.allSettled(Array.from(files).map(file => uploadOne(file)));
+      const outcomes = await Promise.allSettled(Array.from(files).map(file => uploadOne(file, batch)));
       const failures = outcomes.filter(result => result.status === "rejected");
       if (failures.length) throw new Error(`${failures.length} upload(s) cancelled. Successfully saved files are kept.`);
 
@@ -3005,6 +3014,7 @@ caption: draftDetails.caption,
           : "Upload failed"
       );
     } finally {
+      void batch.notify();
       setUploading(false);
     }
   };
@@ -5272,7 +5282,7 @@ export default function CalendarGrid({
       new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime(),
     ) ?? [];
 
-  const goToMonth = (delta: number) => {
+  const goToPeriod = (delta: number) => {
     setCurrentMonth(previous => moveCalendarPeriod(previous, calendarPeriod, delta));
   };
   const weekDates = calendarWeek(currentMonth);
@@ -5309,21 +5319,23 @@ export default function CalendarGrid({
 
       <div className={contentStyles.compactHeader}>
         <div className={contentStyles.calendarHeading}>
-          <p
-            className="
-              mb-0.5
-              text-[8px]
-              font-bold
-              uppercase
-              tracking-[0.14em]
-              sm:text-[9px]
-            "
-            style={{
-              color: t.textFaint,
-            }}
-          >
-            Content calendar
-          </p>
+          {viewMode !== "calendar" && (
+            <p
+              className="
+                mb-0.5
+                text-[8px]
+                font-bold
+                uppercase
+                tracking-[0.14em]
+                sm:text-[9px]
+              "
+              style={{
+                color: t.textFaint,
+              }}
+            >
+              Content calendar
+            </p>
+          )}
 
           <h2
             className="
@@ -5339,7 +5351,7 @@ export default function CalendarGrid({
             }}
           >
             {viewMode === "calendar"
-              ? <><span className={contentStyles.fullMonth}>{periodLabel}</span><span className={contentStyles.shortMonth}>{calendarPeriod === "week" ? `${weekDates[0].toLocaleDateString("en-US",{month:"short",day:"numeric"})}–${weekDates[6].toLocaleDateString("en-US",{month:"short",day:"numeric"})}` : currentMonth.toLocaleDateString("en-US",{month:"short",...(calendarPeriod === "day" ? {day:"numeric" as const} : {year:"numeric" as const})})}</span></>
+              ? "Content calendar"
               : viewMode === "instagram"
                 ? "Instagram Preview"
                 : viewMode === "tiktok" ? "TikTok Preview"
@@ -5364,51 +5376,6 @@ export default function CalendarGrid({
           }} />}
           <div className={contentStyles.appearanceOption}><span>Appearance<small>{theme === "dark" ? "Dark mode" : "Light mode"}</small></span><ThemeToggle theme={theme} onToggle={toggleTheme}/></div>
           <button type="button" className={contentStyles.optionsDone} onClick={() => setToolbarOptionsOpen(false)}>Done</button></div></CalendarFilterPanel></div>
-          {viewMode === "calendar" && (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  goToMonth(-1)
-                }
-                aria-label={`Previous ${calendarPeriod}`}
-                className="
-                  flex h-9 w-9
-                  items-center
-                  justify-center
-                  rounded-full
-                  transition-all
-                  active:scale-95
-                  sm:h-10 sm:w-10
-                "
-                style={{
-                  background: t.pillBg,
-                  color: t.textMuted,
-                }}
-              ><UiSymbol name="left" /></button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  goToMonth(1)
-                }
-                aria-label={`Next ${calendarPeriod}`}
-                className="
-                  flex h-9 w-9
-                  items-center
-                  justify-center
-                  rounded-full
-                  transition-all
-                  active:scale-95
-                  sm:h-10 sm:w-10
-                "
-                style={{
-                  background: t.pillBg,
-                  color: t.textMuted,
-                }}
-              ><UiSymbol name="right" /></button>
-            </>
-          )}
         </div>
       </div>
 
@@ -5854,9 +5821,20 @@ export default function CalendarGrid({
           DESKTOP / TABLET CALENDAR
           ===================================================== */}
 
-          <label className={contentStyles.mobilePeriodSelect}><span className="sr-only">Calendar view</span><select value={calendarPeriod} onChange={event => changeCalendarPeriod(event.target.value as "day" | "week" | "month")}><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select></label>
-          <div className={contentStyles.periodSelector} role="group" aria-label="Calendar view">
-            {(["day", "week", "month"] as const).map(period => <button key={period} type="button" aria-pressed={calendarPeriod === period} onClick={() => changeCalendarPeriod(period)}>{period === "day" ? "Day" : period === "week" ? "Week" : "Month"}</button>)}
+          <div className={contentStyles.periodToolbar}>
+            <label className={contentStyles.mobilePeriodSelect}><span className="sr-only">Calendar view</span><select value={calendarPeriod} onChange={event => changeCalendarPeriod(event.target.value as "day" | "week" | "month")}><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select></label>
+            <div className={contentStyles.periodSelector} role="group" aria-label="Calendar view">
+              {(["day", "week", "month"] as const).map(period => <button key={period} type="button" aria-pressed={calendarPeriod === period} onClick={() => changeCalendarPeriod(period)}>{period === "day" ? "Day" : period === "week" ? "Week" : "Month"}</button>)}
+            </div>
+            <div className={contentStyles.periodNavigation} role="group" aria-label="Calendar date navigation">
+              <button type="button" aria-label={`Previous ${calendarPeriod}`} onClick={() => goToPeriod(-1)}>
+                <ChevronLeft size={20} aria-hidden="true" />
+              </button>
+              <span aria-live="polite" aria-atomic="true">{periodLabel}</span>
+              <button type="button" aria-label={`Next ${calendarPeriod}`} onClick={() => goToPeriod(1)}>
+                <ChevronRight size={20} aria-hidden="true" />
+              </button>
+            </div>
           </div>
           {isMobileLayout && calendarPeriod === "week" && <div className={contentStyles.weekStrip} aria-label="Select a day this week">
             {weekDates.map(date => <button key={date.getTime()} type="button" aria-pressed={date.toDateString() === currentMonth.toDateString()} aria-label={date.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})} onClick={() => setCurrentMonth(date)}><span>{date.toLocaleDateString("en-US",{weekday:"short"})}</span><strong>{date.getDate()}</strong><small>{postsForDate(date).length || "·"}</small></button>)}
