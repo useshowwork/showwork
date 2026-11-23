@@ -1,4 +1,5 @@
 "use client";
+import type { billingPriceQuotes } from "@/lib/billingOffers";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import WorkspaceFeatureNotice from "@/components/calendars/WorkspaceFeatureNotice";
@@ -15,8 +16,10 @@ type Step = "closed" | "choose-plan" | "form";
 
 export default function CreateCalendarForm({
   contentWorkspacePlan,
+  offerPrices,
 }: {
   contentWorkspacePlan: ContentWorkspacePlan | null;
+  offerPrices?: Awaited<ReturnType<typeof billingPriceQuotes>>;
 }) {
   const [step, setStep] = useState<Step>("closed");
   const [chosenPlan, setChosenPlan] = useState(contentWorkspacePlan);
@@ -114,7 +117,7 @@ export default function CreateCalendarForm({
           </h2>
           <p className="mt-1 text-sm text-[#667085]">
             {step === "choose-plan"
-              ? "Pick the space and tools you need. Start with 3 days of full Agency feature access."
+              ? "Start with 3 days of full Agency feature access. Prices below apply when you subscribe."
               : "Enter a client name to create their workspace."}
           </p>
         </div>
@@ -132,6 +135,12 @@ export default function CreateCalendarForm({
         <div data-onboarding="plan" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {CONTENT_WORKSPACE_PLAN_ORDER.map((value) => {
             const plan = PLAN_CONFIG[value];
+            const monthlyOffer = offerPrices?.[`CONTENT_WORKSPACE:${value}:MONTHLY`];
+            const annualOffer = offerPrices?.[`CONTENT_WORKSPACE:${value}:ANNUAL`];
+            const offers = [
+              { cycle: "Monthly", unit: "mo", quote: monthlyOffer },
+              { cycle: "Annual", unit: "yr", quote: annualOffer },
+            ];
             const benefits = [
               `${formatWorkspaceLimit(plan.activeWorkspaces)} active workspaces`,
               `${formatWorkspaceLimit(plan.collaborators)} collaborators`,
@@ -152,10 +161,20 @@ export default function CreateCalendarForm({
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="font-semibold text-[#101828]">{plan.name}</h3>
                   <p className="text-sm font-semibold text-[#1768E8]">
-                    ₦{plan.priceNgnMonthly.toLocaleString("en-NG")}
+                    ₦{(monthlyOffer?.priceNgn ?? plan.priceNgnMonthly).toLocaleString("en-NG")}
                     <span className="font-normal text-[#667085]">/mo</span>
                   </p>
                 </div>
+                {(monthlyOffer || annualOffer) && (
+                  <div className="mt-3 grid gap-2 text-xs leading-5 text-[#155FC7]">
+                    {offers.map(({ cycle, unit, quote }) => quote && (
+                      <div key={cycle} className="rounded-lg bg-blue-50 px-3 py-2">
+                        <span className="font-semibold">{cycle} offer · {quote.percent}% off</span>
+                        <p>{quote.title} · ₦{quote.priceNgn.toLocaleString("en-NG")}/{unit} for {quote.remainingCycles} {quote.remainingCycles === 1 ? "payment" : "payments"}, then ₦{quote.standardPriceNgn.toLocaleString("en-NG")}/{unit}.</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <ul className="my-3 space-y-1.5">
                   {benefits.map((benefit) => (
                     <li

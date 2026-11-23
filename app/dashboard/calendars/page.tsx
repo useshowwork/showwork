@@ -1,3 +1,4 @@
+import { billingPriceQuotes } from "@/lib/billingOffers";
 import AccountAvatarLink from "@/components/identity/AccountAvatarLink";
 import IdentityImage from "@/components/identity/IdentityImage";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
@@ -123,6 +124,7 @@ export default async function CalendarsPage({
     : null;
 
   const workspacePlan = billing ? getContentWorkspacePlan(billing) : null;
+  const offerPrices = workspacePlan ? undefined : await retryDatabaseRead(() => billingPriceQuotes(creator.id));
   const planName = workspacePlan
     ? { ENGAGE: "Showwork Engage", CREATOR: "Creator", GROWTH: "Growth", STUDIO: "Studio", UNLIMITED: "Agency" }[workspacePlan]
     : "No plan";
@@ -220,7 +222,7 @@ export default async function CalendarsPage({
             <div><h2>{totalCalendars > 0 ? "Add another workspace" : "Create your first workspace"}</h2><p>One workspace for each business or client.</p></div>
           </div>
           <div className={styles.createForm}>
-            <CreateCalendarForm contentWorkspacePlan={workspacePlan} />
+            <CreateCalendarForm contentWorkspacePlan={workspacePlan} offerPrices={offerPrices} />
           </div>
           <div data-dashboard-tour-slot="create" />
         </section>
