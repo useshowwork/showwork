@@ -13,7 +13,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   no_linked_account: "No Instagram Business account is linked to your Facebook Page yet. Link one in your Facebook Page settings, then try again.",
   connection_failed: "Something went wrong connecting to Instagram. Please try again.",
   not_configured: "Instagram publishing isn't set up yet — contact support.",
-  not_found: "That calendar couldn't be found.",
+  not_found: "Connecting this channel requires an active workspace and channel-management permission.",
   missing_state: "Something went wrong — please try connecting again.",
 };
 
@@ -121,7 +121,7 @@ export default function InstagramConnectionCard({
 
       <div className="border-t border-[#E4EBF6] bg-[#F7FAFF] p-4 sm:p-5">
         {isManager && isConnected && !confirming && (
-          <a href={`/api/calendars/${calendarId}/instagram/connect`} className="mb-3 flex justify-center rounded-xl border border-white/20 px-4 py-2.5 text-xs font-semibold text-white" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
+          <a href={`/api/calendars/${calendarId}/instagram/connect`} className="mb-3 flex justify-center rounded-xl border border-white/20 px-4 py-2.5 text-xs font-semibold text-white">
             Reauthorize Instagram
           </a>
         )}
@@ -163,8 +163,7 @@ export default function InstagramConnectionCard({
   style={{
     background:
       "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
-  }}
- target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
+  }}>
   Connect Instagram
 
         <svg
@@ -193,8 +192,8 @@ export default function InstagramConnectionCard({
   ) : (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-center text-[11px] font-medium text-[#8295AF]">
       {isConnected
-        ? "Connected — channel-management permission is required."
-        : "Channel-management permission is required to connect this account."}
+        ? "Connected. An active workspace and channel-management permission are required to manage this account."
+        : "An active workspace and channel-management permission are required to connect this account."}
     </div>
   )}
 </div>

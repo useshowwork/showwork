@@ -106,3 +106,38 @@ test("direct TikTok and LinkedIn/X OAuth requests are checked before contacting 
     assert.match(result.headers.get("location"), /Error=not_found/);
   }
 });
+
+test("Facebook sign-in stays on the workspace host and provider authorization keeps its registered callback", async () => {
+  let creator = null;
+  const route = load("app/api/calendars/[id]/channels/[channel]/connect/route.ts", {
+    "@/lib/auth": { getCurrentCreator: async () => creator },
+    "@/lib/db": { db: { socialCalendar: { findUnique: async () => ({ managerId: "owner" }) } } },
+    "@/lib/calendarPermissions": { hasCalendarPermission: async () => true },
+    "@/lib/url": { appUrl: () => "https://useshowwork.com" },
+    "@/lib/channelOAuthState": {
+      createChannelOAuthState: () => ({ state: "signed", cookieName: "oauth_state", nonce: "nonce", maxAge: 600 }),
+      channelOAuthCookieOptions: () => ({ httpOnly: true }),
+    },
+    "@/lib/channelOAuth": {
+      buildChannelAuthorizationUrl({ redirectUri }) {
+        const url = new URL("https://www.facebook.com/dialog/oauth");
+        url.searchParams.set("redirect_uri", redirectUri);
+        return url.toString();
+      },
+    },
+  });
+  const params = { params: Promise.resolve({ id: "business", channel: "facebook" }) };
+  const requestUrl = "https://www.useshowwork.com/api/calendars/business/channels/facebook/connect";
+
+  const signIn = await route.GET({}, params);
+  assert.equal(signIn.status, 307);
+  assert.equal(new URL(signIn.headers.get("location"), requestUrl).toString(), "https://www.useshowwork.com/login");
+  assert.equal(signIn.headers.get("cache-control"), "no-store");
+
+  creator = { id: "owner" };
+  const authorization = await route.GET({}, params);
+  const destination = new URL(authorization.headers.get("location"));
+  assert.equal(destination.hostname, "www.facebook.com");
+  assert.equal(destination.searchParams.get("redirect_uri"), "https://useshowwork.com/api/calendars/channels/facebook/callback");
+  assert.match(authorization.headers.get("set-cookie"), /^oauth_state=nonce/);
+});

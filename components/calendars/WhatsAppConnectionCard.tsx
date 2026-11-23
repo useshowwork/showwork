@@ -88,7 +88,7 @@ export default function WhatsAppConnectionCard({ calendarId, isManager }: { cale
       {!loading && !configured && <p className="mt-3 text-xs leading-5 text-[#AA8244]">Ask your administrator to configure the WhatsApp app and messaging webhook before connecting.</p>}
     </div>
     <div className="border-t border-[#E4EBF6] bg-[#F7FAFF] p-4 sm:p-5">
-      {loading ? <p className="text-xs text-[#71849E]">Loading WhatsApp…</p> : !isManager ? <p className="text-xs text-[#8295AF]">Channel-management permission is required to manage this connection.</p> : editing ?
+      {loading ? <p className="text-xs text-[#71849E]">Loading WhatsApp…</p> : !isManager ? <p className="text-xs text-[#8295AF]">An active workspace and channel-management permission are required to manage this connection.</p> : editing ?
         <form onSubmit={connect} className="space-y-3">
           <p className="text-[11px] leading-5 text-[#71849E]"><>{"Use a registered Cloud API number and a system-user access token from your Meta app. Find the IDs in WhatsApp "}<UiSymbol name="right" />{" API Setup in Meta."}</></p>
           <label className="block text-xs text-[#71849E]">WhatsApp Business Account ID<input required inputMode="numeric" pattern="[0-9]{5,30}" value={businessAccountId} onChange={e => setBusinessAccountId(e.target.value)} disabled={busy} className={inputClass} /></label>

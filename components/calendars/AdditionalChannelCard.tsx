@@ -21,7 +21,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   coming_soon: "This channel is coming soon. New connections are not available yet.",
   denied: "The connection was cancelled.",
   not_configured: "This channel is not configured yet. Ask an administrator to finish its developer app setup.",
-  not_found: "This workspace could not be found or you do not have permission to manage its channels.",
+  not_found: "Connecting this channel requires an active workspace and channel-management permission.",
   missing_state: "The secure connection session expired. Please try connecting again.",
   no_page: "Meta returned no eligible Page for this authorization. Check your assigned Page access and select the client’s Page when reconnecting.",
   META_DISCOVERY_PERMISSION_MISSING: "Meta did not grant Page list access. Reconnect and allow the requested Page permissions.",
@@ -124,7 +124,7 @@ export default function AdditionalChannelCard({
           </p>
         )}
 
-        {!comingSoon && isConnected && isManager && <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="mt-3 inline-block text-xs text-[#397CC8] underline" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Refresh permissions</a>}
+        {!comingSoon && isConnected && isManager && <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="mt-3 inline-block text-xs text-[#397CC8] underline">Refresh permissions</a>}
         {!comingSoon && <ChannelCapabilities platform={channel}/>}
         {isConnected ? (
           <>
@@ -145,7 +145,7 @@ export default function AdditionalChannelCard({
         {comingSoon && !isConnected ? (
           <button type="button" disabled className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-500">Coming soon</button>
         ) : !isManager ? (
-          <p className="text-[10px] leading-5 text-[#8295AF]">Channel-management permission is required to connect or disconnect accounts.</p>
+          <p className="text-[10px] leading-5 text-[#8295AF]">An active workspace and channel-management permission are required to connect or disconnect accounts.</p>
         ) : isConnected ? (
           confirming ? (
             <div className="flex flex-col gap-2.5">
@@ -165,7 +165,7 @@ export default function AdditionalChannelCard({
             </button>
           )
         ) : (
-          <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white transition hover:brightness-110" style={{ backgroundColor: meta.color }} target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
+          <a href={`/api/calendars/${calendarId}/channels/${channel}/connect`} className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white transition hover:brightness-110" style={{ backgroundColor: meta.color }}>
             Connect {meta.name}<span aria-hidden="true"><><UiSymbol name="right" /></></span>
           </a>
         )}

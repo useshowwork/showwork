@@ -1,3 +1,4 @@
+import { redirectWithinChannelFlow } from "@/lib/channelOAuthRedirect";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import {publishingIntegrationInstalled,invokePublishingEntrypoint} from '@/lib/publishing/applicationBoundary';
 import { NextRequest, NextResponse } from "next/server";
@@ -14,12 +15,12 @@ export async function GET(
 ) {
   /* canonical-integration-boundary */ if (publishingIntegrationInstalled()) { return invokePublishingEntrypoint<Response>('app/api/calendars/[id]/instagram/connect/route.ts#GETcanonical',Array.from(arguments)); } /* end-canonical-integration-boundary */
   const creator = await getCurrentCreator();
-  if (!creator) return NextResponse.redirect(`${appUrl()}/login`);
+  if (!creator) return redirectWithinChannelFlow("/login");
 
   const { id } = await params;
   const calendar = await db.socialCalendar.findUnique({ where: { id }, select: { managerId: true } });
   if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage"))) {
-    return NextResponse.redirect(`${appUrl()}/dashboard/calendars/${id}?view=channels&instagramError=not_found`);
+    return redirectWithinChannelFlow(`/dashboard/calendars/${id}?view=channels&instagramError=not_found`);
   }
 
   const redirectUri = `${appUrl()}/api/calendars/instagram/callback`;
@@ -32,6 +33,6 @@ export async function GET(
     return response;
   } catch (err) {
     console.error("Failed to build Instagram auth URL:", err);
-    return NextResponse.redirect(`${appUrl()}/dashboard/calendars/${id}?view=channels&instagramError=not_configured`);
+    return redirectWithinChannelFlow(`/dashboard/calendars/${id}?view=channels&instagramError=not_configured`);
   }
 }

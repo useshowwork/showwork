@@ -18,7 +18,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   denied: "TikTok connection was cancelled.",
   connection_failed: "Something went wrong connecting to TikTok. Please try again.",
   not_configured: "TikTok publishing isn't set up yet — contact support.",
-  not_found: "That calendar couldn't be found.",
+  not_found: "Connecting this channel requires an active workspace and channel-management permission.",
   missing_state: "Something went wrong — please try connecting again.",
 };
 
@@ -143,7 +143,7 @@ export default function TikTokConnectionCard({
             : analyticsAccess === false
               ? "Reconnect this account and grant profile statistics and video access to enable analytics. Publishing stays connected."
               : "Reconnect to grant or renew analytics access. Publishing stays connected."}</p>
-          <a href={`/api/calendars/${calendarId}/tiktok/connect`} className="mt-3 inline-flex rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-900" target="_blank" rel="noopener noreferrer" title="Opens in a new tab">Reconnect TikTok</a>
+          <a href={`/api/calendars/${calendarId}/tiktok/connect`} className="mt-3 inline-flex rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-900">Reconnect TikTok</a>
         </div>}
         {isManager && isConnected && <TikTokMessagingPanel calendarId={calendarId} />}
       </div>
@@ -183,16 +183,15 @@ export default function TikTokConnectionCard({
     ) : (
       <a
         href={`/api/calendars/${calendarId}/tiktok/connect`}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5"
-       target="_blank" rel="noopener noreferrer" title="Opens in a new tab">
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5">
         Connect TikTok
       </a>
     )
   ) : (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-center text-[11px] font-medium text-[#8295AF]">
       {isConnected
-        ? "Connected — channel-management permission is required."
-        : "Channel-management permission is required to connect this account."}
+        ? "Connected. An active workspace and channel-management permission are required to manage this account."
+        : "An active workspace and channel-management permission are required to connect this account."}
     </div>
   )}
 </div>

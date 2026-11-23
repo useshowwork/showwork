@@ -1,3 +1,4 @@
+import { redirectWithinChannelFlow } from "@/lib/channelOAuthRedirect";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
@@ -27,19 +28,19 @@ export async function GET(
   }
   const channel = rawChannel as PublishingChannel;
   const creator = await getCurrentCreator();
-  if (!creator) return NextResponse.redirect(`${appUrl()}/login`);
+  if (!creator) return redirectWithinChannelFlow("/login");
 
   const calendar = await db.socialCalendar.findUnique({
     where: { id },
     select: { managerId: true },
   });
-  const settingsPath = `/dashboard/calendars/${id}?view=channels`;
+  const settingsPath = `/dashboard/calendars/${encodeURIComponent(id)}?view=channels` as const;
   if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage", channel))) {
-    return NextResponse.redirect(`${appUrl()}${settingsPath}&${channel}Error=not_found`);
+    return redirectWithinChannelFlow(`${settingsPath}&${channel}Error=not_found`);
   }
 
   if (["linkedin", "x"].includes(channel)) {
-    return NextResponse.redirect(`${appUrl()}${settingsPath}&${channel}Error=coming_soon`);
+    return redirectWithinChannelFlow(`${settingsPath}&${channel}Error=coming_soon`);
   }
 
   try {
@@ -72,6 +73,6 @@ export async function GET(
     return response;
   } catch (error) {
     console.error(`Failed to start ${channel} OAuth:`, error);
-    return NextResponse.redirect(`${appUrl()}${settingsPath}&${channel}Error=not_configured`);
+    return redirectWithinChannelFlow(`${settingsPath}&${channel}Error=not_configured`);
   }
 }

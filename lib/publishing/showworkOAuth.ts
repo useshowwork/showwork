@@ -6,6 +6,7 @@ import {verifyChannelOAuthState,channelOAuthCookieOptions,xPkceCookieName,create
 import {exchangeChannelCode,getXMember,getLinkedInMember,exchangeForLongLivedFacebookToken,getFacebookPages,getFacebookGrantedPermissions} from '../channelOAuth';
 import {createFacebookPageSelection,verifyFacebookPageSelection,facebookPageSelectionCookieName,facebookPageSelectionCookieOptions} from '../facebookPageSelection';
 import {appUrl} from '../url';
+import {redirectWithinChannelFlow} from '../channelOAuthRedirect';
 import {tikTokRedirectUri} from '../tiktokOAuthConfig';
 import {policyHash} from './eligibilityPolicy';
 import {createPublishingValidationAdapters,type ValidationDependencies} from './validationAdapters';
@@ -29,7 +30,7 @@ export function createCanonicalShowworkOAuth(deps:{database:OwnershipDatabase;ac
  return async(entrypoint:string,args:readonly unknown[]):Promise<Response|undefined>=>{
   const path=entrypoint.split('#')[0];if(!['app/api/calendars/channels/[channel]/callback/route.ts','app/api/calendars/[id]/channels/facebook/select-page/route.ts','app/api/calendars/[id]/channels/linkedin/pages/route.ts','app/api/calendars/[id]/instagram/connect/route.ts','app/api/calendars/[id]/instagram/select-account/route.ts','app/api/calendars/instagram/callback/route.ts','app/api/calendars/tiktok/callback/route.ts'].includes(path))return;
   const request=args[0] as NextRequest,params=await (args[1] as {params:Promise<Record<string,string>>})?.params??{},creator=await deps.authenticate();
-  if(!creator)return NextResponse.redirect(appUrl()+'/login',303);
+  if(!creator)return redirectWithinChannelFlow('/login',303);
   if(path.endsWith('/instagram/select-account/route.ts')){
    const ticketId=request.cookies.get('showwork_instagram_account_selection')?.value;
    const ticket=await deps.database.transaction(async tx=>{await validation.validateWorkspacePermission(tx,{actor:creator.id,calendarId:params.id,permission:'channels.manage'});return (await tx.query(`SELECT * FROM "PublishingApplicationOperation" WHERE "operationId"=$1 AND actor=$2`,[ticketId,creator.id])).rows[0];});

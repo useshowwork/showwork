@@ -215,6 +215,7 @@ compedUntil: true,
   const totalMembers = 1 + calendar._count.collaborators;
 
   const workspaceActive = await canAccessCalendarById(calendar.id);
+  const canManageChannels = workspaceActive && can("channels.manage");
   const connectedAccounts = isEngage ? await db.socialConnection.count({ where: { calendarId: calendar.id, platform: { in: [...ENGAGE_CHANNEL_PLATFORMS] }, status: { not: "DISCONNECTED" } } }) : 0;
   const agencyTrial = !isEngage && isContentWorkspaceTrialActive(calendar.manager);
   const featureAccess = (feature: Parameters<typeof canUseContentWorkspaceFeature>[1]) => workspaceActive && canUseContentWorkspaceFeature(calendar.manager, feature);
@@ -422,36 +423,36 @@ contentIdea: p.contentIdea,
   calendarId={calendar.id}
   username={calendar.instagramUsername}
   connectedAt={calendar.instagramConnectedAt?.toISOString() ?? null}
-  isManager={can("channels.manage")}
+  isManager={canManageChannels}
 />
 
 {!isEngage && (<TikTokConnectionCard
   calendarId={calendar.id}
   username={calendar.tikTokUsername}
   connectedAt={calendar.tikTokConnectedAt?.toISOString() ?? null}
-  isManager={can("channels.manage")}
+  isManager={canManageChannels}
 />)}
                 <AdditionalChannelCard
                   channel="facebook"
                   calendarId={calendar.id}
                   accountName={calendar.facebookPageName}
                   connectedAt={calendar.facebookConnectedAt?.toISOString() ?? null}
-                  isManager={can("channels.manage")}
+                  isManager={canManageChannels}
                 />
                 {!isEngage && (<AdditionalChannelCard
                   channel="linkedin"
                   calendarId={calendar.id}
                   accountName={calendar.linkedinName}
                   connectedAt={calendar.linkedinConnectedAt?.toISOString() ?? null}
-                  isManager={can("channels.manage")}
+                  isManager={canManageChannels}
                 />)}
-                <WhatsAppConnectionCard calendarId={calendar.id} isManager={can("channels.manage")} />
+                <WhatsAppConnectionCard calendarId={calendar.id} isManager={canManageChannels} />
                 {!isEngage && (<AdditionalChannelCard
                   channel="x"
                   calendarId={calendar.id}
                   accountName={calendar.xUsername}
                   connectedAt={calendar.xConnectedAt?.toISOString() ?? null}
-                  isManager={can("channels.manage")}
+                  isManager={canManageChannels}
                 />)}
               </ChannelsWorkspace>
             ),
@@ -546,7 +547,9 @@ contentIdea: p.contentIdea,
       }).sort((a,b) => isEngage ? ["inbox", "leads", "channels", "knowledge"].indexOf(a.id) - ["inbox", "leads", "channels", "knowledge"].indexOf(b.id) : 0).map(section => ({ ...section, content: (
         <>
           {agencyTrial && <WorkspaceFeatureNotice trial paidPlan={calendar.manager.contentWorkspaceBillingStatus === "ACTIVE" ? calendar.manager.contentWorkspacePlan : null} trialEndsAt={calendar.manager.contentWorkspaceTrialEndsAt} />}
-          {!workspaceActive && <WorkspaceFeatureNotice />}
+          {!workspaceActive && <WorkspaceFeatureNotice message={section.id === "channels"
+            ? "This workspace is outside your active plan access or workspace allowance. Channel connections are available in active workspaces."
+            : undefined} />}
           {section.id === "generate" && setup && !canGenerateDuringSetup(setup)
             ? <div className="rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-blue-900">{isOwner ? "Complete your publishing choice, add business knowledge, set your brand voice, and connect a channel using the setup guide above. Then you’re ready to generate content." : "The workspace owner needs to finish setup before the team can generate content. Ask them to choose publishing preferences, add business knowledge, set the brand voice, and connect a channel."}</div>
             : !workspaceActive && !["overview", "analytics", "inbox", "leads", "team"].includes(section.id)

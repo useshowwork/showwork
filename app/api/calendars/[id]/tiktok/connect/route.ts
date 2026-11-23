@@ -1,3 +1,4 @@
+import { redirectWithinChannelFlow } from "@/lib/channelOAuthRedirect";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import { createChannelOAuthState, channelOAuthCookieOptions } from "@/lib/channelOAuthState";
 import { createTikTokPkce, TIKTOK_PKCE_COOKIE } from "@/lib/tiktokOAuthPkce";
@@ -5,7 +6,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { buildTikTokAuthUrl } from "@/lib/tiktok";
-import { appUrl } from "@/lib/url";
 import { tikTokRedirectUri } from "@/lib/tiktokOAuthConfig";
 
 // GET — starts the TikTok connection flow for one calendar.
@@ -19,12 +19,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const creator = await getCurrentCreator();
-  if (!creator) return NextResponse.redirect(`${appUrl()}/login`);
+  if (!creator) return redirectWithinChannelFlow("/login");
 
   const { id } = await params;
   const calendar = await db.socialCalendar.findUnique({ where: { id }, select: { managerId: true } });
   if (!calendar || !(await hasCalendarPermission(creator.id, id, "channels.manage", "TIKTOK"))) {
-    return NextResponse.redirect(`${appUrl()}/dashboard/calendars/${id}?view=channels&tiktokError=not_found`);
+    return redirectWithinChannelFlow(`/dashboard/calendars/${id}?view=channels&tiktokError=not_found`);
   }
 
   const redirectUri = tikTokRedirectUri();
@@ -39,6 +39,6 @@ export async function GET(
     return response;
   } catch (err) {
     console.error("Failed to build TikTok auth URL:", err);
-    return NextResponse.redirect(`${appUrl()}/dashboard/calendars/${id}?view=channels&tiktokError=not_configured`);
+    return redirectWithinChannelFlow(`/dashboard/calendars/${id}?view=channels&tiktokError=not_configured`);
   }
 }
