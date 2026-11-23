@@ -1,3 +1,4 @@
+import { isHandoffAcknowledgement, withoutDuplicateHandoffEchoes } from "@/lib/socialMessaging/handoffEcho";
 import { visibleInboxConnection } from "@/lib/socialMessaging/visibility";
 import { reconcileStaleInboxSends } from "@/lib/socialMessaging/outbound";
 import { normalizeReplyProfile } from "@/lib/socialMessaging/replyProfile";
@@ -79,6 +80,14 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
     });
     if (linkedConversation) conversations.push(linkedConversation);
   }
+  const handoffMessageIds = conversations
+    .filter(conversation => conversation.platform === "INSTAGRAM")
+    .flatMap(conversation => conversation.messages.filter(isHandoffAcknowledgement).map(message => message.id));
+  const trackedHandoffs = handoffMessageIds.length > 0 ? await db.socialInboxOutbound.findMany({
+    where: { conversationId: { in: conversations.map(conversation => conversation.id) }, messageId: { in: handoffMessageIds }, state: "SENT" },
+    select: { messageId: true },
+  }) : [];
+  const trackedHandoffIds = new Set(trackedHandoffs.map(operation => operation.messageId));
   const whatsappConversationIds = conversations.filter(conversation => conversation.platform === "WHATSAPP").map(conversation => conversation.id);
   const latestWhatsAppInbound = whatsappConversationIds.length ? await db.socialLeadMessage.groupBy({ by: ["conversationId"],
     where: { direction: "INBOUND", conversationId: { in: whatsappConversationIds } },
@@ -154,7 +163,10 @@ export async function getSocialInbox(calendarId: string, params: URLSearchParams
     settings: { ...(settings ?? { clientAccessEnabled: true, aiAutoReplyEnabled: false, aiAutoReplyInstructions: null }), aiReplyProfile: normalizeReplyProfile(settings?.aiReplyProfile) },
     conversations: conversations.map((conversation) => {
       const cutoff = conversation.platform === "X" ? conversation.connection?.connectedAt?.getTime() ?? Infinity : -Infinity;
-      const visibleMessages = conversation.messages.filter(message => message.platformCreatedAt.getTime() >= cutoff);
+      const messages = conversation.platform === "INSTAGRAM"
+        ? withoutDuplicateHandoffEchoes(conversation.messages, trackedHandoffIds)
+        : conversation.messages;
+      const visibleMessages = messages.filter(message => message.platformCreatedAt.getTime() >= cutoff);
       const previewVisible = conversation.platform !== "X" || (conversation.lastMessageAt?.getTime() ?? 0) >= cutoff;
       const resolvedProfile = resolvedProfiles.get(conversation.id);
       const participantUsername = resolvedProfile?.username || conversation.participantUsername;

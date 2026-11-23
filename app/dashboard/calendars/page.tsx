@@ -45,8 +45,8 @@ export default async function CalendarsPage({
   const creator = await getCurrentCreator();
   if (!creator) redirect("/login?next=/dashboard/calendars");
   const params = await searchParams;
-  if (creator.contentWorkspacePlan === "ENGAGE" && !workspaceComplimentaryPlan(creator) && params.subscriptionPayment !== "callback") {
-    redirect("/dashboard/engage");
+  if (getContentWorkspacePlan(creator) === "ENGAGE" && params.subscriptionPayment !== "callback") {
+    redirect("/dashboard/billing?product=content-workspace");
   }
   const query = params.q?.trim() ?? "";
   const requestedPage = Number(params.page);

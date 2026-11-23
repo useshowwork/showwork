@@ -1,3 +1,4 @@
+import { getContentWorkspacePlan, hasBundledEngageAccess } from "@/lib/contentWorkspacePolicy";
 import AccountAvatarLink from "@/components/identity/AccountAvatarLink";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import PlatformBrandIcon from "@/components/calendars/PlatformBrandIcon";
@@ -20,7 +21,7 @@ import {
   isContentWorkspaceTrialActive,
   getContentWorkspaceUsage,
 } from "@/lib/contentWorkspaceUsage";
-import { ENGAGE_TRIAL_AI_REPLY_LIMIT } from "@/lib/contentWorkspaceEntitlements";
+import { CONTENT_WORKSPACE_PLANS, ENGAGE_TRIAL_AI_REPLY_LIMIT } from "@/lib/contentWorkspaceEntitlements";
 import EngageStart from "@/components/engage/EngageStart";
 import CalendarPaymentCallbackHandler from "@/components/calendars/CalendarPaymentCallbackHandler";
 
@@ -39,6 +40,43 @@ export default async function EngagePage({
     const next = `/dashboard/engage${params.cycle ? `?cycle=${params.cycle === "ANNUAL" ? "ANNUAL" : "MONTHLY"}` : ""}`;
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
+  if (hasBundledEngageAccess(creator) && params.subscriptionPayment !== "callback") {
+    const plan = getContentWorkspacePlan(creator)!;
+    const limit = CONTENT_WORKSPACE_PLANS[plan].activeWorkspaces;
+    const workspaces = await db.socialCalendar.findMany({
+      where: { managerId: creator.id },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, clientName: true },
+      ...(limit < Number.MAX_SAFE_INTEGER ? { take: limit } : {}),
+    });
+    const inboxHref = (id: string) => `/dashboard/calendars/${encodeURIComponent(id)}?view=inbox`;
+    if (workspaces.length === 1) redirect(inboxHref(workspaces[0].id));
+
+    return (
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <nav aria-label="Engage navigation" className={navStyles.nav}>
+            <Link href="/dashboard" className={navStyles.homeLink}><ArrowLeft size={16} /> All tools</Link>
+            <AccountAvatarLink name={creator.name || creator.email} src={creator.avatarUrl} />
+          </nav>
+          <section className="mx-auto max-w-2xl px-4 py-12">
+            <h1 className="text-3xl font-semibold">Showwork Engage</h1>
+            <p className="mt-2 text-slate-600">Your {CONTENT_WORKSPACE_PLANS[plan].name} plan includes Engage. Choose the workspace whose conversations you want to open.</p>
+            {workspaces.length ? (
+              <ul className="mt-6 grid gap-3">
+                {workspaces.map(workspace => <li key={workspace.id}>
+                  <Link href={inboxHref(workspace.id)} className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white px-4 py-3 font-medium text-slate-900 hover:border-blue-400">
+                    <span>{workspace.clientName}</span><ArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                </li>)}
+              </ul>
+            ) : <Link href="/dashboard/calendars" className="mt-6 inline-flex rounded-xl bg-[#155FC7] px-4 py-3 font-medium text-white">Set up your first workspace</Link>}
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   const engage = creator.contentWorkspacePlan === "ENGAGE";
   const trial =
     engage &&

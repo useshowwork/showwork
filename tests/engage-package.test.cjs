@@ -512,3 +512,48 @@ test("a current Marketing Workspace grant restores access after an Engage trial 
   assert.equal(policy.canAccessContentWorkspace(expired), false);
   assert.equal(policy.getContentWorkspacePlan(expired), "ENGAGE");
 });
+
+test("workspace permissions use the owner's complimentary Marketing Workspace plan", async () => {
+  const now = Date.now();
+  const manager = owner({
+    contentWorkspaceBillingStatus: "TRIAL",
+    contentWorkspaceTrialEndsAt: new Date(now - 86400000),
+    workspaceCompedPlan: "STUDIO",
+    workspaceCompedUntil: new Date(now + 86400000),
+  });
+  const { getCalendarAccess } = load("lib/calendarPermissions.ts", {
+    "@/lib/contentWorkspaceUsage": policy,
+    "@/lib/db": { db: {
+      socialCalendar: { findUnique: async () => ({ managerId: "owner", manager }) },
+      calendarCollaborator: { findUnique: async () => ({ id: "member", role: "VIEWER", permissions: [], customPermissions: false }) },
+    } },
+  });
+
+  const ownerAccess = await getCalendarAccess("owner", "workspace");
+  assert.equal(ownerAccess.packagePlan, "STUDIO");
+  assert.ok(ownerAccess.permissions.includes("calendar.view"));
+  assert.ok(ownerAccess.permissions.includes("calendar.edit"));
+
+  const collaborator = await getCalendarAccess("viewer", "workspace");
+  assert.ok(collaborator.permissions.includes("calendar.view"));
+  assert.ok(!collaborator.permissions.includes("calendar.edit"));
+
+  manager.workspaceCompedUntil = new Date(now - 1000);
+  const expired = await getCalendarAccess("owner", "workspace");
+  assert.equal(expired.packagePlan, "ENGAGE");
+  assert.ok(!expired.permissions.includes("calendar.view"));
+});
+
+test("Agency includes Engage while standalone Engage and lower workspace tiers keep their own access", () => {
+  const paidAgency = owner({ contentWorkspacePlan: "UNLIMITED" });
+  assert.equal(policy.hasBundledEngageAccess(paidAgency), true);
+  assert.equal(policy.hasBundledEngageAccess(owner()), false);
+  assert.equal(policy.hasBundledEngageAccess(owner({ contentWorkspacePlan: "GROWTH", contentWorkspaceTrialEndsAt: null })), false);
+  const complimentaryAgency = owner({
+    contentWorkspaceBillingStatus: "TRIAL",
+    contentWorkspaceTrialEndsAt: new Date(Date.now() - 86400000),
+    workspaceCompedPlan: "UNLIMITED",
+    workspaceCompedUntil: new Date(Date.now() + 86400000),
+  });
+  assert.equal(policy.hasBundledEngageAccess(complimentaryAgency), true);
+});

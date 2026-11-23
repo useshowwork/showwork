@@ -5,7 +5,7 @@ import styles from "./BillingDashboard.module.css";
 import { BillingCancellation, BillingDetailsForm, BillingPaymentMethod, type BillingDetails } from "./BillingAccountControls";
 import SubscriptionCheckoutButton from "@/components/billing/SubscriptionCheckoutButton";
 
-import { getContentWorkspaceFeatureList } from "@/lib/contentWorkspaceEntitlements";
+import { getContentWorkspaceFeatureList, planIncludesWorkspaceFeature } from "@/lib/contentWorkspaceEntitlements";
 
 
 import UiSymbol from "@/components/ui/UiSymbol";
@@ -800,6 +800,11 @@ export default function BillingSubscriptions({
   ];
   const selected = products.find((product) => product.key === selectedProduct);
   const activeMarketing = account?.workspacePlan && account.workspacePlan !== "ENGAGE" && workspaceBilling?.contentWorkspaceBillingStatus === "ACTIVE";
+  const bundledEngage = workspacePlan !== "ENGAGE" &&
+    planIncludesWorkspaceFeature(workspacePlan ?? null, "socialInbox") &&
+    (!!activeMarketing || !!workspaceBilling?.isComped ||
+      (workspaceBilling?.contentWorkspaceBillingStatus === "TRIAL" &&
+        !!workspaceBilling.contentWorkspaceTrialEndsAt && new Date(workspaceBilling.contentWorkspaceTrialEndsAt).getTime() > Date.now()));
   const engage = CONTENT_WORKSPACE_PLANS.ENGAGE;
   const engageOffer = offerPrices?.[`CONTENT_WORKSPACE:ENGAGE:${selectedCycle}`];
   const engagePrice = selectedCycle === "ANNUAL" ? engage.priceNgnAnnual : engage.priceNgnMonthly;
@@ -954,6 +959,14 @@ export default function BillingSubscriptions({
               </div>
               <Link href="/dashboard/portfolio" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100">
                 Manage Portfolio <ArrowUpRightIcon />
+              </Link>
+            </div>
+          ) : bundledEngage ? (
+            <div data-billing-card className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-100 bg-white p-6">
+              <div><h3 className="text-lg font-semibold">Engage is included in your plan</h3>
+                <p className="mt-1 text-sm text-slate-600">Open your workspace inbox to see your conversations and leads.</p></div>
+              <Link href="/dashboard/engage" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#155FC7] px-4 py-2 text-sm font-semibold text-white">
+                Open Engage <ArrowRightIcon />
               </Link>
             </div>
           ) : (

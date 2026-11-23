@@ -14,14 +14,18 @@ import { NextResponse } from "next/server";
 export type CalendarRole = "VIEW_ONLY" | "ADD_CONTENT" | "EDIT_CALENDAR";
 export type CalendarAccess = { role: TeamRole; isOwner: boolean; permissions: TeamPermission[]; memberId?: string; packagePlan?: string | null };
 export async function getCalendarAccess(creatorId: string, calendarId: string): Promise<CalendarAccess | null> {
-  const calendar = await db.socialCalendar.findUnique({ where: { id: calendarId }, select: { managerId: true, manager: { select: { contentWorkspacePlan: true } } } });
+  const calendar = await db.socialCalendar.findUnique({ where: { id: calendarId }, select: { managerId: true, manager: { select: {
+    contentWorkspacePlan: true, contentWorkspaceBillingStatus: true, contentWorkspaceTrialEndsAt: true,
+    ...complimentaryAccessSelect, isComped: true, compedUntil: true,
+  } } } });
   if (!calendar) return null;
-  if (calendar.managerId === creatorId) return { role: "OWNER", isOwner: true, packagePlan: calendar.manager.contentWorkspacePlan, permissions: packagePermissions(calendar.manager.contentWorkspacePlan, effectiveTeamPermissions("OWNER")) };
+  const packagePlan = getContentWorkspacePlan(calendar.manager);
+  if (calendar.managerId === creatorId) return { role: "OWNER", isOwner: true, packagePlan, permissions: packagePermissions(packagePlan, effectiveTeamPermissions("OWNER")) };
   const member = await db.calendarCollaborator.findUnique({ where: { calendarId_creatorId: { calendarId, creatorId } } });
   if (!member) return null;
   const role = normalizeTeamRole(member.role);
   if (!role) return null;
-  return { role, isOwner: false, packagePlan: calendar.manager.contentWorkspacePlan, memberId: member.id, permissions: packagePermissions(calendar.manager.contentWorkspacePlan, effectiveTeamPermissions(member.role, member.permissions, member.customPermissions)) };
+  return { role, isOwner: false, packagePlan, memberId: member.id, permissions: packagePermissions(packagePlan, effectiveTeamPermissions(member.role, member.permissions, member.customPermissions)) };
 }
 /** Legacy projection for calendar widgets; API authorization always uses feature permissions. */
 export async function getCalendarRole(creatorId: string, calendarId: string): Promise<CalendarRole | null> {

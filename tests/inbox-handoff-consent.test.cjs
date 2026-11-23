@@ -15,3 +15,13 @@ test('offer after several replies or uncertainty, without nagging after a refusa
  assert.equal(shouldOfferTeam({aiReplyCount:10,needsHelp:true,offeredAt:new Date()}),false);
  assert.match(withTeamOffer('Helpful answer.'),/Yes, connect me/);assert.match(withTeamOffer('Helpful answer.'),/No, keep helping/);
 });
+
+test('Instagram handoff echoes with a different ID render as one acknowledgement', () => {
+ const {TEAM_ACKNOWLEDGEMENT}=load('lib/socialMessaging/handoffConsent.ts');
+ const {withoutDuplicateHandoffEchoes}=load('lib/socialMessaging/handoffEcho.ts');
+ const original={id:'stored',text:TEAM_ACKNOWLEDGEMENT,direction:'OUTBOUND',status:'SENT',sentByCreatorId:null,platformCreatedAt:new Date(30000)};
+ const echo={...original,id:'echo',platformCreatedAt:new Date(34000)};
+ const later={...echo,id:'later',platformCreatedAt:new Date(120000)};
+ assert.deepEqual(withoutDuplicateHandoffEchoes([original,echo,later],new Set(['stored'])).map(m=>m.id),['stored','later']);
+ assert.deepEqual(withoutDuplicateHandoffEchoes([original,echo],new Set()).map(m=>m.id),['stored','echo']);
+});

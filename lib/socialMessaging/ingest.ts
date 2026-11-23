@@ -1,3 +1,5 @@
+import { TEAM_ACKNOWLEDGEMENT } from "./handoffConsent";
+import { handoffEchoWindow } from "./handoffEcho";
 import type { SocialConnection } from "@prisma/client";
 import { db } from "@/lib/db";
 import { socialStatusToPipeline } from "@/lib/calendarLeads";
@@ -11,6 +13,21 @@ export async function ingestSocialMessage(connection: SocialConnection, event: I
       where: { socialConnectionId_providerConversationId: { socialConnectionId: connection.id, providerConversationId: event.conversationId } },
       create: { calendarId: connection.calendarId, socialConnectionId: connection.id, platform: connection.platform, providerConversationId: event.conversationId, participantPlatformId: event.participantId, participantName: event.name, participantUsername: event.username }, update: {},
     });
+    // Instagram can echo the system handoff reply under a different provider ID.
+    // The durable send row already represents that reply.
+    if (connection.platform === "INSTAGRAM" && event.outbound && event.text === TEAM_ACKNOWLEDGEMENT) {
+      const candidates = await tx.socialLeadMessage.findMany({
+        where: {
+          conversationId: conversation.id, direction: "OUTBOUND", text: event.text, sentByCreatorId: null,
+          platformCreatedAt: handoffEchoWindow(event.createdAt),
+        },
+        select: { id: true },
+      });
+      if (candidates.length && await tx.socialInboxOutbound.findFirst({
+        where: { conversationId: conversation.id, messageId: { in: candidates.map(message => message.id) }, state: "SENT" },
+        select: { id: true },
+      })) return false;
+    }
     const inserted = await tx.socialLeadMessage.createMany({ data: [{ conversationId: conversation.id, providerMessageId: event.messageId, direction: event.outbound ? "OUTBOUND" : "INBOUND", status: event.outbound ? "SENT" : "RECEIVED", text: event.text, platformCreatedAt: event.createdAt, autoReplyEligible: !event.outbound && !!event.autoReplyEligible }], skipDuplicates: true });
     if (!inserted.count) return false;
     if (!event.outbound) await tx.socialLeadConversation.update({ where: { id: conversation.id }, data: {

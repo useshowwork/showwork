@@ -78,6 +78,10 @@ export function canUseContentWorkspaceFeature(account: ContentWorkspaceAccount, 
   return canAccessContentWorkspace(account) && planIncludesWorkspaceFeature(getContentWorkspacePlan(account), feature);
 }
 
+export function hasBundledEngageAccess(account: ContentWorkspaceAccount): boolean {
+  return getContentWorkspacePlan(account) !== "ENGAGE" && canUseContentWorkspaceFeature(account, "socialInbox");
+}
+
 export function currentAiCycleStart(anchor: Date, now = new Date()): Date {
   let months = (now.getUTCFullYear() - anchor.getUTCFullYear()) * 12 + now.getUTCMonth() - anchor.getUTCMonth();
   const boundary = (offset: number) => {

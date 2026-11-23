@@ -1,4 +1,5 @@
 import { packagePermissions } from "../engagePolicy";
+import { getContentWorkspacePlan } from "../contentWorkspacePolicy";
 /** Inactive Stage 4C.2. Same-tx policy reads; no global DB/auth/provider imports. */
 import { randomUUID } from 'node:crypto';
 import { effectiveTeamPermissions, type TeamPermission } from '../calendarTeamPolicy';
@@ -53,7 +54,7 @@ export function createPublishingValidationAdapters(deps:ValidationDependencies){
  }
  async function creator(tx:Tx,s:Awaited<ReturnType<typeof workspace>>,principalId:string,permission:TeamPermission){
   id(principalId);const actor=(await tx.query(`SELECT id,"isDeactivated" FROM "Creator" WHERE id=$1`,[principalId])).rows[0];ensure(actor,'CREATOR_MISSING');ensure(!actor.isDeactivated,'ACTOR_DEACTIVATED');
-  ensure(packagePermissions(s.owner.contentWorkspacePlan,[permission]).includes(permission),'WORKSPACE_PERMISSION_DENIED');
+  ensure(packagePermissions(getContentWorkspacePlan(s.owner as Parameters<typeof getContentWorkspacePlan>[0]),[permission]).includes(permission),'WORKSPACE_PERMISSION_DENIED');
   if(principalId===s.owner.id)return actor;
   const m=(await tx.query(`SELECT * FROM "CalendarCollaborator" WHERE "calendarId"=$1 AND "creatorId"=$2`,[s.calendar.id,principalId])).rows[0];
   ensure(m&&effectiveTeamPermissions(m.role,m.permissions,m.customPermissions).includes(permission),'WORKSPACE_PERMISSION_DENIED');return actor;

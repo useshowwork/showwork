@@ -1,4 +1,4 @@
-import { workspaceComplimentaryPlan } from "@/lib/complimentaryAccess";
+import { getContentWorkspacePlan, hasBundledEngageAccess } from "@/lib/contentWorkspacePolicy";
 import { MessagesSquare } from "lucide-react";
 import ShowworkLogo from "@/components/brand/ShowworkLogo";
 import { TOOL_COPY } from "@/components/dashboard/toolCopy";
@@ -190,7 +190,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const usesEngage = creator.contentWorkspacePlan === "ENGAGE" && !workspaceComplimentaryPlan(creator);
+  const usesEngage = getContentWorkspacePlan(creator) === "ENGAGE";
 
   const [portfolio, calendar, projectCount] = await Promise.all([
     db.portfolio.findFirst({
@@ -427,7 +427,7 @@ export default async function DashboardPage() {
           </div>
           <div className={workspaceStyles.grid}>
             <WorkspaceCard variant="workspace" product={TOOL_COPY.workspace.product} description={TOOL_COPY.workspace.description} href={usesEngage ? "/dashboard/billing?product=content-workspace" : "/dashboard/calendars"} action={usesEngage ? "View plans" : calendar ? TOOL_COPY.workspace.openAction : TOOL_COPY.workspace.createAction} icon={<WorkspaceIcon />} />
-            <WorkspaceCard variant="engage" product="Showwork Engage" description="Bring Facebook, Instagram and WhatsApp messages into one inbox. Reply with AI, track leads and turn conversations into customers." href="/dashboard/engage" action="Explore Engage" icon={<MessagesSquare />} />
+            <WorkspaceCard variant="engage" product="Showwork Engage" description="Bring Facebook, Instagram and WhatsApp messages into one inbox. Reply with AI, track leads and turn conversations into customers." href="/dashboard/engage" action={usesEngage || hasBundledEngageAccess(creator) ? "Open Engage" : "Explore Engage"} icon={<MessagesSquare />} />
             <WorkspaceCard variant="delivery" product={TOOL_COPY.delivery.product} description={TOOL_COPY.delivery.description} href={projectCount > 0 ? "/dashboard/projects" : "/dashboard/start"} action={projectCount > 0 ? TOOL_COPY.delivery.openAction : TOOL_COPY.delivery.createAction} icon={<DeliveryIcon />} />
           </div>
           <Link href="/dashboard/portfolio" className={workspaceStyles.portfolioStrip}>
