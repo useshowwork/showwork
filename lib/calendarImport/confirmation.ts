@@ -145,7 +145,7 @@ export async function confirmImport(
   if (result && typeof result === "object" && "postIds" in result && Array.isArray(result.postIds)) {
     const postIds = (result.postIds as unknown[]).filter((id): id is string => typeof id === "string");
     await notifyCalendarWorkflow({
-      kind: "imported", calendarId, key: input.requestId, postIds, timeZone: input.options.timezone,
+      kind: "imported", calendarId, actorId: creatorId, key: input.requestId, postIds, timeZone: input.options.timezone,
     });
   }
   return result;

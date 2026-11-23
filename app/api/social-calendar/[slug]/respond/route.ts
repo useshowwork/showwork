@@ -53,7 +53,7 @@ export async function POST(
   if (!result.count) return NextResponse.json({ error: "This plan has already been reviewed" }, { status: 409 });
   await notifyCalendarWorkflow({
     kind: approved ? "client-approved" : "client-feedback", calendarId: calendar.id,
-    key: `plan-${reviewedAt.toISOString()}`, note: reviewNote,
+    key: `plan-${reviewedAt.toISOString()}`, note: reviewNote, actor: viewer.name || "Client",
   });
   const updated = await db.socialCalendar.findUniqueOrThrow({ where: { id: calendar.id } });
   return NextResponse.json({ calendar: updated });

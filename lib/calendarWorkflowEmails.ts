@@ -1,9 +1,10 @@
+import { recordWorkspaceNotice } from "./workspaceNotifications";
 import type { NativeApplicationContext } from "@/lib/publishing/nativeApplicationContext";
 
 export type WorkflowEmailEvent =
-  | { kind: "generated" | "imported"; calendarId: string; key: string; postIds: string[]; range?: [string, string]; timeZone?: string }
+  | { kind: "generated" | "imported"; calendarId: string; key: string; postIds: string[]; actorId?: string; range?: [string, string]; timeZone?: string }
   | { kind: "uploaded"; calendarId: string; key: string; postId?: string; uploadPostIds?: string[]; actorId: string; timeZone?: unknown }
-  | { kind: "client-approved" | "client-feedback"; calendarId: string; key: string; postId?: string; note?: string | null };
+  | { kind: "client-approved" | "client-feedback"; calendarId: string; key: string; postId?: string; note?: string | null; actor?: string; batchId?: string };
 
 type Query = (sql: string, args: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
 
@@ -31,6 +32,7 @@ export async function notifyCalendarWorkflow(
   event: WorkflowEmailEvent,
   query?: Query,
   transport?: NativeApplicationContext["notify"],
+  sendEmail = true,
 ) {
   try {
     if ("postIds" in event && !event.postIds.length) return;
@@ -51,6 +53,7 @@ export async function notifyCalendarWorkflow(
     const recipients = [...new Set(rows.map(row => String(row.email).trim().toLowerCase()).filter(Boolean))];
     const details: Array<[string, string]> = [["Workspace", String(rows[0].clientName)]];
     let linkedPostId = "postId" in event ? event.postId : undefined;
+    let focusDate: string | undefined;
     let title: string;
     let message: string;
     if ("postIds" in event) {
@@ -67,7 +70,10 @@ export async function notifyCalendarWorkflow(
       `, [event.calendarId, event.postIds, event.timeZone ?? "UTC"]);
       const date = dates[0];
       const range = event.range ?? (date?.start && date.end ? [String(date.start), String(date.end)] : undefined);
-      if (range) details.push(["Calendar timeline", calendarDateRange(range[0], range[1])]);
+      if (range) {
+        focusDate = range[0].slice(0, 10);
+        details.push(["Calendar timeline", calendarDateRange(range[0], range[1])]);
+      }
       details.push(["Content planned", `${event.postIds.length} ${event.postIds.length === 1 ? "post" : "posts"}`]);
       title = event.kind === "generated" ? "A content calendar was generated" : "A content calendar was imported";
       const briefed = Number(date?.briefed ?? 0);
@@ -83,6 +89,8 @@ export async function notifyCalendarWorkflow(
         ORDER BY "postDate", platform, id
       `, [event.calendarId, event.uploadPostIds ?? (event.postId ? [event.postId] : [])]);
       if (!posts.length) return;
+      const firstDate = new Date(String(posts[0].postDate));
+      if (Number.isFinite(firstDate.getTime())) focusDate = firstDate.toISOString().slice(0, 10);
       linkedPostId = posts.length === 1 ? String(posts[0].id) : undefined;
       const scheduled = uploadDateFormat(event.timeZone);
       for (const post of posts) {
@@ -105,6 +113,18 @@ export async function notifyCalendarWorkflow(
       if (event.note) details.push(["Client feedback", event.note]);
     }
 
+    await recordWorkspaceNotice({
+      calendarId: event.calendarId, key: event.key, kind: event.kind,
+      actorId: "actorId" in event ? event.actorId : undefined,
+      actor: "actor" in event ? event.actor : undefined,
+      batchId: "batchId" in event ? event.batchId : undefined,
+      postId: linkedPostId, title, focusDate,
+      description: ["uploaded", "imported", "generated"].includes(event.kind)
+        ? details.slice(1).filter(([label]) => label !== "Uploaded by").map(([label, value]) => `${label} · ${value}`).join(" • ")
+        : undefined,
+    }, read);
+
+    if (!sendEmail) return;
     const { sendWorkspaceWorkflowEmail } = await import("@/lib/resend");
     const results = await Promise.allSettled(recipients.map(async to => {
       for (let attempt = 0; ; attempt++) {

@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 import WorkspaceSetup from "@/components/calendars/WorkspaceSetup";
 import type { WorkspaceSetupState } from "@/lib/workspaceSetup";
 import WorkspaceUploadTray from "@/components/uploads/WorkspaceUploadTray";
+import WorkspaceNotifications from "./WorkspaceNotifications";
 import InboxHandoffAlert from "./InboxHandoffAlert";
 
 type WorkspaceSectionId =
@@ -326,6 +327,7 @@ export default function CalendarWorkspaceShell({
             {canGenerate && !["access", "content", "generate"].includes(active.id) && <button type="button" onClick={() => select("generate")} className={headerStyles.create}><Sparkles size={15}/> Create with AI</button>}
           </div>
           {settings}
+          {calendarId && <WorkspaceNotifications key={calendarId} calendarId={calendarId} />}
           {account && <AccountAvatarLink name={account.name} src={account.avatarUrl} />}
         </div>
       </header>

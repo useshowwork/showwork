@@ -194,7 +194,7 @@ const posts = await db.$transaction(async tx=>{
 },{timeout:20000});
 
 await notifyCalendarWorkflow({
-  kind: "generated", calendarId: id, key: jobId ?? posts[0]?.id ?? "",
+  kind: "generated", calendarId: id, actorId: creator.id, key: jobId ?? posts[0]?.id ?? "",
   postIds: posts.map(post => post.id), range: [startDate, endDate],
 });
 

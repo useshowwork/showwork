@@ -344,7 +344,8 @@ async function invoke(
       grantedPermissions,
       new Date(
         session.userTokenExpiresAt ?? Date.now()
-      )
+      ),
+      creator.id,
     );
 
     // ==========================================================

@@ -17,105 +17,27 @@ function load(file, mocks = {}, cache = new Map()) {
   cache.set(file, mod.exports);
   return mod.exports;
 }
-const day = 86400000;
-function matches(row, where) {
-  return Object.entries(where).every(([key, value]) => {
-    if (key === 'AND') return value.every(condition => matches(row, condition));
-    if (key === 'OR') return value.some(condition => matches(row, condition));
-    if (value === null) return row[key] == null;
-    if (typeof value === 'object') return row[key] != null && row[key] <= value.lte;
-    return row[key] === value;
-  });
-}
-function fixture(overrides = {}, fail = '') {
-  const row = { id: 'recipient', email: 'person@example.com', name: 'Name',
-    createdAt: new Date(Date.now() - 20 * day), isDeactivated: false,
-    marketingEmailsUnsubscribedAt: null, weeklyMarketingEmailCount: 0, ...overrides };
-  const sent = [];
-  const db = { creator: {
-    findMany: async ({ where }) => matches(row, where) ? [{ ...row }] : [],
-    updateMany: async ({ where, data }) => {
-      if (!matches(row, where)) return { count: 0 };
-      Object.assign(row, data); return { count: 1 };
-    },
-    findUnique: async () => row,
-    update: async ({ data }) => {
-      if (fail === 'ack') throw Error('lost acknowledgement');
-      row.weeklyMarketingEmailSentAt = data.weeklyMarketingEmailSentAt;
-      row.weeklyMarketingEmailCount += data.weeklyMarketingEmailCount.increment;
-    },
-  }};
-  const worker = load('lib/lifecycleEmails.ts', { '@/lib/db': { db }, '@/lib/resend': {
-    sendWeeklyMarketingWorkspaceEmail: async (...args) => {
-      sent.push(args); if (fail === 'provider') throw Error('provider timeout');
-    },
-  }});
-  return { row, sent, worker };
-}
+test('the retired weekly marketing scheduler performs no database or email work', async () => {
+  const fail = () => assert.fail('The retired campaign must not load a database or mailer');
+  const mocks = Object.fromEntries(['@/lib/db', '@/lib/resend'].map(key => [key, new Proxy({}, {get: fail})]));
+  const {runLifecycleEmailCheck} = load('lib/lifecycleEmails.ts', mocks);
+  for (const summary of await Promise.all([runLifecycleEmailCheck(), runLifecycleEmailCheck()])) {
+    assert.deepEqual(summary, {processed:0, weeklyMarketingSent:0, skipped:0, failed:0, disabled:true});
+  }
+});
 
-test('sends one workspace email, stores success, and skips repeated runs', async () => {
-  const f = fixture();
-  assert.equal((await f.worker.runLifecycleEmailCheck()).weeklyMarketingSent, 1);
-  await f.worker.runLifecycleEmailCheck();
-  assert.equal(f.sent.length, 1);
-  assert.equal(f.row.weeklyMarketingEmailCount, 1);
-  assert.match(f.sent[0][0].unsubscribePath, /^\/api\/email-preferences\/marketing\?/);
-  assert.match(f.sent[0][1], /^weekly-workspace\/recipient\//);
-});
-test('overlapping cron runs cannot both reserve the same recipient', async () => {
-  const f = fixture();
-  await Promise.all([f.worker.runLifecycleEmailCheck(), f.worker.runLifecycleEmailCheck()]);
-  assert.equal(f.sent.length, 1);
-});
-test('recent signup, recent old campaign, unsubscribe and deactivation suppress marketing', async () => {
-  for (const overrides of [
-    { createdAt: new Date() }, { lifecycleSequenceStartedAt: new Date() },
-    { welcomeEmailSentAt: new Date() }, { portfolioInviteEmailSentAt: new Date() },
-    { projectManagementEmailSentAt: new Date() }, { creativoPromoEmailSentAt: new Date() },
-    { lastDeliveryReminderSentAt: new Date() }, { calendarTrialFollowUpEmailSentAt: new Date() },
-    { weeklyMarketingEmailSentAt: new Date() }, { marketingEmailsUnsubscribedAt: new Date() },
-    { isDeactivated: true },
-  ]) {
-    const f = fixture(overrides); await f.worker.runLifecycleEmailCheck(); assert.equal(f.sent.length, 0);
-  }
-});
-test('provider failures and lost DB acknowledgements cannot send twice within the week', async () => {
-  for (const reason of ['provider', 'ack']) {
-    const f = fixture({}, reason);
-    assert.equal((await f.worker.runLifecycleEmailCheck()).failed, 1);
-    await f.worker.runLifecycleEmailCheck(); assert.equal(f.sent.length, 1);
-  }
-});
-test('missed weeks never produce catch-up messages; next eligible week changes content', async () => {
-  const f = fixture(); await f.worker.runLifecycleEmailCheck();
-  const first = f.sent[0][0].variant;
-  f.row.weeklyMarketingEmailLastAttemptAt = f.row.weeklyMarketingEmailSentAt = new Date(Date.now() - 50 * day);
-  await f.worker.runLifecycleEmailCheck();
-  assert.equal(f.sent.length, 2); assert.notEqual(f.sent[1][0].variant, first);
-});
-test('three recipient-offset messages rotate without consecutive repetition', () => {
-  const { weeklyMarketingVariant, WEEKLY_MARKETING_MESSAGES } = load('lib/weeklyMarketingContent.ts');
-  const cycle = [0, 1, 2, 3].map(n => weeklyMarketingVariant('creator', n));
-  assert.equal(new Set(cycle.slice(0, 3)).size, 3); assert.equal(cycle[0], cycle[3]);
-  assert.equal(WEEKLY_MARKETING_MESSAGES.length, 3);
-});
-test('weekly emails escape names, include plain text, workspace CTA and unsubscribe headers', async () => {
-  const sent = [];
-  class Resend { constructor() { this.emails = { send: async (payload, options) => {
-    sent.push({ payload, options }); return { data: { id: 'sent' }, error: null };
-  }}; }}
-  const mail = load('lib/resend.ts', { resend: { Resend },
-    '@/lib/publishing/nativeApplicationContext': { nativeApplicationContext: () => undefined } });
-  for (const variant of [0, 1, 2]) await mail.sendWeeklyMarketingWorkspaceEmail({
-    to: 'person@example.com', name: '<script>', variant,
-    unsubscribePath: '/api/email-preferences/marketing?creatorId=id&token=test',
-  }, `test-${variant}`);
-  assert.equal(new Set(sent.map(item => item.payload.subject)).size, 3);
-  for (const { payload, options } of sent) {
-    assert.match(payload.html, /&lt;script&gt;/); assert.doesNotMatch(payload.html, /<script>|Portfolio|Creativo|Project Delivery/);
-    assert.match(payload.html, /\/dashboard\/calendars/); assert.match(payload.text, /Unsubscribe:/);
-    assert.equal(payload.headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');
-    assert.ok(options.idempotencyKey);
+test('the existing authenticated endpoint reports that weekly marketing is disabled', async () => {
+  const previous = process.env.CRON_SECRET;
+  process.env.CRON_SECRET = 'weekly-email-cron-fixture';
+  try {
+    const {POST} = load('app/api/cron/lifecycle-emails/route.ts');
+    assert.equal((await POST(new Request('https://showwork.test'))).status, 401);
+    const response = await POST(new Request('https://showwork.test', {headers:{authorization:'Bearer weekly-email-cron-fixture'}}));
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).disabled, true);
+  } finally {
+    if (previous === undefined) delete process.env.CRON_SECRET;
+    else process.env.CRON_SECRET = previous;
   }
 });
 test('unsubscribe GET is read-only; signed POST opts out; forged or changed-email tokens fail', async () => {

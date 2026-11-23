@@ -20,7 +20,7 @@ export default function BulkApprovalBubble<T extends Post>({posts, mode, calenda
     if (inFlight.current || !count) return;
     inFlight.current = true; setBusy(true); setResult(null); setProgress({done:0,total:count});
     try {
-      setResult(await approveCalendarPosts({ posts, mode, calendarKey, request: calendarMutationFetch, onUpdated, onProgress:(done,total)=>setProgress({done,total}) }));
+      setResult(await approveCalendarPosts({ posts, mode, calendarKey, batchId: crypto.randomUUID(), request: calendarMutationFetch, onUpdated, onProgress:(done,total)=>setProgress({done,total}) }));
     } finally {
       inFlight.current = false; setBusy(false); router.refresh();
     }

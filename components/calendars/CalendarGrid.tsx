@@ -5,6 +5,7 @@ function CalendarFilterPanel({ mobile, open, onClose, children, label = "Filters
 }
 
 import type { ReactNode } from "react";
+import TeamFeedbackThread from "./TeamFeedbackThread";
 import contentStyles from "./ContentPlanner.module.css";
 import { calendarWeek, moveCalendarPeriod } from "@/lib/calendarView";
 import CreativeBriefEditor, { type BriefEditorState } from "./CreativeBriefEditor";
@@ -12,7 +13,7 @@ import BulkApprovalBubble from "./BulkApprovalBubble";
 import ReusePostMedia from "./ReusePostMedia";
 import reviewStyles from "./PostReviewFlow.module.css";
 import type { CreativeBrief, CreativeDevelopment } from "@/lib/content/brief";
-import { Upload, FilePenLine, ShieldCheck, Users, MessageSquare, Send, X, Plus, CalendarDays, Layers3, Sparkles, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Upload, FilePenLine, ShieldCheck, MessageSquare, X, Plus, CalendarDays, Layers3, Sparkles, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { calendarWorkflow, matchesCalendarStage, type CalendarStageFilter } from "@/lib/calendarWorkflow";
 import { calendarUploadBatch } from "@/lib/calendarUploadNoticeClient";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
@@ -2657,6 +2658,7 @@ function AddPostPanel({
 
 function PostDetailPanel({
   calendarId,
+  initialReview,
   post,
   posts,
   onOtherPostUpdated,
@@ -2667,6 +2669,7 @@ function PostDetailPanel({
   onUpdated,
 }: {
   calendarId: string;
+  initialReview: "internal" | "client" | null;
   post: CalendarPostData;
   posts: CalendarPostData[];
   onOtherPostUpdated: (post: CalendarPostData) => void;
@@ -2684,24 +2687,19 @@ function PostDetailPanel({
   const canDeliver = permissions ? permissions.includes("delivery.manage") : userRole === "EDIT_CALENDAR";
   const t = THEMES[theme];
   const router = useRouter();
-  const [detailTab, setDetailTab] = useState<"content" | "brief" | "internal" | "client" | "publishing">("content");
+  const [detailTab, setDetailTab] = useState<"content" | "brief" | "internal" | "client" | "publishing">(initialReview ?? "content");
   const [briefState, setBriefState] = useState<BriefEditorState>({dirty:false,busy:false,needsContext:false});
   const briefSave = useRef<(() => void) | null>(null);
   const registerBriefSave = useCallback((save: (() => void) | null) => { briefSave.current = save; }, []);
   const mainSection = detailTab === "content" || detailTab === "brief" ? detailTab : "review";
   const detailScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (detailScrollRef.current) detailScrollRef.current.scrollTop = 0; }, [detailTab]);
-  const [internalNote, setInternalNote] = useState(post.internalReviewNote ?? "");
   const [reviewSaving, setReviewSaving] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [confirmApproval, setConfirmApproval] = useState(false);
-  const quickFeedbackRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (feedbackOpen) quickFeedbackRef.current?.focus(); }, [feedbackOpen]);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   const internallyApproved = post.internalReviewStatus === "APPROVED";
-  useEffect(() => { setInternalNote(post.internalReviewNote ?? ""); }, [post.internalReviewVersion, post.internalReviewNote]);
-  async function saveInternalReview(action: "approve" | "request_changes" | "reopen" | "feedback") {
+  async function saveInternalReview(action: "approve" | "reopen") {
     if (!canInternalReview) return;
     if (reviewSaving || briefState.dirty || briefState.busy || editingDetails || savingDetails) return;
     setConfirmApproval(false);
@@ -2709,12 +2707,11 @@ function PostDetailPanel({
     try {
       const response = await calendarMutationFetch(`/api/calendars/${calendarId}/posts/${post.id}/internal-review`, {
         method: "POST", headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({action, note: internalNote, version: post.internalReviewVersion ?? 0}),
+        body: JSON.stringify({action, version: post.internalReviewVersion ?? 0}),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to save internal review.");
       onUpdated(result.post);
-      setInternalNote(result.post.internalReviewNote ?? "");
       setReviewNotice(result.notifications?.failed ? "Review saved. Some team emails could not be delivered. Your team can still read the update here." : `Review saved. ${result.notifications?.sent ?? 0} team members notified.`);
       router.refresh();
     } catch (error) { setReviewError(error instanceof Error ? error.message : "Unable to save internal review."); }
@@ -3258,10 +3255,10 @@ caption: draftDetails.caption,
             </div>
 
             <div className={reviewStyles.headerActions}><div className={reviewStyles.headerTools}>
-              {(detailTab === "content" || detailTab === "brief") && canInternalReview && !isApproved && <button id="quick-feedback-toggle" type="button" className={reviewStyles.feedbackButton} aria-expanded={feedbackOpen} aria-controls="quick-team-feedback" onClick={() => setFeedbackOpen(open => !open)}><MessageSquare size={16} aria-hidden="true"/><span>Feedback</span></button>}
+              {(detailTab === "content" || detailTab === "brief") && <button type="button" className={reviewStyles.feedbackButton} disabled={briefState.dirty || briefState.busy || editingDetails} onClick={() => setDetailTab("internal")}><MessageSquare size={16} aria-hidden="true"/><span>Feedback</span></button>}
               {editingDetails ? <button type="button" onClick={saveDetails} disabled={savingDetails} className={reviewStyles.next}>{savingDetails ? "Saving…" : "Save changes"}</button>
                 : briefState.dirty ? <button type="button" disabled={briefState.busy} onClick={() => briefSave.current?.()} className={reviewStyles.next}>Save changes</button>
-                : (detailTab === "content" || detailTab === "brief") ? <button type="button" disabled={briefState.busy || reviewSaving} onClick={() => { setFeedbackOpen(false); setDetailTab("internal"); }} className={reviewStyles.next}>Continue to review<span aria-hidden="true">→</span></button>
+                : (detailTab === "content" || detailTab === "brief") ? <button type="button" disabled={briefState.busy || reviewSaving} onClick={() => setDetailTab("internal")} className={reviewStyles.next}>Continue to review<span aria-hidden="true">→</span></button>
                 : detailTab === "internal" && canInternalReview && !internallyApproved && !isApproved ? <button type="button" disabled={reviewSaving} onClick={() => setConfirmApproval(true)} className={reviewStyles.next}>{reviewSaving ? "Saving…" : "Approve for client review"}</button>
                 : detailTab === "internal" ? <button type="button" disabled={!internallyApproved} onClick={() => setDetailTab("client")} className={reviewStyles.next}>Client approval<span aria-hidden="true">→</span></button>
                 : detailTab === "client" ? <button type="button" disabled={!isApproved} onClick={() => setDetailTab("publishing")} className={reviewStyles.next}>Publishing<span aria-hidden="true">→</span></button>
@@ -3289,16 +3286,6 @@ caption: draftDetails.caption,
             </button>
             </div>
           </div>
-          {feedbackOpen && (detailTab === "content" || detailTab === "brief") && canInternalReview && !isApproved && (
-            <section id="quick-team-feedback" className={reviewStyles.quickFeedback} aria-label="Private team feedback" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setFeedbackOpen(false); document.getElementById("quick-feedback-toggle")?.focus(); } }}>
-              <div className={reviewStyles.feedbackHeading}><label htmlFor="quick-team-note"><Users size={16} aria-hidden="true"/>Private team feedback</label><button type="button" aria-label="Collapse feedback" onClick={() => setFeedbackOpen(false)}><X size={18}/></button></div>
-              <p>Only your team sees this. Your post stays in view.</p>
-              <textarea ref={quickFeedbackRef} id="quick-team-note" value={internalNote} onChange={e => setInternalNote(e.target.value)} maxLength={4000} rows={3} disabled={reviewSaving} placeholder="Share feedback on the creative, caption or direction…"/>
-              <div className={reviewStyles.quickFeedbackActions}><span>{internalNote.length.toLocaleString()} / 4,000</span><button type="button" className={reviewStyles.feedbackButton} disabled={reviewSaving || !internalNote.trim() || briefState.dirty || briefState.busy || editingDetails || savingDetails} onClick={() => saveInternalReview("feedback")}>{reviewSaving ? "Sharing…" : "Share feedback"}<Send size={14} aria-hidden="true"/></button></div>
-              {reviewNotice && <p role="status">{reviewNotice}</p>}
-              {reviewError && <p role="alert" className={reviewStyles.feedbackError}>{reviewError}</p>}
-            </section>
-          )}
           {confirmApproval && detailTab === "internal" && <div className={reviewStyles.approvalConfirm}><span>Make this post available for client review? Approval does not publish it.</span><button type="button" onClick={() => setConfirmApproval(false)}>Cancel</button><button type="button" disabled={reviewSaving || briefState.dirty || briefState.busy || editingDetails || savingDetails} onClick={() => saveInternalReview("approve")} className={reviewStyles.feedbackButton}>Confirm approval</button></div>}
         </div>
 
@@ -3307,10 +3294,10 @@ caption: draftDetails.caption,
             ["content", "Content", FilePenLine],
             ["brief", "Creative brief", Sparkles],
             ["review", "Review & publish", ShieldCheck],
-          ] as const).map(([value, label, Icon]) => <button key={value} type="button" aria-current={mainSection === value ? "page" : undefined} disabled={briefState.dirty || briefState.busy || editingDetails} onClick={() => { setFeedbackOpen(false); setConfirmApproval(false); setDetailTab(value === "review" ? "internal" : value); }}><Icon size={16} aria-hidden="true"/><span>{label}</span></button>)}
+          ] as const).map(([value, label, Icon]) => <button key={value} type="button" aria-current={mainSection === value ? "page" : undefined} disabled={briefState.dirty || briefState.busy || editingDetails} onClick={() => { setConfirmApproval(false); setDetailTab(value === "review" ? "internal" : value); }}><Icon size={16} aria-hidden="true"/><span>{label}</span></button>)}
         </nav>
         {mainSection === "review" && <nav className={reviewStyles.reviewNavigation} aria-label="Review progress">{([["internal", "Team review"], ["client", "Client approval"], ["publishing", "Publishing"]] as const).map(([value, label], index) => <button key={value} type="button" aria-current={detailTab === value ? "step" : undefined} onClick={() => {setConfirmApproval(false); setDetailTab(value);}}><span>{index + 1}</span>{label}</button>)}</nav>}
-        {(reviewError || reviewNotice) && !feedbackOpen && <p className={reviewStyles.reviewMessage} role={reviewError ? "alert" : "status"}>{reviewError || reviewNotice}</p>}
+        {(reviewError || reviewNotice) && <p className={reviewStyles.reviewMessage} role={reviewError ? "alert" : "status"}>{reviewError || reviewNotice}</p>}
         {/* A single scroll surface keeps long captions and publishing controls reachable. */}
         <div ref={detailScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-wrap:anywhere]">
 
@@ -4563,29 +4550,22 @@ caption: draftDetails.caption,
             </div>
           </div>
           <div className={detailTab === "internal" ? reviewStyles.teamReview : "hidden"}>
+            <TeamFeedbackThread calendarId={calendarId} postId={post.id} active={detailTab === "internal"} canSend={canInternalReview || canEdit || canUpload} />
             <section className={reviewStyles.reviewIntro} aria-labelledby="team-review-heading">
-              <div className={reviewStyles.reviewIntroTop}><span className={reviewStyles.reviewIcon}><ShieldCheck size={22} aria-hidden="true"/></span><span className={reviewStyles.reviewLabel}>{internallyApproved ? "Team approved" : post.internalReviewStatus === "NEEDS_CHANGES" ? "Changes requested" : "Your review is needed"}</span><span className={reviewStyles.privateBadge}>Team only</span></div>
-              <h3 id="team-review-heading">{internallyApproved ? "Ready for client approval" : "Give your post a final team check"}</h3>
-              <p>{internallyApproved ? "Your team has approved this post. Continue to see the client’s approval status." : "Check the creative, caption and schedule. Add feedback if needed, then approve for client review."}</p>
-              <button type="button" onClick={() => setDetailTab("content")} className={reviewStyles.checkPost}><FilePenLine size={15} aria-hidden="true"/>Check the post<span aria-hidden="true">↗</span></button>
+              <span className={reviewStyles.reviewIcon}><ShieldCheck size={18} aria-hidden="true" /></span>
+              <div>
+                <h3 id="team-review-heading">{internallyApproved ? "Ready for client approval" : post.internalReviewStatus === "NEEDS_CHANGES" ? "Changes requested" : "Final team check"}</h3>
+                <p>{internallyApproved ? "Your team has approved this post." : "Review the creative, caption and schedule."}</p>
+              </div>
+              <button type="button" onClick={() => setDetailTab("content")} className={reviewStyles.checkPost}>Check the post<span aria-hidden="true">↗</span></button>
             </section>
             <aside className={reviewStyles.importantNote} aria-label="Important approval information">
               <span className={reviewStyles.importantIcon} aria-hidden="true">!</span>
               <div><strong>{internallyApproved ? "If you edit this post" : "Before you approve"}</strong><p>{internallyApproved ? "Changes to the creative, caption or schedule require a new team approval." : "Approval makes this post ready for client review. It does not publish it."}</p></div>
             </aside>
-            {canInternalReview && !isApproved ? <>
-              <section className={reviewStyles.feedbackCard}>
-                <div className={reviewStyles.feedbackHeading}><label htmlFor="team-review-feedback"><Users size={16} aria-hidden="true"/>Private team feedback</label><span>Optional</span></div>
-                <p id="team-review-feedback-help">Only your team sees this. Add a note, or continue with approval below.</p>
-                <textarea id="team-review-feedback" aria-describedby="team-review-feedback-help" value={internalNote} onChange={e=>setInternalNote(e.target.value)} maxLength={4000} rows={3} disabled={reviewSaving} placeholder="Anything your team should adjust or know?" />
-                <div className={reviewStyles.feedbackMeta}><span>Included when you approve or share feedback.</span><span>{internalNote.length.toLocaleString()} / 4,000</span></div>
-              </section>
-              <details className={reviewStyles.reviewOptions}><summary>Need changes instead? <span aria-hidden="true">+</span></summary><div className="mt-3 flex flex-wrap gap-3">
-                {canInternalReview && <button type="button" disabled={reviewSaving || !internalNote.trim()} onClick={()=>saveInternalReview("request_changes")} className="min-h-11 rounded-xl border px-4 py-3 text-sm font-semibold disabled:opacity-50" style={{borderColor:t.inputBorder,color:t.text}}>Request changes</button>}
-                <button type="button" disabled={reviewSaving || !internalNote.trim()} onClick={()=>saveInternalReview("feedback")} className="min-h-11 rounded-xl border px-4 py-3 text-sm font-semibold disabled:opacity-50" style={{borderColor:t.inputBorder,color:t.text}}>Share internal feedback</button>
-                {canInternalReview && internallyApproved && <button type="button" disabled={reviewSaving} onClick={()=>saveInternalReview("reopen")} className="min-h-11 rounded-xl border px-4 py-3 text-sm font-semibold" style={{borderColor:t.inputBorder,color:t.text}}>Return to internal review</button>}
-              </div></details>
-            </> : <p className="whitespace-pre-wrap text-sm leading-6" style={{color:t.textMuted}}>{post.internalReviewNote || (isApproved ? "Client-approved content is locked." : "You need Internal review access to give feedback or approve this post. Ask the workspace owner or manager to update your access.")}</p>}
+            {canInternalReview && internallyApproved && !isApproved && (
+              <button type="button" disabled={reviewSaving} onClick={() => saveInternalReview("reopen")} className={reviewStyles.feedbackButton}>Return to internal review</button>
+            )}
             {reviewNotice && <p role="status" className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{reviewNotice}</p>}
             {reviewError && <p role="alert" className="text-sm text-red-600">{reviewError}</p>}
           </div>
@@ -4966,6 +4946,13 @@ export default function CalendarGrid({
   }, []);
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  useEffect(() => {
+    const date = new URLSearchParams(window.location.search).get("date");
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    const focus = new Date(`${date}T12:00:00`);
+    if (Number.isFinite(focus.getTime())) setCurrentMonth(focus);
+  }, []);
+
   const [calendarPeriod, setCalendarPeriod] = useState<"day" | "week" | "month">("week");
   useEffect(() => {
     try {
@@ -5024,11 +5011,17 @@ export default function CalendarGrid({
   }, [calendarId]);
 
   const openedLinkedPost = useRef(false);
+  const [linkedReview, setLinkedReview] = useState<"internal" | "client" | null>(null);
   useEffect(() => {
     if (openedLinkedPost.current) return;
-    const id = new URLSearchParams(window.location.search).get("post");
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("post");
     const linked = id && posts.find(p => p.id === id);
-    if (linked) { setSelectedPost(linked); openedLinkedPost.current = true; }
+    if (linked) {
+      setLinkedReview(params.get("review") === "team" ? "internal" : params.get("review") === "client" ? "client" : null);
+      setSelectedPost(linked);
+      openedLinkedPost.current = true;
+    }
   }, [posts]);
 
   useEffect(() => {
@@ -6173,6 +6166,8 @@ export default function CalendarGrid({
 
       {selectedPost && (
         <PostDetailPanel
+          key={selectedPost.id}
+          initialReview={linkedReview}
           calendarId={calendarId}
           post={selectedPost}
           posts={posts}
@@ -6180,9 +6175,10 @@ export default function CalendarGrid({
           userRole={userRole}
           permissions={permissions}
           theme={theme}
-          onClose={() =>
-            setSelectedPost(null)
-          }
+          onClose={() => {
+            setLinkedReview(null);
+            setSelectedPost(null);
+          }}
           onUpdated={(updated) => {
             const safe =
               normalize(updated);

@@ -1,3 +1,4 @@
+import { recordChannelConnected } from "@/lib/workspaceNotifications";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import { calendarFeatureGate } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest, { params }: Context) {
   const { id } = await params;
   const denied = await owner(id);
   if (denied) return denied;
+  const creator = await getCurrentCreator();
   if (!(await canAccessCalendarById(id))) return NextResponse.json({ error: "This workspace is not active." }, { status: 403 });
   const featureLock = await calendarFeatureGate(id, "socialInbox");
   if (featureLock) return featureLock;
@@ -58,6 +60,10 @@ export async function POST(req: NextRequest, { params }: Context) {
         messagingWebhookSubscribedAt: new Date(), messagingWebhookError: null };
       return tx.socialConnection.upsert({ where: { calendarId_platform_platformAccountId: { calendarId: id, platform: "WHATSAPP", platformAccountId: input.phoneNumberId } },
         create: { calendarId: id, platform: "WHATSAPP", platformAccountId: input.phoneNumberId, ...data }, update: data, select: publicFields });
+    });
+    if (creator) await recordChannelConnected({
+      calendarId: id, connectionId: connection.id, platform: "WHATSAPP", actorId: creator.id,
+      connectedAt: connection.connectedAt, accountName: connection.accountName,
     });
     return NextResponse.json({ connection });
   } catch (error) {

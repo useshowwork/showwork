@@ -1,4 +1,3 @@
-import { WEEKLY_MARKETING_MESSAGES } from "@/lib/weeklyMarketingContent";
 import { createHash } from "node:crypto";
 import { CONTENT_WORKSPACE_PLANS } from "@/lib/contentWorkspaceEntitlements";
 import { Resend } from "resend";
@@ -734,32 +733,6 @@ export async function sendWelcomeEmail({
       footer: "Start with one tool. The others are here whenever you need them.",
     }),
   }, `account-welcome/${creatorId}`);
-}
-
-export async function sendWeeklyMarketingWorkspaceEmail({
-  to, name, variant, unsubscribePath,
-}: { to: string; name: string | null; variant: number; unsubscribePath: string }, idempotencyKey: string) {
-  const message = WEEKLY_MARKETING_MESSAGES[variant];
-  if (!message) throw new Error("Unknown weekly email variant.");
-  const unsubscribeUrl = `${APP_URL}${unsubscribePath}`;
-  const greeting = escapeHtml(firstNameOf(name) ?? "there");
-  await sendEmail({
-    from: FROM, to, subject: message.subject,
-    text: `Hi ${firstNameOf(name) ?? "there"},\n\n${message.headline}\n\n${message.body}\n\n${message.takeaway}\n\n${message.ctaLabel}: ${APP_URL}/dashboard/calendars\n\nOne Marketing Workspace email a week. Unsubscribe: ${unsubscribeUrl}`,
-    headers: {
-      "List-Unsubscribe": `<${unsubscribeUrl}>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    },
-    html: emailShell({
-      eyebrow: "Your week with Marketing Workspace",
-      headline: message.headline,
-      body: `Hi ${greeting},<br /><br />${escapeHtml(message.body)}`,
-      detailsHtml: infoBox("One thing to try this week", message.takeaway),
-      ctaLabel: message.ctaLabel,
-      ctaUrl: `${APP_URL}/dashboard/calendars`,
-      footer: `One Marketing Workspace email a week. <a href="${escapeHtml(unsubscribeUrl)}" style="color:#526b91;text-decoration:underline;">Unsubscribe</a> from these emails. Account and activity notifications are separate.`,
-    }),
-  }, idempotencyKey);
 }
 
 export async function sendManagedProjectInviteEmail({
@@ -1843,15 +1816,15 @@ export async function sendDemoBookingAcknowledgementEmail(
   });
 }
 
-export async function sendInternalReviewEmail(input: {to:string;calendarId:string;postId:string;version:number;action:string;note:string|null}, transport?: NonNullable<ReturnType<typeof nativeApplicationContext>>["notify"]) {
+export async function sendInternalReviewEmail(input: {to:string;calendarId:string;postId:string;version:number;action:string;note:string|null;feedbackId?:string}, transport?: NonNullable<ReturnType<typeof nativeApplicationContext>>["notify"]) {
   const title = input.action === 'approve' ? 'Content approved internally' : input.action === 'request_changes' ? 'Internal changes requested' : input.action === 'reopen' ? 'Content returned to internal review' : 'New internal feedback';
-  const url = `${APP_URL}/dashboard/calendars/${encodeURIComponent(input.calendarId)}?view=content&post=${encodeURIComponent(input.postId)}`;
+  const url = `${APP_URL}/dashboard/calendars/${encodeURIComponent(input.calendarId)}?view=content&post=${encodeURIComponent(input.postId)}${input.feedbackId ? "&review=team" : ""}`;
   await sendEmail({from:FROM,to:input.to,subject:`${title} · Showwork`,html:emailShell({
     eyebrow:'Your content workflow',headline:title,
-    body:input.action==='approve'?'This post is ready for client approval. Open it to see the approved creative and share it for review.' : input.action === 'request_changes' ? 'The team requested edits. Update the post and return it to internal review before sharing it with the client.' : 'There’s an update to the internal review. Open the post to see its status and next steps.',
+    body:input.feedbackId ? 'A teammate left feedback on this post. Open the conversation to read it and reply.' : input.action==='approve'?'This post is ready for client approval. Open it to see the approved creative and share it for review.' : input.action === 'request_changes' ? 'The team requested edits. Update the post and return it to internal review before sharing it with the client.' : 'There’s an update to the internal review. Open the post to see its status and next steps.',
     detailsHtml:input.note?`<div style="padding:18px;border-radius:12px;background:#EFF6FF;color:#1E3A8A;line-height:1.6"><strong>Private team feedback</strong><p style="white-space:pre-wrap">${escapeHtml(input.note)}</p></div>`:undefined,
-    ctaLabel:'Open content & workflow',ctaUrl:url,
-  })},`review-${input.postId}-${input.version}-${createHash('sha256').update(input.to).digest('hex').slice(0,24)}`,transport);
+    ctaLabel:input.feedbackId ? 'Open team feedback' : 'Open content & workflow',ctaUrl:url,
+  })},`review-${input.postId}-${input.feedbackId ?? input.version}-${createHash('sha256').update(input.to).digest('hex').slice(0,24)}`,transport);
 }
 
 export async function sendWorkspaceWorkflowEmail(input: {

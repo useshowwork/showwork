@@ -1,3 +1,4 @@
+import { approvalBatch, recordWorkspaceNotice } from "@/lib/workspaceNotifications";
 import { clientRevisionNote } from "@/lib/clientPostReview";
 import { withoutInternalReview } from "@/lib/calendarInternalReview";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
@@ -166,6 +167,12 @@ export async function POST(
   const calendarUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://useshowwork.com"}/dashboard/calendars/${encodeURIComponent(calendar.id)}?view=content&post=${encodeURIComponent(postId)}`;
 
   if (post.approvalStatus !== (approved ? "APPROVED" : "NEEDS_REVISION") || post.approvalNote !== revisionNote) {
+    await recordWorkspaceNotice({
+      calendarId: calendar.id, postId, key: `${postId}:${updated.reviewedAt?.toISOString()}`,
+      kind: approved ? "client-approved" : "client-feedback",
+      title: approved ? "Client approved a post" : "Client feedback received",
+      actor: viewer.name || "Client", batchId: approved ? approvalBatch(req, viewer.email) : undefined,
+    });
     const addresses = [...new Set(recipients.map(address => address.trim().toLowerCase()).filter(Boolean))];
     const results = await Promise.allSettled(addresses.map(to => sendCalendarPostReviewedEmail({
       to, clientName: calendar.clientName, approved, note: revisionNote, calendarUrl,

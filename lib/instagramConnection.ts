@@ -7,7 +7,7 @@ import { subscribeMetaMessagingAccount } from "@/lib/socialMessaging/meta";
 // publishing credentials and the existing Page + Instagram webhook registration.
 export async function completeInstagramConnection(calendarId: string,
   pageWithInstagram: Awaited<ReturnType<typeof listManagedPages>>[number] & { instagram_business_account: { id: string } },
-  grantedPermissions: string[], expiresAt: Date) {
+  grantedPermissions: string[], expiresAt: Date, actorId?: string) {
     const igUserId = pageWithInstagram.instagram_business_account.id;
     const username = await getInstagramUsername(igUserId, pageWithInstagram.access_token);
 
@@ -28,6 +28,7 @@ export async function completeInstagramConnection(calendarId: string,
     const socialConnection = await upsertSocialConnection({
       calendarId,
       platform: "INSTAGRAM",
+      actorId,
       platformAccountId: igUserId,
       accountName: username,
       username,

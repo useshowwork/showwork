@@ -1,3 +1,4 @@
+import { channelNames, recordWorkspaceNotice } from "../workspaceNotifications";
 import { clientRevisionNote } from "../clientPostReview";
 import { calendarSlugCandidate } from "@/lib/calendarSlug";
 import { brandPersonalityDocumentId } from "../knowledge/brandPersonality";
@@ -375,7 +376,7 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
  type AccountEvidence=Awaited<ReturnType<typeof deps.verifyAccount>>;
  async function bindVerifiedAccount(input:{operationId:string;actor:string;calendarId:string;platform:string;evidence?:AccountEvidence;disconnect?:boolean;expectedAccountVersion?:number;operationRequest?:Record<string,unknown>;selectionOperationId?:string}){
   const request=input.operationRequest?{actor:input.actor,calendarId:input.calendarId,platform:input.platform,operationRequest:input.operationRequest}:{...input,evidence:input.evidence?{providerAccountId:input.evidence.providerAccountId,connectionId:input.evidence.connectionId,tokenScopes:input.evidence.tokenScopes,credentialHash:policyHash(input.evidence)}:undefined};
-  await permission(input.actor,input.calendarId,'channels.manage');return replay(input.operationId,input.actor,request,async tx=>{
+  await permission(input.actor,input.calendarId,'channels.manage');const connected = await replay(input.operationId,input.actor,request,async tx=>{
    const {v}=services(tx);await v.lockForPolicyChange(tx);await v.validateWorkspacePermission(tx,{actor:input.actor,calendarId:input.calendarId,permission:'channels.manage'});
    if(input.selectionOperationId&&(await tx.query(`SELECT 1 FROM "PublishingApplicationOperation" WHERE "operationId"=$1`,[input.selectionOperationId+'-selected'])).rows.length)throw Error('OAUTH_SELECTION_ALREADY_APPLIED');
    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`account:${input.calendarId}:${input.platform}`]);
@@ -402,6 +403,12 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
    if(input.selectionOperationId)await tx.query(`INSERT INTO "PublishingApplicationOperation"("operationId",actor,"requestHash",result) VALUES($1,$2,$3,$4)`,[input.selectionOperationId+'-selected',input.actor,policyHash(request),{accountId:input.evidence?.providerAccountId,operationId:input.operationId}]);
    return {ok:true,...result};
   });
+  if (!input.disconnect) await recordWorkspaceNotice({
+   calendarId: input.calendarId, key: input.operationId, kind: "channel", actorId: input.actor,
+   title: `${channelNames[input.platform] ?? input.platform} connected`,
+   description: input.evidence?.accountName ?? input.evidence?.username ?? undefined,
+  }, (sql,args)=>deps.database.transaction(tx=>tx.query(sql,args)));
+  return connected;
  }
  async function regenerate(input:{operationId:string;actor:string;calendarId:string;postId:string;body:Record<string,any>}){
   if(!deps.regenerateContent)throw Error('AI_REGENERATION_SERVICE_REQUIRED');await permission(input.actor,input.calendarId,'calendar.edit');const hash=policyHash(input);

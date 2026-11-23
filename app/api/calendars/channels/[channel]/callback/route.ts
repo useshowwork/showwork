@@ -229,7 +229,7 @@ export async function GET(
         },
       });
 
-      await upsertSocialConnection({
+      await upsertSocialConnection({ actorId: creator.id,
         calendarId,
         platform: "LINKEDIN",
         platformAccountId: publishingId,
@@ -261,7 +261,7 @@ export async function GET(
         },
       });
 
-      await upsertSocialConnection({
+      await upsertSocialConnection({ actorId: creator.id,
         calendarId,
         platform: "X",
         platformAccountId: member.id,

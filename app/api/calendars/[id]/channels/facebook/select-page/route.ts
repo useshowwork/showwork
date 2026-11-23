@@ -107,7 +107,7 @@ export async function POST(
       },
     });
 
-    const socialConnection = await upsertSocialConnection({
+    const socialConnection = await upsertSocialConnection({ actorId: creator.id,
       calendarId,
       platform: "FACEBOOK",
       platformAccountId: page.id,

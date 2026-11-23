@@ -69,12 +69,13 @@ export function createShowworkPublishingApplication(input:{
   nativePolicyHandlers![entrypoint]=(...args:any[])=>withNativeApplicationContext({database:readOnlyApplicationDatabase(input.nativePolicy!.prisma),billingFetch:async(request,init)=>{const url=new URL(typeof request==='string'?request:request instanceof Request?request.url:String(request));if(url.hostname!=='api.paystack.co'||url.protocol!=='https:'||(init?.method??'GET')!=='GET')throw Error('READ_ONLY_BILLING_HTTP_REQUIRED');return input.nativePolicy!.billingFetch(request,{...init,redirect:'error',signal:AbortSignal.timeout(15000)});}},()=>handler(...args));
  }
  const application=createDisabledCanonicalApplication({
-  notifyCalendarWorkflow:input.nativePolicy?.notify ? event=>notifyCalendarWorkflow(event,(sql,args)=>input.database.transaction(tx=>tx.query(sql,args)),input.nativePolicy!.notify) : undefined,
-  notifyInternalReview:input.nativePolicy?.notify ? event=>notifyInternalReview(event,(sql,args)=>input.database.transaction(tx=>tx.query(sql,args)),input.nativePolicy!.notify) : undefined,
+  notifyCalendarWorkflow:event=>notifyCalendarWorkflow(event,(sql,args)=>input.database.transaction(tx=>tx.query(sql,args)),input.nativePolicy?.notify,!!input.nativePolicy?.notify),
+  notifyInternalReview:event=>notifyInternalReview(event,(sql,args)=>input.database.transaction(tx=>tx.query(sql,args)),input.nativePolicy?.notify,!!input.nativePolicy?.notify),
   database:input.database,worker:input.worker,actions,resolveCalendar,publicUrlFor,nativePolicyHandlers,serverOperationId:async()=>{const id=(await headers()).get('idempotency-key');if(!id)throw Error('Stable operation ID required');return id;},
   authenticateCreator:async()=>{const creator=await currentCreator();return creator?{id:creator.id}:null;},
   confirmCreatorDeletion:async(actor,password)=>{const creator=await currentCreator();return creator?.id===actor&&typeof password==='string'&&await verifyPassword(password,creator.passwordHash)?{passwordHash:creator.passwordHash}:null;},
   authenticateCron:async value=>{const supplied=value instanceof Request?value.headers.get('authorization'):(value as {headers?:Record<string,string>})?.headers?.authorization;return supplied===`Bearer ${input.cronSecret}`;},
+  viewerIdentity:verifyViewerTokenClaims,
   viewerCredential:async request=>{const id=await resolveCalendar(request,{}),name=`calendar_viewer_${id}=`;return (request.headers.get('cookie')??'').split(';').map(p=>p.trim()).find(p=>p.startsWith(name))?.slice(name.length)??'';},
   verifyUpload:input.verifyUpload??(input.storage?createCanonicalShowworkUploadVerifier({database:input.database,storage:input.storage}):async()=>{throw Error('IMMUTABLE_STORAGE_ADAPTER_REQUIRED');}),
  },{host:input.host,publishingEnabled:false});

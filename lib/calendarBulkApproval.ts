@@ -16,8 +16,8 @@ export function canBulkApproveClient(post: ReviewPost) {
     && (!!post.assets?.length || (["FACEBOOK", "LINKEDIN", "X"].includes(post.platform ?? "") && !!post.caption?.trim()));
 }
 
-export async function approveCalendarPosts<T extends ReviewPost>({ posts, mode, calendarKey, request, onUpdated, onProgress }: {
-  posts: readonly T[]; mode: "internal" | "client"; calendarKey: string;
+export async function approveCalendarPosts<T extends ReviewPost>({ posts, mode, calendarKey, batchId, request, onUpdated, onProgress }: {
+  posts: readonly T[]; mode: "internal" | "client"; calendarKey: string; batchId?: string;
   request: (url: string, init: RequestInit) => Promise<Response>;
   onUpdated: (post: T) => void;
   onProgress?: (completed: number, total: number) => void;
@@ -34,7 +34,7 @@ export async function approveCalendarPosts<T extends ReviewPost>({ posts, mode, 
           ? `/api/calendars/${encodeURIComponent(calendarKey)}/posts/${encodeURIComponent(post.id)}/internal-review`
           : `/api/social-calendar/${encodeURIComponent(calendarKey)}/posts/${encodeURIComponent(post.id)}/review`;
         const body = mode === "internal" ? { action: "approve", version: post.internalReviewVersion ?? 0, note: post.internalReviewNote ?? null } : { action: "approve" };
-        const response = await request(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const response = await request(url, { method: "POST", headers: { "Content-Type": "application/json", ...(batchId ? { "x-showwork-approval-batch": batchId } : {}) }, body: JSON.stringify(body) });
         const data = await response.json();
         if (!response.ok || !data.post) throw new Error(data.error || "Approval could not be confirmed. Refresh and retry.");
         onUpdated(data.post);

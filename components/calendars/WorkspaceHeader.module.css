@@ -15,8 +15,8 @@
 .settingsTrigger { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 11px; border: 1px solid #ffffff25; border-radius: 11px; background: #ffffff0c; color: #c8defa; font-size: 11px; font-weight: 500; transition: color .18s,background .18s; }.settingsTrigger:hover,.settingsOpen { color: #fff; background: #ffffff1c; border-color: #ffffff40; }
 .header a:focus-visible,.header button:focus-visible { outline: 2px solid #b3d2ff; outline-offset: 3px; }
 @media (max-width:1100px) { .inner { gap: 11px; padding: 0 18px; }.back > span { display: none; }.client { padding: 0 10px; }.location { font-size: 10px; padding: 6px 9px; } }
-@media (max-width:1023px) { .actions,.location { display: none; }.mobileSection { display: inline; }.desktopSection { display: none; }.inner { gap: 12px; }.divider { display: none; } }
-@media (max-width:550px) { .inner { padding: 0 13px; gap: 10px; }.back { min-height: 36px; width: 34px; padding: 0; border-radius: 10px; }.identity { gap: 9px; }.monogram { width: 35px; height: 35px; font-size: 12px; }.name > p { font-size: 13px; }.name > span { font-size: 10px; }.settingsTrigger { width: 36px; padding: 0; justify-content: center; } }
+@media (max-width:1023px) { .actions,.location { display: none; }.mobileSection { display: inline; }.desktopSection { display: none; }.inner { gap: 12px; }.divider { display: none; }.name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+@media (max-width:550px) { .inner { padding: 0 13px; gap: 8px; }.back { min-height: 36px; width: 34px; padding: 0; border-radius: 10px; }.identity { gap: 9px; }.monogram { width: 35px; height: 35px; font-size: 12px; }.name > p { font-size: 13px; }.name > span { font-size: 10px; }.settingsTrigger { width: 36px; padding: 0; justify-content: center; } }
 @media (prefers-reduced-motion:reduce) { .back,.client,.create,.settingsTrigger { transition: none; } }
 
 /* Desktop reference uses a separate, compact toolbar beside the sidebar. */

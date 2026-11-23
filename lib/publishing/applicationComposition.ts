@@ -1,3 +1,4 @@
+import { approvalBatch } from "../workspaceNotifications";
 import { uploadNoticeBatchId, uploadNoticeReceipt, verifiedUploadNoticePosts } from "../calendarUploadNotice";
 import type { WorkflowEmailEvent } from "../calendarWorkflowEmails";
 import type { ReviewNotice } from "../calendarReviewNotifications";
@@ -13,6 +14,7 @@ import type {createPublishingIntegrationControl} from './integrationControl';
 import {proveDisposablePublishingDatabase,installLocalPublishingIntegration,installDisabledPublishingApplication,runNativePublishingPolicy} from './applicationBoundary';
 export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof createCanonicalApplicationActions>;worker:ReturnType<typeof createInactiveCanonicalWorker>;database:OwnershipDatabase;
  authenticateCreator(request:Request):Promise<{id:string}|null>;authenticateCron(input:unknown):Promise<boolean>;viewerCredential(request:Request):Promise<string>;
+ viewerIdentity?:(credential:string,calendarId:string)=>{name:string|null;email:string}|null;
  resolveCalendar(request:Request,params:Record<string,string>):Promise<string>;
  confirmCreatorDeletion?:(actor:string,password:unknown)=>Promise<{passwordHash:string}|null>;
  publicUrlFor?:(key:string)=>string;
@@ -38,7 +40,7 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    if(!actor||actor.id!==args[1])throw Error('Unauthorized import actor');
    const calendarId=String(args[0]), input=args[2] as {requestId:string;options?:{timezone?:string}};
    const result=await deps.actions.importPosts(calendarId,actor.id,input);
-   await deps.notifyCalendarWorkflow?.({kind:'imported',calendarId,key:input.requestId,postIds:result.postIds,timeZone:input.options?.timezone});
+   await deps.notifyCalendarWorkflow?.({kind:'imported',calendarId,key:input.requestId,postIds:result.postIds,actorId:actor.id,timeZone:input.options?.timezone});
    return result;
   }
   if(path==='lib/calendarTeamService.ts'&&/\#(editTeammate|removeTeammate)@/.test(entrypoint)){
@@ -73,16 +75,19 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    }
    const calendarId=await deps.resolveCalendar(request,params);
    if(path.endsWith('/social-calendar/[slug]/respond/route.ts')){
-    const result=await deps.actions.plan({operationId,calendarId,credential:await deps.viewerCredential(request),action:body.action,note:body.note});
-    await deps.notifyCalendarWorkflow?.({kind:body.action==='approve'?'client-approved':'client-feedback',calendarId,key:operationId,note:result.calendar.planApprovalNote});
+    const credential=await deps.viewerCredential(request);
+    const result=await deps.actions.plan({operationId,calendarId,credential,action:body.action,note:body.note});
+    await deps.notifyCalendarWorkflow?.({kind:body.action==='approve'?'client-approved':'client-feedback',calendarId,key:operationId,note:result.calendar.planApprovalNote,actor:deps.viewerIdentity?.(credential,calendarId)?.name ?? "Client"});
     return Response.json(result);
    }
    if(path.includes('social-calendar/')&&path.includes('/review/')){
     if(!['approve','request_revision'].includes(body.action))throw Error('INVALID_REVIEW_ACTION');
     const approved=body.action==='approve';
-    await deps.actions.review({operationId,calendarId,postId:params.postId,credential:await deps.viewerCredential(request),approved,note:body.note});
+    const credential=await deps.viewerCredential(request);
+    await deps.actions.review({operationId,calendarId,postId:params.postId,credential,approved,note:body.note});
+    const viewer=deps.viewerIdentity?.(credential,calendarId);
     const post=await view(calendarId,params.postId);
-    await deps.notifyCalendarWorkflow?.({kind:approved?'client-approved':'client-feedback',calendarId,key:operationId,postId:params.postId,note:approved?null:body.note});
+    await deps.notifyCalendarWorkflow?.({kind:approved?'client-approved':'client-feedback',calendarId,key:operationId,postId:params.postId,note:approved?null:body.note,actor:viewer?.name ?? "Client",batchId:approved?approvalBatch(request,viewer?.email ?? "client"):undefined});
     return Response.json({post:withoutInternalReview(post)});
    }
    const actor=await deps.authenticateCreator(request);if(!actor)return Response.json({error:'Unauthorized'},{status:401});
@@ -101,7 +106,7 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    }
    if(path.endsWith('/imports/confirm/route.ts')){
     const result=await deps.actions.importPosts(calendarId,actor.id,body);
-    await deps.notifyCalendarWorkflow?.({kind:'imported',calendarId,key:body.requestId,postIds:result.postIds,timeZone:body.options?.timezone});
+    await deps.notifyCalendarWorkflow?.({kind:'imported',calendarId,key:body.requestId,postIds:result.postIds,actorId:actor.id,timeZone:body.options?.timezone});
     return Response.json(result,{headers:{'Cache-Control':'no-store'}});
    }
    if(path.endsWith('/calendars/[id]/route.ts')&&request.method==='PATCH'&&body.action==='publish')return Response.json(await deps.actions.plan({operationId,actor:actor.id,calendarId,action:body.action}));
@@ -113,7 +118,7 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    }
    if(path.endsWith('/posts/[postId]/internal-review/route.ts')) {
     const result=await deps.actions.internalReview({operationId,actor:actor.id,calendarId,postId,body});
-    const notifications=deps.notifyInternalReview ? await deps.notifyInternalReview(result.notification).catch(()=>({sent:0,failed:1})) : {sent:0,failed:1};
+    const notifications=deps.notifyInternalReview ? await deps.notifyInternalReview({...result.notification,actorId:actor.id,batchId:body.action==="approve"?approvalBatch(request,actor.id):undefined}).catch(()=>({sent:0,failed:1})) : {sent:0,failed:1};
     return Response.json({post:await view(calendarId,postId),notifications});
    }
    if(path.includes('/posts/[postId]/publish/')||path.endsWith('/posts/[postId]/publish/route.ts')){
@@ -132,7 +137,7 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    if(path.endsWith('/posts/[postId]/resubmit/route.ts')){await deps.actions.resubmit({operationId,actor:actor.id,calendarId,postId});return Response.json({post:await view(calendarId,postId)});}
    if(path.includes('/ai-generate/')){
     const result=await deps.actions.generate({operationId,actor:actor.id,calendarId,body});
-    if(path.endsWith('/ai-generate/route.ts'))await deps.notifyCalendarWorkflow?.({kind:'generated',calendarId,key:operationId,postIds:result.posts.map((post:{id:string})=>post.id),range:[body.startDate,body.endDate]});
+    if(path.endsWith('/ai-generate/route.ts'))await deps.notifyCalendarWorkflow?.({kind:'generated',calendarId,key:operationId,actorId:actor.id,postIds:result.posts.map((post:{id:string})=>post.id),range:[body.startDate,body.endDate]});
     return Response.json(result);
    }
    if(path.includes('/ai-drafts/')){

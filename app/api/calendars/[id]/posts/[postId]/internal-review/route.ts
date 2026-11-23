@@ -1,3 +1,4 @@
+import { approvalBatch } from "@/lib/workspaceNotifications";
 import { notifyInternalReview } from "@/lib/calendarReviewNotifications";
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentCreator } from '@/lib/auth';
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
         internalReviewedAt:decision.status === undefined ? current.internalReviewedAt : new Date(),internalReviewedBy:decision.status === undefined ? current.internalReviewedBy : creator.id,internalReviewVersion:{increment:1}},
         include:{assets:{orderBy:{displayOrder:'asc'}},videoComments:true,customFields:true}});
     });
-    const notifications = await notifyInternalReview({calendarId:id,postId,version:post.internalReviewVersion,action:decision.status === undefined ? 'feedback' : decision.status==='APPROVED'?'approve':decision.status==='NEEDS_CHANGES'?'request_changes':'reopen',note:decision.note},async(sql,args)=>({rows:await db.$queryRawUnsafe<any[]>(sql,...args)}));
+    const notifications = await notifyInternalReview({calendarId:id,postId,version:post.internalReviewVersion,action:decision.status === undefined ? 'feedback' : decision.status==='APPROVED'?'approve':decision.status==='NEEDS_CHANGES'?'request_changes':'reopen',note:decision.note,actorId:creator.id,batchId:decision.status==="APPROVED"?approvalBatch(req,creator.id):undefined},async(sql,args)=>({rows:await db.$queryRawUnsafe<any[]>(sql,...args)}));
     return NextResponse.json({notifications,post:{...post,assets:post.assets.map(a=>({...a,sizeBytes:Number(a.sizeBytes),contentUrl:publicUrlFor(a.fileKey)}))}});
   } catch(error) {
     const message = error instanceof Error ? error.message : 'Unable to save internal review.';

@@ -45,8 +45,8 @@ export default function MobileDrawer({
   heading?: ReactNode;
   className?: string;
   panelClassName?: string;
-  breakpoint?: "md" | "lg";
-  placement?: "left" | "bottom";
+  breakpoint?: "md" | "lg" | null;
+  placement?: "left" | "right" | "bottom";
   motion?: "slide" | "fade";
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -64,24 +64,35 @@ export default function MobileDrawer({
     }
     const previousOverflow = document.body.style.overflow;
     const previousFocus = document.activeElement as HTMLElement | null;
-    dialog.showModal();
+    const root = document.documentElement;
+    const previousGutter = root.style.scrollbarGutter;
+    const preserveGutter = placement === "right" && window.innerWidth > root.clientWidth
+      && !getComputedStyle(root).scrollbarGutter.includes("stable");
+    if (preserveGutter) root.style.scrollbarGutter = "stable";
     document.body.style.overflow = "hidden";
-    const frame = requestAnimationFrame(() => setVisible(true));
-    const media = window.matchMedia(
+    dialog.showModal();
+    // Paint the starting position before starting the entrance transition.
+    let enterFrame = 0;
+    const initialFrame = requestAnimationFrame(() => {
+      enterFrame = requestAnimationFrame(() => setVisible(true));
+    });
+    const media = breakpoint === null ? null : window.matchMedia(
       `(min-width: ${breakpoint === "md" ? 768 : 1024}px)`,
     );
     const closeAtDesktop = () => {
-      if (media.matches) closeRef.current();
+      if (media?.matches) closeRef.current();
     };
-    media.addEventListener("change", closeAtDesktop);
+    media?.addEventListener("change", closeAtDesktop);
     closeAtDesktop();
     return () => {
-      cancelAnimationFrame(frame);
-      media.removeEventListener("change", closeAtDesktop);
+      cancelAnimationFrame(initialFrame);
+      cancelAnimationFrame(enterFrame);
+      media?.removeEventListener("change", closeAtDesktop);
       document.body.style.overflow = previousOverflow;
+      if (preserveGutter) root.style.scrollbarGutter = previousGutter;
       previousFocus?.focus({ preventScroll: true });
     };
-  }, [open, breakpoint, motion]);
+  }, [open, breakpoint, motion, placement]);
 
   return (
     <dialog
@@ -108,16 +119,16 @@ export default function MobileDrawer({
         event.preventDefault();
         onClose();
       }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-transparent"
+      className={`fixed inset-0 m-0 h-dvh max-h-none max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-transparent ${placement === "right" ? "w-full" : "w-screen"}`}
     >
       <div
         aria-hidden="true"
         onClick={onClose}
-        className={`absolute inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity ${motion === "fade" ? "duration-[180ms]" : "duration-300"} motion-reduce:transition-none ${visible ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 bg-slate-950/50 ${placement === "right" ? "" : "backdrop-blur-sm"} transition-opacity ${motion === "fade" ? "duration-[180ms]" : "duration-300"} motion-reduce:transition-none ${visible ? "opacity-100" : "opacity-0"}`}
       />
       <div
         data-visible={visible}
-        className={`${panelClassName} flex flex-col shadow-2xl ease-out motion-reduce:transition-none ${motion === "fade" ? `transition-opacity duration-[180ms] ${visible ? "opacity-100" : "opacity-0"}` : "transition-transform duration-300"} ${placement === "bottom" ? "absolute inset-x-0 bottom-0 max-h-[85dvh] w-full rounded-t-3xl" : "relative h-full w-[min(320px,calc(100vw-48px))]"} ${motion === "slide" ? (placement === "bottom" ? (visible ? "translate-y-0" : "translate-y-full") : (visible ? "translate-x-0" : "-translate-x-full")) : ""} ${className}`}
+        className={`${panelClassName} flex flex-col shadow-2xl ease-out motion-reduce:transition-none ${motion === "fade" ? `transition-opacity duration-[180ms] ${visible ? "opacity-100" : "opacity-0"}` : "transition-transform duration-300"} ${placement === "bottom" ? "absolute inset-x-0 bottom-0 max-h-[85dvh] w-full rounded-t-3xl" : placement === "right" ? "fixed inset-y-0 right-0 w-full max-w-[440px]" : "relative h-full w-[min(320px,calc(100vw-48px))]"} ${motion === "slide" ? (placement === "bottom" ? (visible ? "translate-y-0" : "translate-y-full") : (visible ? "translate-x-0" : placement === "right" ? "translate-x-full" : "-translate-x-full")) : ""} ${className}`}
       >
         {placement === "bottom" && <div aria-hidden="true" className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-slate-200" />}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-current/10 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
@@ -126,7 +137,7 @@ export default function MobileDrawer({
             autoFocus
             type="button"
             onClick={onClose}
-            aria-label="Close navigation"
+            aria-label={placement === "right" ? `Close ${label.toLowerCase()}` : "Close navigation"}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl hover:bg-current/10 focus-visible:outline focus-visible:outline-2"
           >
             <X className="h-5 w-5" />

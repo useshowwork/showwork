@@ -1,3 +1,4 @@
+import { recordWorkspaceNotice } from "@/lib/workspaceNotifications";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
@@ -41,6 +42,10 @@ export async function GET(req: NextRequest) {
       await db.socialConnection.updateMany({ where: { id: connectionId, status: "CONNECTED", tikTokMessagingAccessToken: tokens.access_token }, data: { messagingWebhookError: "Business authorization succeeded, but the TikTok messaging webhook could not be enabled. Reconnect Business Messaging after checking the app approval and HTTPS callback." } });
       return redirect(`${path}&tiktokError=messaging_webhook_failed`);
     }
+    await recordWorkspaceNotice({
+      calendarId: connection.calendarId, kind: "channel", key: `${connectionId}:messaging:${now.toISOString()}`,
+      actorId: creator.id, title: "TikTok messaging connected",
+    });
     return redirect(`${path}&tiktokMessagingConnected=true`);
   } catch {
     return redirect(`${path}&tiktokError=messaging_connection_failed`);

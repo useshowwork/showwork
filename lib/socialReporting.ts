@@ -1,9 +1,11 @@
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import type { SocialPlatform } from "@prisma/client";
+import { recordChannelConnected } from "./workspaceNotifications";
 import { db } from "@/lib/db";
 
 export type SocialConnectionInput = {
   calendarId: string;
+  actorId?: string;
   platform: SocialPlatform;
   platformAccountId: string;
   accountName?: string | null;
@@ -17,7 +19,7 @@ export type SocialConnectionInput = {
 
 /** Upserts a server-side normalized account row while preserving legacy callers. */
 export async function upsertSocialConnection(input: SocialConnectionInput, database: typeof db = db) {
-  const { calendarId, platform, platformAccountId, ...values } = input;
+  const { calendarId, platform, platformAccountId, actorId, ...values } = input;
   const definedValues = Object.fromEntries(
     Object.entries(values).filter(([, value]) => value !== undefined),
   );
@@ -47,16 +49,24 @@ export async function upsertSocialConnection(input: SocialConnectionInput, datab
         } : {}),
       },
     });
+    const existing = actorId ? await tx.socialConnection.findUnique({
+      where: { calendarId_platform_platformAccountId: { calendarId, platform, platformAccountId } },
+      select: { status: true },
+    }) : null;
     return tx.socialConnection.upsert({
       where: { calendarId_platform_platformAccountId: { calendarId, platform, platformAccountId } },
       create: { calendarId, platform, platformAccountId, ...definedValues },
       update: {
         ...definedValues,
+        ...(actorId && existing?.status !== "CONNECTED" ? { connectedAt: new Date() } : {}),
         status: "CONNECTED",
         disconnectedAt: null,
         lastSyncError: null,
       },
     });
+  });
+  if (actorId) await recordChannelConnected({
+    calendarId, connectionId: connection.id, actorId, platform, connectedAt: connection.connectedAt, accountName: connection.accountName,
   });
   if (database === db && input.accessToken) {
     try {

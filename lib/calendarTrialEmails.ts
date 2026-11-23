@@ -6,6 +6,6 @@ export async function runCalendarTrialEmailCheck() {
   return {
     checked: 0, twoDaysLeftSent: 0, followUpSent: 0,
     endsTodaySent: 0, endedSent: 0, errors: 0,
-    disabled: true, reason: "Replaced by the weekly Marketing Workspace email.",
+    disabled: true, reason: "Scheduled trial emails have been retired.",
   };
 }

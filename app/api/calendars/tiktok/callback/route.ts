@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       },
     });
     const refreshTokenExpiresAt = new Date(Date.now() + tokens.refresh_expires_in * 1000);
-    await upsertSocialConnection({
+    await upsertSocialConnection({ actorId: creator.id,
       calendarId,
       platform: "TIKTOK",
       platformAccountId: tokens.open_id,
