@@ -1,3 +1,4 @@
+import { trialPaidAiNotice, trialContentDraftCost, WORKSPACE_TRIAL_MAX_DRAFTS, WORKSPACE_TRIAL_INSTRUCTION_LIMIT } from "../contentWorkspaceEntitlements";
 import { channelNames, recordWorkspaceNotice } from "../workspaceNotifications";
 import { clientRevisionNote } from "../clientPostReview";
 import { calendarSlugCandidate } from "@/lib/calendarSlug";
@@ -14,7 +15,7 @@ import { accountAuthorizationHash,policyHash } from './eligibilityPolicy';
 import { parseTikTokSettings,validateTikTokSettings,TIKTOK_CONSENT_VERSION,type TikTokCreator } from '../tiktokSettings';
 import { tikTokConsentHash } from '../tiktokConsent';
 import { validateTeamAssignment,canManageTeamRole,effectiveTeamPermissions,normalizeTeamRole,needsAdvancedTeamPermissions } from '../calendarTeamPolicy';
-import {getContentWorkspacePlan,canAccessContentWorkspace,canUseContentWorkspaceFeature} from '../contentWorkspacePolicy';
+import {getContentWorkspacePlan,canAccessContentWorkspace,canUseContentWorkspaceFeature,isFreeWorkspaceTrial} from '../contentWorkspacePolicy';
 import type {ContentWorkspaceAccount} from '../contentWorkspaceUsage';
 import type { OwnershipDatabase,OwnershipTransaction } from './ownership';
 import {createPublishingIntentActions,type IntentRequest} from './intentActions';
@@ -26,7 +27,7 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
  creatorInfo(calendarId:string,accountId:string):Promise<TikTokCreator>;
  verifyAccount(tx:OwnershipTransaction,input:unknown):Promise<{connectionId:string;providerAccountId:string;platform:string;tokenScopes:string;accessToken:string;expiresAt:Date|null;refreshToken?:string;refreshTokenExpiresAt?:Date;accountName?:string;username?:string;instagramPageId?:string;linkedinMemberId?:string}>;
  authorizeBilling(tx:OwnershipTransaction,actor:string,ownerId:string):Promise<void>;
- validateUsage(tx:OwnershipTransaction,input:{actor:string;calendarId:string;kind:'AI_DRAFT'|'AI_REGENERATION'|'UPLOAD'|'MEMBERSHIP';deltaBytes?:string}):Promise<void>;
+ validateUsage(tx:OwnershipTransaction,input:{actor:string;calendarId:string;kind:'AI_DRAFT'|'AI_REGENERATION'|'UPLOAD'|'MEMBERSHIP';deltaBytes?:string;trialCost?:1|3}):Promise<void>;
  retention(tx:OwnershipTransaction,actor:string,resource:string):Promise<Date>;
  authorizeCreatorDeletion?:(tx:OwnershipTransaction,actor:string,subject:string)=>Promise<void>;
  generateContent?:(request:Record<string,unknown>)=>Promise<Record<string,any>[]>;
@@ -354,8 +355,10 @@ export function createCanonicalApplicationActions(deps:{database:OwnershipDataba
    const old=(await tx.query(`SELECT * FROM "PublishingApplicationOperation" WHERE "operationId"=$1`,[input.operationId])).rows[0];if(old){if(old.actor!==input.actor||old.requestHash!==hash)throw Error('OPERATION_CONFLICT');return {completed:old.result};}
    if((await tx.query(`SELECT 1 FROM "PublishingApplicationOperation" WHERE "operationId"=$1`,[input.operationId+'-quota'])).rows.length)throw Error('AI_GENERATION_PENDING_RECONCILIATION');
    const calendar=(await tx.query(`SELECT * FROM "SocialCalendar" WHERE id=$1`,[input.calendarId])).rows[0];if(!calendar||!(await tx.query(`SELECT 1 FROM "CalendarBusinessDocument" WHERE "calendarId"=$1 AND id<>$2 AND NULLIF(TRIM("extractedText"),'') IS NOT NULL LIMIT 1`,[input.calendarId,brandPersonalityDocumentId(input.calendarId)])).rows.length)throw Error('Upload a business document before generating content');
-   if(b.usePerformanceRecommendations===true){const owner=(await tx.query(`SELECT * FROM "Creator" WHERE id=$1`,[calendar.managerId])).rows[0] as ContentWorkspaceAccount;if(!canUseContentWorkspaceFeature(owner,'performanceRecommendations'))throw Error('Upgrade to Studio to use performance recommendations');}
-   await deps.validateUsage(tx,{actor:input.actor,calendarId:input.calendarId,kind:'AI_DRAFT'});
+   const owner=(await tx.query(`SELECT * FROM "Creator" WHERE id=$1`,[calendar.managerId])).rows[0] as ContentWorkspaceAccount;
+   if(isFreeWorkspaceTrial(owner)&&(planned.drafts>WORKSPACE_TRIAL_MAX_DRAFTS||b.customInstructions?.length>WORKSPACE_TRIAL_INSTRUCTION_LIMIT))throw Error(trialPaidAiNotice.code);
+   if(b.usePerformanceRecommendations===true&&!canUseContentWorkspaceFeature(owner,'performanceRecommendations'))throw Error('Upgrade to Studio to use performance recommendations');
+   await deps.validateUsage(tx,{actor:input.actor,calendarId:input.calendarId,kind:'AI_DRAFT',trialCost:trialContentDraftCost(planned.drafts)});
    await tx.query(`INSERT INTO "PublishingApplicationOperation"("operationId",actor,"requestHash",result) VALUES($1,$2,$3,$4)`,[input.operationId+'-quota',input.actor,hash,{reserved:true}]);return {calendar};
   });if('completed'in reservation)return reservation.completed;
   const ideas=await deps.generateContent({...b,calendarId:input.calendarId,clientName:reservation.calendar.clientName,businessSummary:reservation.calendar.aiBusinessSummary});

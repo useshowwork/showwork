@@ -12,7 +12,38 @@
 
 export type ContentWorkspacePlan = "CREATOR" | "GROWTH" | "STUDIO" | "UNLIMITED" | "ENGAGE";
 
-export const ENGAGE_TRIAL_AI_REPLY_LIMIT = 50;
+export const WORKSPACE_TRIAL_AI_CREDIT_LIMIT = 10;
+export const WORKSPACE_TRIAL_PLAN_COST = 3;
+export const WORKSPACE_TRIAL_MAX_DRAFTS = 3;
+export const WORKSPACE_TRIAL_INSTRUCTION_LIMIT = 3000;
+
+export function trialContentDraftCost(drafts: number): 1 | 3 {
+  return drafts > 1 ? WORKSPACE_TRIAL_PLAN_COST : 1;
+}
+export const ENGAGE_TRIAL_AI_REPLY_LIMIT = WORKSPACE_TRIAL_AI_CREDIT_LIMIT;
+
+export const trialAiLimitNotice = {
+  code: "TRIAL_AI_CREDITS_EXHAUSTED",
+  error: "You’ve used your trial AI credits. Subscribe to continue using AI, or keep editing and reviewing your work until your trial ends.",
+  requiresUpgrade: true,
+};
+
+export function trialAiCreditNotice(remaining: number) {
+  return remaining > 0
+    ? { ...trialAiLimitNotice, error: `You have ${remaining} trial AI ${remaining === 1 ? "credit" : "credits"} left. Choose a smaller generation or subscribe for more AI.` }
+    : trialAiLimitNotice;
+}
+
+export const trialPaidAiNotice = {
+  code: "TRIAL_AI_FEATURE_PAID_ONLY",
+  error: "Subscribe to use this AI feature. You can keep working in your workspace until your trial ends.",
+  requiresUpgrade: true,
+};
+
+export const trialBulkGenerationNotice = {
+  ...trialPaidAiNotice,
+  error: `Trial content plans include up to ${WORKSPACE_TRIAL_MAX_DRAFTS} drafts. Choose a smaller schedule or subscribe for larger batches.`,
+};
 
 export type ContentWorkspaceBillingCycle = "MONTHLY" | "ANNUAL";
 

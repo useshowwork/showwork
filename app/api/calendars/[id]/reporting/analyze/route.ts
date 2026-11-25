@@ -1,3 +1,4 @@
+import { trialAiLimitNotice } from "@/lib/contentWorkspaceEntitlements";
 import { strategyScope, summarizeStrategyPosts } from "@/lib/reporting/monthlyStrategy";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
 import { consumeCalendarAiGeneration } from "@/lib/contentWorkspaceUsage";
@@ -138,9 +139,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const saved = insight.supportingData as { scope?: string; strategy?: unknown; connectionIds?: string[] } | null;
       return saved?.scope === scope && saved.strategy && saved.connectionIds?.every(id => currentIds.has(id));
     }).slice(0, 3).map(insight => ({ generatedAt: insight.generatedAt, strategy: (insight.supportingData as { strategy?: unknown }).strategy, implementationAndOutcome: "UNKNOWN: no tracked experiment outcome is available" }));
-    const businessSummary = await getBusinessKnowledgeContext(calendarId, ["Audience marketing objectives positioning content strategy engagement performance", body.objective].filter(Boolean).join(" "), "analytics");
     const quota = await consumeCalendarAiGeneration(calendarId);
+    if (!quota.allowed && quota.freeTrial) return NextResponse.json(trialAiLimitNotice, { status: 403 });
     if (!quota.allowed) return NextResponse.json({ error: `Your monthly AI allowance of ${quota.limit} is unavailable or used up. Upgrade your plan or wait for your next monthly allowance.`, code: "AI_GENERATION_LIMIT_REACHED" }, { status: 403 });
+    const businessSummary = await getBusinessKnowledgeContext(calendarId, ["Audience marketing objectives positioning content strategy engagement performance", body.objective].filter(Boolean).join(" "), "analytics");
     const generated = await generateReportingInsights({
       clientName: calendar.clientName,
       businessSummary,

@@ -1,3 +1,5 @@
+import { workspaceAiOwnerSelect } from "@/lib/contentWorkspaceUsage";
+import { isFreeWorkspaceTrial } from "@/lib/contentWorkspacePolicy";
 import { sourceAllowed, type ResearchPlan } from "./researchPlan";
 import { brandPersonalityDocumentId, readBrandPersonality, brandPersonalityContext } from "./brandPersonality";
 import { fullDocumentEvidence } from "./fullDocuments";
@@ -13,6 +15,7 @@ export async function getBusinessKnowledgeContext(calendarId: string, query: str
       where: { id: calendarId },
       select: {
         clientName: true,
+        manager: { select: workspaceAiOwnerSelect },
         headerTitle: true,
         headerDescription: true,
         aiBusinessSummary: true,
@@ -30,7 +33,8 @@ export async function getBusinessKnowledgeContext(calendarId: string, query: str
   const profileId = brandPersonalityDocumentId(calendarId);
   const personality = brandPersonalityContext(readBrandPersonality(sources.find(source => source.id === profileId)?.extractedText));
   const factualSources = sources.filter(source => source.id !== profileId);
-  const fullContent = purpose === "content";
+  const freeTrial = calendar?.manager && isFreeWorkspaceTrial(calendar.manager);
+  const fullContent = purpose === "content" && !freeTrial;
   // Re-check the snapshot before using indexed evidence; deleted/changed sources cannot survive a concurrent read.
   if (fullContent) {
     const current = await db.calendarBusinessDocument.findMany({ where: { calendarId }, select: { id:true, originalName:true, extractedText:true, websiteUrl:true } });
@@ -83,7 +87,13 @@ export async function getBusinessKnowledgeContext(calendarId: string, query: str
 }
 
 export async function rebuildBusinessKnowledge(calendarId: string) {
-  const calendar = await db.socialCalendar.findUniqueOrThrow({ where: { id: calendarId }, select: { clientName: true } });
+  const calendar = await db.socialCalendar.findUniqueOrThrow({
+    where: { id: calendarId },
+    select: { clientName: true, aiBusinessSummary: true, aiBusinessSummaryUpdatedAt: true, manager: { select: workspaceAiOwnerSelect } },
+  });
+  if (isFreeWorkspaceTrial(calendar.manager)) {
+    return { summary: calendar.aiBusinessSummary, updatedAt: calendar.aiBusinessSummaryUpdatedAt };
+  }
   const sources = await db.calendarBusinessDocument.findMany({ where: { calendarId } });
   const hash = sourceFingerprint(sources);
   const text = retrievePassages(sources, "business audience products services pricing policies brand voice objectives constraints", 45000);

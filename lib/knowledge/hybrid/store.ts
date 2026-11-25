@@ -33,7 +33,12 @@ export async function processIndexBatch(sql:Sql = knowledgeSql, embedder:Embedde
   const claims=await sql.query<{sourceId:string;calendarId:string;revision:number}>(`
     UPDATE "KnowledgeSourceIndex" SET status='RUNNING',"leaseToken"=$1,"leaseUntil"=CURRENT_TIMESTAMP+interval '120 seconds',"updatedAt"=CURRENT_TIMESTAMP
     WHERE "sourceId"=(SELECT "sourceId" FROM "KnowledgeSourceIndex"
-      WHERE ($2::text[] IS NULL OR "calendarId"=ANY($2)) AND attempts<5 AND "nextAttemptAt"<=CURRENT_TIMESTAMP
+      WHERE ($2::text[] IS NULL OR "calendarId"=ANY($2))
+        AND NOT EXISTS (
+          SELECT 1 FROM "SocialCalendar" AS workspace JOIN "Creator" AS owner ON owner.id=workspace."managerId"
+          WHERE workspace.id="KnowledgeSourceIndex"."calendarId" AND owner."contentWorkspaceBillingStatus"='TRIAL'
+        )
+        AND attempts<5 AND "nextAttemptAt"<=CURRENT_TIMESTAMP
         AND (status='PENDING' OR (status='RUNNING' AND "leaseUntil"<CURRENT_TIMESTAMP))
       ORDER BY "nextAttemptAt","sourceId" FOR UPDATE SKIP LOCKED LIMIT 1)
     RETURNING "sourceId","calendarId",revision`,[token,scope]);

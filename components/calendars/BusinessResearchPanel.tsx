@@ -79,7 +79,7 @@ export default function BusinessResearchPanel({ calendarId, canManage, canGenera
       <div ref={end}/>
      </div>
      <form className={styles.composer} onSubmit={e => { e.preventDefault(); void send(); }}>
-      {error && <p role="alert" className={styles.error}>{error}</p>}
+      {error && <p role="alert" className={styles.error}>{error}{/subscribe/i.test(error) && <> <a className="font-semibold underline" href="/dashboard/billing?product=content-workspace#content-workspace-plans">View plans</a></>}</p>}
       <div className={styles.inputBox}><label className="sr-only" htmlFor={`randy-business-${calendarId}`}>Message Randy about your business</label><textarea ref={input} id={`randy-business-${calendarId}`} value={text} rows={2} maxLength={3000} disabled={!canGenerate || busy || waiting} placeholder={canGenerate ? 'Ask Randy, or share an idea…' : 'AI generation permission is required to chat.'} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }}/><div className={styles.inputActions}><span className={styles.keyboardHint}>Enter to send · Shift + Enter for a new line</span><button className={styles.send} type="submit" aria-label="Send to Randy" disabled={!text.trim() || !canGenerate || busy || waiting}>{busy || waiting ? <Loader2 size={17}/> : <Send size={17}/>}<span>{busy || waiting ? "Working…" : "Send"}</span></button></div></div>
       <p className={styles.footerHint}>Uses your business knowledge and brand voice. You approve research and knowledge updates.</p>
      </form>

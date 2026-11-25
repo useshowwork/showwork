@@ -56,7 +56,7 @@ export function tableItems(matrix: unknown[][], sheet: string): SourceItem[] {
 }
 
 /** Extract HTML as data only. Never render uploaded markup in the browser. */
-async function htmlImport(buffer: Buffer, filename: string): Promise<{ items: SourceItem[]; method: string }> {
+async function htmlImport(buffer: Buffer, filename: string, interpretDocument: typeof extractCalendarItems): Promise<{ items: SourceItem[]; method: string }> {
   const html = decodeText(buffer);
   if (!/<(?:!doctype\s+html|html\b|body\b|table\b|main\b|article\b)/i.test(html)) {
     throw new Error("This file does not appear to contain an HTML document.");
@@ -93,7 +93,7 @@ async function htmlImport(buffer: Buffer, filename: string): Promise<{ items: So
   const readable = text.replace(/\s+/g, " ").trim();
   if (!readable) throw new Error("No readable content found in this HTML file.");
   if (readable.length > MAX_TEXT) throw new Error("This HTML document is too large to interpret reliably. Split it into smaller files.");
-  return checkItems(await extractCalendarItems(readable, filename),
+  return checkItems(await interpretDocument(readable, filename),
     "HTML document interpretation — review extracted copy and dates against the source");
 }
 
@@ -166,6 +166,7 @@ async function pdfText(buffer: Buffer): Promise<string> {
 export async function extractImport(
   buffer: Buffer,
   filename: string,
+  interpretDocument = extractCalendarItems,
 ): Promise<{ items: SourceItem[]; method: string }> {
   if (!buffer.length || buffer.length > MAX_IMPORT_BYTES)
     throw new Error("Choose a nonempty file up to 3 MB.");
@@ -175,7 +176,7 @@ export async function extractImport(
   let items: SourceItem[];
   let method = "Table extraction";
   if (ext === "html" || ext === "htm") {
-    return htmlImport(buffer, filename);
+    return htmlImport(buffer, filename, interpretDocument);
   }
   if (ext === "xlsx" || ext === "xls") {
     if ((ext === "xlsx" && !zip) || (ext === "xls" && !ole))
@@ -287,7 +288,7 @@ export async function extractImport(
       throw new Error(
         "This document is too large to interpret reliably. Split it into smaller files.",
       );
-    items = await extractCalendarItems(text, filename);
+    items = await interpretDocument(text, filename);
     method =
       "Document interpretation — review extracted copy and dates against the source";
   }

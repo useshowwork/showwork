@@ -1,3 +1,5 @@
+import { getCalendarFreeTrialOwner } from "@/lib/contentWorkspaceUsage";
+import { trialPaidAiNotice } from "@/lib/contentWorkspaceEntitlements";
 import { feedbackText, type ResearchPlan, type ResearchFeedback } from "./researchPlan";
 import { db } from "@/lib/db";
 import { researchBusinessWithSources } from "@/lib/openai";
@@ -21,6 +23,10 @@ export async function executeBusinessResearch(id: string, options: { publicTopic
   const claimed = await db.businessResearchRun.updateMany({ where: { id, status: "QUEUED" }, data: { status: "RUNNING", phase: "Understanding the research focus", startedAt: new Date() } });
   if (!claimed.count) return;
   const run = await db.businessResearchRun.findUniqueOrThrow({ where: { id }, include: { calendar: { select: { clientName: true, researchPlan: true } } } });
+  if (await getCalendarFreeTrialOwner(run.calendarId)) {
+    await db.businessResearchRun.updateMany({ where: { id, status: "RUNNING" }, data: { status: "FAILED", phase: "Subscription required", error: trialPaidAiNotice.error, completedAt: new Date() } });
+    return;
+  }
   try {
     const sources = await db.calendarBusinessDocument.findMany({ where: { calendarId: run.calendarId }, select: { websiteUrl: true } });
     const context = await getBusinessKnowledgeContext(run.calendarId, run.focus, "reply");

@@ -1,3 +1,4 @@
+import { isFreeWorkspaceTrial } from "@/lib/contentWorkspacePolicy";
 import { packagePermissions, packageAllowsChannel } from "@/lib/engagePolicy";
 import { effectiveTeamPermissions, normalizeTeamRole, type TeamPermission, type TeamRole } from "@/lib/calendarTeamPolicy";
 import { complimentaryAccessSelect } from "@/lib/complimentaryAccess";
@@ -87,7 +88,7 @@ export async function canAccessCalendarById(
   if (!canAccessCalendar(calendar.manager)) return false;
   const plan = getContentWorkspacePlan(calendar.manager);
   if (!plan) return false;
-  const limit = CONTENT_WORKSPACE_PLANS[plan].activeWorkspaces;
+  const limit = isFreeWorkspaceTrial(calendar.manager) ? 1 : CONTENT_WORKSPACE_PLANS[plan].activeWorkspaces;
   if (limit === Number.MAX_SAFE_INTEGER) return true;
   // Keep excess trial workspaces intact and readable; only covered workspaces can mutate.
   const covered = await database.socialCalendar.findMany({

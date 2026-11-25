@@ -1,3 +1,4 @@
+import { isFreeWorkspaceTrial } from "@/lib/contentWorkspacePolicy";
 import { db } from "@/lib/db";
 import { queueBusinessResearch, executeBusinessResearch } from "@/lib/knowledge/research";
 import { canAccessContentWorkspace } from "@/lib/contentWorkspaceUsage";
@@ -42,12 +43,6 @@ export async function runScheduledAiBusinessResearch() {
             contentWorkspaceBillingStatus: "ACTIVE",
           },
           {
-            contentWorkspaceBillingStatus: "TRIAL",
-            contentWorkspaceTrialEndsAt: {
-              gt: new Date(),
-            },
-          },
-          {
             isComped: true,
           },
           {
@@ -87,7 +82,7 @@ export async function runScheduledAiBusinessResearch() {
      * again before making the external AI call. This keeps the actual
      * execution protected if billing state changed after the query.
      */
-    if (!canAccessContentWorkspace(calendar.manager)) {
+    if (!canAccessContentWorkspace(calendar.manager) || isFreeWorkspaceTrial(calendar.manager)) {
       continue;
     }
 

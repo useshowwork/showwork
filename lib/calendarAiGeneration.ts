@@ -1,3 +1,5 @@
+import { isFreeWorkspaceTrial } from "@/lib/contentWorkspacePolicy";
+import { trialAiCreditNotice, trialBulkGenerationNotice, trialContentDraftCost, WORKSPACE_TRIAL_MAX_DRAFTS, WORKSPACE_TRIAL_INSTRUCTION_LIMIT } from "@/lib/contentWorkspaceEntitlements";
 import { notifyCalendarWorkflow } from "@/lib/calendarWorkflowEmails";
 import { brandPersonalityDocumentId } from "@/lib/knowledge/brandPersonality";
 import { databaseUnavailable } from "@/lib/databaseAvailability";
@@ -112,8 +114,17 @@ export async function generateCalendarDrafts(req: NextRequest, { params }: { par
   }
 
   const plan = getContentWorkspacePlan(owner);
-  const consumed = await consumeAiGeneration(owner.id);
+  if (isFreeWorkspaceTrial(owner)) {
+    if (expectedDrafts > WORKSPACE_TRIAL_MAX_DRAFTS) {
+      return NextResponse.json(trialBulkGenerationNotice, { status: 403 });
+    }
+    if (typeof customInstructions === "string" && customInstructions.length > WORKSPACE_TRIAL_INSTRUCTION_LIMIT) {
+      return NextResponse.json({ error: "Keep trial content instructions to 3,000 characters or fewer." }, { status: 400 });
+    }
+  }
+  const consumed = await consumeAiGeneration(owner.id, trialContentDraftCost(expectedDrafts));
   if (!consumed.allowed) {
+    if (consumed.freeTrial) return NextResponse.json(trialAiCreditNotice(consumed.remaining), { status: 403 });
     return NextResponse.json({
       error: `Your AI allowance of ${consumed.limit} generations is unavailable or used up. Upgrade your plan or wait for your next monthly allowance.`,
       code: "AI_GENERATION_LIMIT_REACHED", plan,
@@ -217,9 +228,9 @@ return NextResponse.json({
   });
 
   try {
-    await db.contentWorkspaceUsage.updateMany({
+    if (!consumed.freeTrial) await db.contentWorkspaceUsage.updateMany({
       where: {
-        creatorId: owner.id,
+        creatorId: owner.id, cycleStart: consumed.cycleStart,
         aiGenerationsUsed: { gt: 0 },
       },
       data: {

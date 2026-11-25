@@ -238,7 +238,7 @@ export default function TrialCountdownBanner({
         : `You have complimentary ${planName} access until ${endDate}.`
     : expired
       ? "Subscribe to restore access to your marketing workspaces."
-      : "Your trial includes full Agency access. Your selected plan applies when the trial ends; all existing data is preserved.";
+      : "Your trial includes one workspace and 10 AI credits. Subscribe to keep using AI after you reach the limit.";
 
   // Payment is the primary status; remaining trial benefits are an extra.
   if (subscribed && !complimentaryAccess) {
@@ -246,7 +246,7 @@ export default function TrialCountdownBanner({
     return (
       <section aria-label="Subscription status" className="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-blue-900">
         <h2 className="font-semibold">{planName} subscription active</h2>
-        <p className="mt-2 text-sm">You also keep full Agency access until {endDate}, when your original trial ends. Your paid {planName} plan continues afterward. AI automatic replies remain opt-in.</p>
+        <p className="mt-2 text-sm">You keep additional Agency features until {endDate}, when your original trial ends. Your paid {planName} plan continues afterward. AI automatic replies remain opt-in.</p>
       </section>
     );
   }

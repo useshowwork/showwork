@@ -573,7 +573,7 @@ function ContentWorkspaceSubscription({
         className="space-y-6"
       >
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#DCE7FF] bg-white p-5">
-          <p className="text-sm text-slate-600">Try Marketing Workspace free for 3 days with full Agency access.</p>
+          <p className="text-sm text-slate-600">Try one Marketing Workspace free for 3 days with 10 shared AI credits.</p>
           <Link href="/dashboard/calendars" className="text-sm font-semibold text-[#155FC7] hover:underline">
             Start Marketing Workspace
           </Link>

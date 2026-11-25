@@ -1,4 +1,5 @@
 "use client";
+import { trialContentDraftCost } from "@/lib/contentWorkspaceEntitlements";
 import { initialGenerationDates, generationFrequencyError } from "@/lib/content/generationSetup";
 import studioStyles from "./GenerateStudio.module.css";
 import PlatformBrandIcon from "./PlatformBrandIcon";
@@ -44,16 +45,18 @@ export default function AiContentGeneratorCard({
   calendarId,
   hasBusinessSummary,
   performanceRecommendationsAccess = true,
+  freeTrial = false,
 }: {
   calendarId: string;
   hasBusinessSummary: boolean;
   performanceRecommendationsAccess?: boolean;
+  freeTrial?: boolean;
 }) {
   const { start: defaultStart, end: defaultEnd } = initialGenerationDates();
 
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
-  const [frequencyInput, setFrequencyInput] = useState("0");
+  const [frequencyInput, setFrequencyInput] = useState(freeTrial ? "3" : "0");
   const postsPerWeek = Number(frequencyInput);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const frequencyRef = useRef<HTMLInputElement>(null);
@@ -112,8 +115,10 @@ const [platformSchedules, setPlatformSchedules] = useState<
   const expected = useMemo(()=>{try{return generationCount(startDate,endDate,postsPerWeek,platforms,contentStrategy,contentGroups);}catch{return null;}},[startDate,endDate,postsPerWeek,platforms,contentStrategy,contentGroups]);
   const [generating, setGenerating] = useState(false);
   const [hasBusinessSummaryState, setHasBusinessSummaryState] = useState(hasBusinessSummary);
+  const trialCost = trialContentDraftCost(expected?.drafts ?? 1);
   const [error, setError] = useState<string | null>(null);
   const [billingBlocked, setBillingBlocked] = useState(false);
+  const [trialBillingBlocked, setTrialBillingBlocked] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
@@ -190,6 +195,7 @@ const togglePlatform = (platform: string) => {
     setGenerating(true);
     setError(null);
     setBillingBlocked(false);
+    setTrialBillingBlocked(false);
 
     try {
      let res = await calendarMutationFetch(
@@ -224,6 +230,7 @@ const togglePlatform = (platform: string) => {
         return;
       }
       if (!res.ok) {
+        setTrialBillingBlocked(typeof data.code === "string" && data.code.startsWith("TRIAL_AI_"));
         setBillingBlocked(res.status === 402 || (res.status === 403 && !!(data.requiresUpgrade || data.code === "WORKSPACE_FEATURE_LOCKED" || /subscription|allowance|limit|upgrade|trial/i.test(data.error || ""))));
         throw new Error(data.error ?? "Failed to generate content");
       }
@@ -659,7 +666,7 @@ const togglePlatform = (platform: string) => {
                 </>
               ) : (
                 <>
-                  {wizardStep === "direction" ? "Generate calendar" : "Next"}
+                  {wizardStep === "direction" ? (freeTrial ? `Generate · ${trialCost} ${trialCost === 1 ? "credit" : "credits"}` : "Generate calendar") : "Next"}
                   <span className="transition-transform group-hover:translate-x-0.5">
                     <ArrowIcon />
                   </span>
@@ -670,7 +677,12 @@ const togglePlatform = (platform: string) => {
         </aside>}
         </div>
 
-        {billingBlocked && <div className="px-5 sm:px-7"><WorkspaceFeatureNotice compact message="Your current subscription or AI allowance does not cover this generation. Upgrade for more access, or wait for your monthly allowance to reset." /></div>}
+        {billingBlocked && <div className="px-5 sm:px-7">
+          {trialBillingBlocked ? <div className="flex gap-4 py-2 text-sm">
+            <a className="font-semibold text-blue-700 underline" href="/dashboard/billing?product=content-workspace#content-workspace-plans">View plans</a>
+            <button type="button" onClick={() => { setError(null); setBillingBlocked(false); }}>Keep working</button>
+          </div> : <WorkspaceFeatureNotice compact message="Your current subscription or AI allowance does not cover this generation. Upgrade for more access, or wait for your monthly allowance to reset." />}
+        </div>}
         {activeJobId && !reviewOpen && (
           <div className="mx-5 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-xs text-blue-900 sm:mx-7">
             <div className="flex items-center gap-2.5">

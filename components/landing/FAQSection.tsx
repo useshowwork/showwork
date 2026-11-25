@@ -39,7 +39,7 @@ const questions = [
   {
     question: "Which plan should we choose, and can we try it?",
     answer:
-      "Compare workspace capacity, collaborator limits, AI allowances, and included features in the pricing section. Marketing Workspace offers a three-day trial with Agency feature access. You can also request a business demo by email.",
+      "Compare workspace capacity, collaborator limits, AI allowances, and included features in the pricing section. Marketing Workspace offers a three-day trial with one workspace and 10 AI credits. You can also request a business demo by email.",
   },
   {
     question: "How is Marketing Workspace different from Project Delivery?",

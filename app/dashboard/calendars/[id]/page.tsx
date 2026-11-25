@@ -1,7 +1,7 @@
 import { ENGAGE_CHANNEL_PLATFORMS } from "@/lib/engagePolicy";
 import EngageReplyAllowance from "@/components/engage/EngageReplyAllowance";
 import EngageSettings from "@/components/engage/EngageSettings";
-import { getContentWorkspacePlan } from "@/lib/contentWorkspacePolicy";
+import { getContentWorkspacePlan, isFreeWorkspaceTrial } from "@/lib/contentWorkspacePolicy";
 import { getWorkspaceSetup } from "@/lib/workspaceSetupServer";
 import { canGenerateDuringSetup } from "@/lib/workspaceSetup";
 import ReportingProductionSummary from "@/components/calendars/ReportingProductionSummary";
@@ -217,6 +217,7 @@ compedUntil: true,
   const workspaceActive = await canAccessCalendarById(calendar.id);
   const canManageChannels = workspaceActive && can("channels.manage");
   const connectedAccounts = isEngage ? await db.socialConnection.count({ where: { calendarId: calendar.id, platform: { in: [...ENGAGE_CHANNEL_PLATFORMS] }, status: { not: "DISCONNECTED" } } }) : 0;
+  const freeTrial = isFreeWorkspaceTrial(calendar.manager);
   const agencyTrial = !isEngage && isContentWorkspaceTrialActive(calendar.manager);
   const featureAccess = (feature: Parameters<typeof canUseContentWorkspaceFeature>[1]) => workspaceActive && canUseContentWorkspaceFeature(calendar.manager, feature);
 
@@ -377,8 +378,10 @@ contentIdea: p.contentIdea,
       group: "Leads & Messages",
       content: (
         <div>
-        {isEngage && <EngageReplyAllowance calendarId={calendar.id} />}
+        {(isEngage || freeTrial) && <EngageReplyAllowance calendarId={calendar.id} engage={isEngage} />}
         <SocialLeadInbox
+          freeTrial={freeTrial}
+          engage={isEngage}
           key={calendar.id}
           calendarId={calendar.id}
           isManager={can("workspace.manage")}
@@ -507,6 +510,7 @@ contentIdea: p.contentIdea,
                   <AiContentGeneratorCard
                     calendarId={calendar.id}
                     hasBusinessSummary={calendar.businessDocuments.some(doc => doc.id !== brandPersonalityDocumentId(calendar.id))}
+                    freeTrial={freeTrial}
                     performanceRecommendationsAccess={featureAccess("performanceRecommendations")}
                   />
               </div>
@@ -547,6 +551,7 @@ contentIdea: p.contentIdea,
       }).sort((a,b) => isEngage ? ["inbox", "leads", "channels", "knowledge"].indexOf(a.id) - ["inbox", "leads", "channels", "knowledge"].indexOf(b.id) : 0).map(section => ({ ...section, content: (
         <>
           {agencyTrial && <WorkspaceFeatureNotice trial paidPlan={calendar.manager.contentWorkspaceBillingStatus === "ACTIVE" ? calendar.manager.contentWorkspacePlan : null} trialEndsAt={calendar.manager.contentWorkspaceTrialEndsAt} />}
+          {workspaceActive && freeTrial && ["generate", "knowledge", "research"].includes(section.id) && <EngageReplyAllowance calendarId={calendar.id} showPlanCost={section.id === "generate"} />}
           {!workspaceActive && <WorkspaceFeatureNotice message={section.id === "channels"
             ? "This workspace is outside your active plan access or workspace allowance. Channel connections are available in active workspaces."
             : undefined} />}

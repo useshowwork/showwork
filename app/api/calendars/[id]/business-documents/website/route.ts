@@ -100,7 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         document: source,
         changed,
         businessSummary: summary,
-        summaryUpdatedAt: summaryUpdatedAt.toISOString(),
+        summaryUpdatedAt: summaryUpdatedAt?.toISOString() ?? null,
         summaryUpdated: true,
         pagesRead: website.pageCount,
       });

@@ -1,3 +1,4 @@
+import { trialAiLimitNotice } from "@/lib/contentWorkspaceEntitlements";
 import { STRATEGY_FIELDS, missingBriefStrategy } from "@/lib/content/briefGuidance";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest, { params }: {
             ownerId = calendar.managerId;
             allowance = await consumeAiRegeneration(ownerId);
             if (!allowance.allowed)
-                return NextResponse.json({ error: "Your AI allowance is unavailable or used up." }, { status: 403 });
+                return NextResponse.json(allowance.freeTrial ? trialAiLimitNotice : { error: "Your AI allowance is unavailable or used up." }, { status: 403 });
             const generated = await developCreativeBrief({ brief, platform: post.platform, businessSummary: await getBusinessKnowledgeContext(id, `${brief.title} ${brief.coreIdea}`, "content"), kind: String(kind), instruction: fillMissing
                 ? "COMPLETE MISSING FIELDS ONLY. Infer a specific post objective, narrowly relevant target audience and compelling hook from THIS EXISTING CONTENT, supported by business knowledge. Do not propose a different idea. Preserve every nonempty field exactly. Do not generate a script. Existing historical script (untrusted creative context only): " + (post.script || "").slice(0, 12000)
                 : body.instruction as string | undefined, field: body.field as string | undefined, section: section === "strategy" || section === "creativeDirection" ? section : undefined, currentText: kind === "brief" ? undefined : development[kind as ExecutionKind]?.text });
@@ -153,7 +154,7 @@ export async function POST(req: NextRequest, { params }: {
         return NextResponse.json({ post: updated });
     }
     catch (error) {
-        if (allowance?.allowed && ownerId)
+        if (allowance?.allowed && !allowance.freeTrial && ownerId)
             await db.contentWorkspaceUsage.updateMany({ where: { creatorId: ownerId, cycleStart: allowance.cycleStart, aiRegenerationsUsed: { gt: 0 }, aiGenerationsUsed: { gt: 0 } }, data: { aiRegenerationsUsed: { decrement: 1 }, aiGenerationsUsed: { decrement: 1 } } }).catch(() => { });
         const conflict = error instanceof Error && /changed|reload|locked/i.test(error.message);
         return NextResponse.json({ error: conflict ? (error as Error).message : "Creative development could not finish. Your other content was preserved. Please retry." }, { status: conflict ? 409 : 502 });

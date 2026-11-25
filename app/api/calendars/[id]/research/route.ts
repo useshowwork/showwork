@@ -1,3 +1,5 @@
+import { getCalendarFreeTrialOwner } from "@/lib/contentWorkspaceUsage";
+import { trialPaidAiNotice } from "@/lib/contentWorkspaceEntitlements";
 import { after, NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
 import { hasCalendarPermission, canAccessCalendarById, calendarFeatureGate } from "@/lib/calendarPermissions";
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest, { params }: Context) {
   if (!await authorized(id, true) || !await canAccessCalendarById(id)) return NextResponse.json({ error: "An active workspace and knowledge management permission are required." }, { status: 403 });
   const featureGate = await calendarFeatureGate(id, "randyStudio");
   if (featureGate) return featureGate;
+  if (await getCalendarFreeTrialOwner(id)) return NextResponse.json(trialPaidAiNotice, { status: 403 });
   const body = await req.json().catch(() => null);
   if (typeof body?.focus !== "string" || body.focus.trim().length < 10 || body.focus.length > 1200) return NextResponse.json({ error: "Describe a research focus between 10 and 1,200 characters." }, { status: 400 });
   try {

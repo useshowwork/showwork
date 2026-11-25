@@ -85,7 +85,7 @@ test('content uses full sources despite hybrid flags and keeps external research
     socialCalendar:{findUnique:async()=>({aiBusinessSummary:'Source-derived summary',aiBusinessSummarySourceHash:sourceFingerprint([doc])})},
     businessResearchRun:{findFirst:async({where})=>{
       assert.equal(where.calendarId,'a');assert.equal(where.sourceHash,sourceFingerprint([doc]));
-      return {excludedFindingIds:[],result:{findings:[{id:'r',learning:'External experiment'}]}};
+      return {excludedFindingIds:[],result:{findings:[{id:'r',learning:'External experiment',sourceUrls:['https://example.com/experiment']}]}};
     }},
   } },
   '@/lib/openai':{},'./hybrid/engine':{contextBudget:()=>1800,retrieveHybrid:async()=>({evidence:'Verified prices',report:{mode:'lexical',readiness:'partial',reranking:'disabled'}})}

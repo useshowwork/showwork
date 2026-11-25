@@ -41,6 +41,7 @@ for (const plan of ["ENGAGE", "CREATOR"])
           storageReservedBytes: 0n,
           aiGenerationsUsed: 0,
           aiRegenerationsUsed: 0,
+          trialAiCreditsUsed: 0,
         }),
       },
       $queryRaw: async () => [],
@@ -74,19 +75,19 @@ for (const plan of ["ENGAGE", "CREATOR"])
     );
     assert.equal(
       policy.canUseContentWorkspaceFeature(owner, "aiAutoReplies"),
-      true,
+      false,
     );
     if (plan === "ENGAGE") {
       assert.equal(
         policy.canUseContentWorkspaceFeature(owner, "randyStudio"),
         false,
       );
-      const again = await route.POST({
-        json: async () => ({ plan, clientName: "Second business" }),
-      });
-      assert.equal(again.status, 403);
-      assert.equal(count, 1);
     }
+    const again = await route.POST({
+      json: async () => ({ plan, clientName: "Second business" }),
+    });
+    assert.equal(again.status, 403);
+    assert.equal(count, 1);
     const originalEnd = owner.contentWorkspaceTrialEndsAt;
     owner.contentWorkspaceTrialEndsAt = new Date(Date.now() - 1);
     assert.equal(policy.canAccessContentWorkspace(owner), false);
@@ -105,3 +106,72 @@ for (const plan of ["ENGAGE", "CREATOR"])
     assert.equal(policy.canAccessContentWorkspace(owner), true);
     assert.equal(plans.CONTENT_WORKSPACE_TRIAL_DAYS, 3);
   });
+
+test("prior trial use and concurrent AI actions share a cap, then paid usage starts separately", async () => {
+  const owner = {
+    ...account("CREATOR"),
+    contentWorkspaceBillingStatus: "TRIAL",
+    contentWorkspaceTrialEndsAt: new Date(Date.now() + 86400000),
+  };
+  const row = { cycleStart: new Date(), trialAiCreditsUsed: 7, aiGenerationsUsed: 0, aiRegenerationsUsed: 0 };
+  const db = {
+    creator: { findUnique: async () => owner },
+    contentWorkspaceUsage: {
+      upsert: async () => ({ ...row }),
+      findUniqueOrThrow: async () => ({ ...row }),
+      updateMany: async ({ where, data }) => {
+        if (where.trialAiCreditsUsed && row.trialAiCreditsUsed > where.trialAiCreditsUsed.lte) return { count: 0 };
+        for (const [key, value] of Object.entries(data)) row[key] += value.increment;
+        return { count: 1 };
+      },
+    },
+  };
+  const usage = load("lib/contentWorkspaceUsage.ts", { "@/lib/db": { db } });
+  assert.equal((await usage.consumeAiGeneration(owner.id, 3)).allowed, true);
+  const denied = await Promise.all([usage.consumeAiGeneration(owner.id), usage.consumeAiRegeneration(owner.id)]);
+  assert.ok(denied.every(result => !result.allowed && result.freeTrial && result.remaining === 0));
+  assert.equal(row.trialAiCreditsUsed, 10);
+
+  row.trialAiCreditsUsed = 9;
+  const race = await Promise.all([usage.consumeAiGeneration(owner.id), usage.consumeAiRegeneration(owner.id)]);
+  assert.equal(race.filter(result => result.allowed).length, 1);
+  assert.equal(row.trialAiCreditsUsed, 10);
+
+  row.trialAiCreditsUsed = 17;
+  assert.equal((await usage.consumeAiGeneration(owner.id)).allowed, false);
+  owner.contentWorkspaceBillingStatus = "ACTIVE";
+  const paid = await usage.consumeAiGeneration(owner.id);
+  assert.deepEqual([paid.allowed, paid.freeTrial, paid.limit, paid.remaining], [true, false, 100, 99]);
+  assert.equal(row.trialAiCreditsUsed, 17);
+});
+
+test("the generation request prompts to subscribe before starting a job and allows a one-credit draft", async () => {
+  let remaining = 0;
+  let enqueued = 0;
+  const { POST } = load("app/api/calendars/[id]/ai-generate/route.ts", {
+    "@/lib/auth": { getCurrentCreator: async () => ({ id: "owner" }) },
+    "@/lib/calendarPermissions": { hasCalendarPermission: async () => true },
+    "@/lib/contentWorkspaceUsage": {
+      getCalendarFreeTrialOwner: async () => ({ id: "owner" }),
+      getTrialAiCreditsRemaining: async () => remaining,
+    },
+    "@/lib/workspaceSetupServer": { getWorkspaceSetup: async () => null },
+    "@/lib/publishing/applicationBoundary": { publishingIntegrationInstalled: () => false },
+    "@/lib/knowledge/generationPreflight": { generationPreflight: async () => assert.fail("An uncharged trial request must not call AI preflight") },
+    "@/lib/aiGenerationJobs": { enqueueAiGeneration: async () => { enqueued++; return new Response(null, { status: 202 }); } },
+  });
+  const call = (postsPerWeek) => POST(new Request("https://example.test/api/calendars/business/ai-generate", {
+    method: "POST",
+    body: JSON.stringify({ startDate: "2026-11-25", endDate: "2026-12-01", platforms: ["INSTAGRAM"], postsPerWeek }),
+  }), { params: Promise.resolve({ id: "business" }) });
+
+  const exhausted = await call(1);
+  assert.equal(exhausted.status, 403);
+  assert.equal((await exhausted.json()).requiresUpgrade, true);
+  assert.equal(enqueued, 0);
+
+  remaining = 1;
+  assert.equal((await call(3)).status, 403);
+  assert.equal((await call(1)).status, 202);
+  assert.equal(enqueued, 1);
+});

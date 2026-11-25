@@ -1,3 +1,4 @@
+import { trialAiLimitNotice } from "@/lib/contentWorkspaceEntitlements";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
 import { complimentaryAccessSelect } from "@/lib/complimentaryAccess";
@@ -277,6 +278,7 @@ import { requirePostPlatform } from "@/lib/calendarPosts";
     const consumed = await consumeAiRegeneration(owner.id);
 
     if (!consumed.allowed) {
+      if (consumed.freeTrial) return NextResponse.json(trialAiLimitNotice, { status: 403 });
       return NextResponse.json(
         {
           error: `Your AI regeneration allowance of ${consumed.limit} is unavailable or used up. Upgrade your plan or wait for your next monthly allowance.`,
@@ -292,7 +294,7 @@ import { requirePostPlatform } from "@/lib/calendarPosts";
       * The request cannot be processed without business context, so
       * return the consumed regeneration to the account.
       */
-      await db.contentWorkspaceUsage.updateMany({
+      if (!consumed.freeTrial) await db.contentWorkspaceUsage.updateMany({
         where: {
           creatorId: owner.id, cycleStart: consumed.cycleStart,
           aiRegenerationsUsed: { gt: 0 }, aiGenerationsUsed: { gt: 0 },
@@ -383,7 +385,7 @@ import { requirePostPlatform } from "@/lib/calendarPosts";
       * The AI request failed, so return the consumed regeneration
       * to the account.
       */
-      await db.contentWorkspaceUsage.updateMany({
+      if (!consumed.freeTrial) await db.contentWorkspaceUsage.updateMany({
         where: {
           creatorId: owner.id, cycleStart: consumed.cycleStart,
           aiRegenerationsUsed: { gt: 0 }, aiGenerationsUsed: { gt: 0 },
@@ -410,7 +412,7 @@ import { requirePostPlatform } from "@/lib/calendarPosts";
      * the database.
      */
     if (!isValidPlatform(generated.platform)) {
-      await db.contentWorkspaceUsage.updateMany({
+      if (!consumed.freeTrial) await db.contentWorkspaceUsage.updateMany({
         where: {
           creatorId: owner.id, cycleStart: consumed.cycleStart,
           aiRegenerationsUsed: { gt: 0 }, aiGenerationsUsed: { gt: 0 },
@@ -431,7 +433,7 @@ import { requirePostPlatform } from "@/lib/calendarPosts";
     }
 
     if (!isValidDate(generated.postDate)) {
-      await db.contentWorkspaceUsage.updateMany({
+      if (!consumed.freeTrial) await db.contentWorkspaceUsage.updateMany({
         where: {
           creatorId: owner.id, cycleStart: consumed.cycleStart,
           aiRegenerationsUsed: { gt: 0 }, aiGenerationsUsed: { gt: 0 },

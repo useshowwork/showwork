@@ -1,14 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const ts = require('typescript');
-function load(file, deps = {}) {
-  deps = require("./helpers/billing-fixtures.cjs").withBillingDependencies(deps);
-  const module = { exports: {} };
-  const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-  new Function('require', 'module', 'exports', js)(name => name in deps ? deps[name] : require(name), module, module.exports);
-  return module.exports;
-}
+const { load: loadTypeScript } = require('./helpers/load-typescript.cjs');
+const { withBillingDependencies } = require('./helpers/billing-fixtures.cjs');
+const load = (file, deps = {}) => loadTypeScript(file, withBillingDependencies(deps));
 const plans = load('lib/contentWorkspaceEntitlements.ts');
 const account = (plan = 'CREATOR', status = 'ACTIVE', ends = null) => ({ id: 'owner', contentWorkspacePlan: plan, contentWorkspaceBillingStatus: status, contentWorkspaceBillingCycle: 'MONTHLY', contentWorkspaceTrialEndsAt: ends, contentWorkspaceTrialUsedAt: new Date(), isComped: false, compedUntil: null });
 function service(db = {}) { return load('lib/contentWorkspaceUsage.ts', { '@/lib/db': { db }, '@/lib/contentWorkspaceEntitlements': plans }); }
@@ -31,12 +25,12 @@ test('Creator and Studio features are gated independently and Agency adds opt-in
     assert.equal(entitlements.canUseContentWorkspaceFeature(account('UNLIMITED'), feature), true);
   }
 });
-test('every intended plan gets full Agency access during its original three-day trial', () => {
+test('all Marketing trials retain core features and reserve automatic replies and AI recommendations for subscribers', () => {
   assert.equal(plans.CONTENT_WORKSPACE_TRIAL_DAYS, 3);
   for (const plan of plans.CONTENT_WORKSPACE_PLAN_ORDER) {
     const owner = account(plan, 'TRIAL', future());
     assert.equal(entitlements.getContentWorkspacePlan(owner), 'UNLIMITED');
-    for (const feature of Object.keys(plans.CONTENT_WORKSPACE_FEATURES)) assert.equal(entitlements.canUseContentWorkspaceFeature(owner, feature), true);
+    for (const feature of Object.keys(plans.CONTENT_WORKSPACE_FEATURES)) assert.equal(entitlements.canUseContentWorkspaceFeature(owner, feature), !["aiAutoReplies", "performanceRecommendations"].includes(feature));
     assert.equal(owner.contentWorkspacePlan, plan);
   }
 });
@@ -60,10 +54,11 @@ test('expired unpaid trials and offline subscriptions cannot use premium feature
   }
 });
 test('trial usage falls back to paid quotas without deleting excess stored data', async () => {
-  const usage = { cycleStart: new Date(), storageBytes: 20_000_000_000n, storageReservedBytes: 0n, aiGenerationsUsed: 120, aiRegenerationsUsed: 5 };
+  const usage = { cycleStart: new Date(), storageBytes: 20_000_000_000n, storageReservedBytes: 0n, aiGenerationsUsed: 120, aiRegenerationsUsed: 5, trialAiCreditsUsed: 17 };
   const api = service({ socialCalendar: { count: async () => 8 }, calendarCollaborator: { count: async () => 8 }, contentWorkspaceUsage: { upsert: async () => usage } });
   const owner = account('CREATOR', 'TRIAL', future());
-  assert.equal((await api.getContentWorkspaceUsage(owner)).workspaceLimit, Number.MAX_SAFE_INTEGER);
+  const trial = await api.getContentWorkspaceUsage(owner);
+  assert.deepEqual([trial.workspaceLimit, trial.aiGenerationLimit, trial.aiGenerationsRemaining], [1, 10, 0]);
   owner.contentWorkspaceBillingStatus = 'ACTIVE'; owner.contentWorkspaceTrialEndsAt = new Date(Date.now() - 1);
   const summary = await api.getContentWorkspaceUsage(owner);
   assert.deepEqual([summary.workspaceLimit, summary.collaboratorLimit, summary.storageLimitBytes, summary.aiGenerationLimit], [5, 3, 5e9, 100]);
@@ -132,7 +127,7 @@ test('the content generation API honors denied quota results instead of treating
   const api = load('lib/calendarAiGeneration.ts', {
     '@/lib/auth': { getCurrentCreator: async () => ({ id: 'owner' }) },
     '@/lib/calendarPermissions': { hasCalendarPermission: async () => true },
-    '@/lib/db': { db: { socialCalendar: { findUnique: async () => ({ managerId: 'owner', aiBusinessSummary: 'Brand context' }) }, creator: { findUnique: async () => account() } } },
+    '@/lib/db': { db: { socialCalendar: { findUnique: async () => ({ managerId: 'owner', aiBusinessSummary: 'Brand context' }) }, creator: { findUnique: async () => account() }, calendarBusinessDocument: { count: async () => 1 }, calendarPost: { findFirst: async () => null }, calendarPostAiGeneration: { findFirst: async () => null } } },
     '@/lib/contentWorkspaceUsage': { getContentWorkspacePlan: () => 'CREATOR', consumeAiGeneration: async () => ({ allowed: false, limit: 100 }) },
     '@/lib/openai': { generateContentCalendar: async () => { throw new Error('Quota must stop the model call'); } },
   });

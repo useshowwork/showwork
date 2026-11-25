@@ -520,6 +520,7 @@ export default function AiDraftReviewModal({
               {error && (
                 <div role="alert" className={styles.error}>
                   {error}
+                  {/subscribe/i.test(error) && <a className="ml-2 font-semibold underline" href="/dashboard/billing?product=content-workspace#content-workspace-plans">View plans</a>}
                   <button
                     type="button"
                     disabled={locked || editorState.dirty}

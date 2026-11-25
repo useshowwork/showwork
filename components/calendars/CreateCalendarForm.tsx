@@ -117,7 +117,7 @@ export default function CreateCalendarForm({
           </h2>
           <p className="mt-1 text-sm text-[#667085]">
             {step === "choose-plan"
-              ? "Start with 3 days of full Agency feature access. Prices below apply when you subscribe."
+              ? "Start with one workspace and 10 shared AI credits for 3 days. Prices below apply when you subscribe."
               : "Enter a client name to create their workspace."}
           </p>
         </div>
@@ -246,7 +246,7 @@ export default function CreateCalendarForm({
           <p className="mt-2 text-xs text-[#667085]">
             {hasExistingPlan
               ? `${PLAN_CONFIG[contentWorkspacePlan!].name} plan · covered by your existing subscription`
-              : `${PLAN_CONFIG[chosenPlan!].name} plan · your 3-day Agency trial starts when you create this workspace`}
+              : `${PLAN_CONFIG[chosenPlan!].name} plan · your 3-day free trial starts when you create this workspace`}
           </p>
           {error && (
             <p

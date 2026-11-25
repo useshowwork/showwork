@@ -23,6 +23,8 @@ export default function ReplyDraftAssistant({
   latestInboundId,
   onUseDraft,
   locked = false,
+  freeTrial = false,
+  engage = false,
 }: {
   endpoint: string;
   conversationId: string;
@@ -31,12 +33,15 @@ export default function ReplyDraftAssistant({
   latestInboundId?: string;
   onUseDraft: (text: string) => void;
   locked?: boolean;
+  freeTrial?: boolean;
+  engage?: boolean;
 }) {
   const [tone, setTone] = useState(defaultTone);
   const [context, setContext] = useState("");
   const [busy, setBusy] = useState(false);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState("");
+  const [requiresUpgrade, setRequiresUpgrade] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
   useEffect(() => {
     requestRef.current?.abort();
@@ -44,6 +49,7 @@ export default function ReplyDraftAssistant({
     setContext("");
     setSuggestion(null);
     setError("");
+    setRequiresUpgrade(false);
     setBusy(false);
     return () => requestRef.current?.abort();
   }, [conversationId, defaultTone]);
@@ -60,6 +66,7 @@ export default function ReplyDraftAssistant({
     requestRef.current = controller;
     setBusy(true);
     setError("");
+    setRequiresUpgrade(false);
     setSuggestion(null);
     try {
       const response = await calendarMutationFetch(
@@ -72,8 +79,10 @@ export default function ReplyDraftAssistant({
         },
       );
       const result = await response.json();
-      if (!response.ok)
+      if (!response.ok) {
+        if (!controller.signal.aborted) setRequiresUpgrade(result.requiresUpgrade === true);
         throw new Error(result.error || "Could not prepare a reply.");
+      }
       if (!controller.signal.aborted) setSuggestion(result);
     } catch (error) {
       if (!controller.signal.aborted)
@@ -122,6 +131,7 @@ export default function ReplyDraftAssistant({
             : currentDraft.trim()
               ? "Improve draft"
               : "Draft reply"}
+          {!busy && freeTrial && " · 1 credit"}
         </button>
       </div>
       <details>
@@ -147,6 +157,10 @@ export default function ReplyDraftAssistant({
       {error && (
         <p role="alert" className="text-xs text-rose-700">
           {error}
+          {requiresUpgrade && <>
+            <a className="ml-2 font-semibold underline" href={engage ? "/dashboard/billing?product=engage" : "/dashboard/billing?product=content-workspace#content-workspace-plans"}>View plans</a>
+            <button type="button" className="ml-2 underline" onClick={() => setError("")}>Keep working</button>
+          </>}
         </p>
       )}
       {suggestion && (

@@ -1,3 +1,4 @@
+import { isFreeWorkspaceTrial } from "@/lib/contentWorkspacePolicy";
 import { NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
@@ -12,13 +13,13 @@ export async function GET(
   if (!creator)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  if (!(await hasCalendarPermission(creator.id, id, "inbox.view")))
+  if (!(await hasCalendarPermission(creator.id, id, "inbox.view")) && !(await hasCalendarPermission(creator.id, id, "calendar.view")))
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   const calendar = await db.socialCalendar.findUnique({
     where: { id },
     include: { manager: true },
   });
-  if (calendar?.manager.contentWorkspacePlan !== "ENGAGE")
+  if (!calendar || (calendar.manager.contentWorkspacePlan !== "ENGAGE" && !isFreeWorkspaceTrial(calendar.manager)))
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   const usage = await getContentWorkspaceUsage(calendar.manager);
   return NextResponse.json(
@@ -27,7 +28,7 @@ export async function GET(
       limit: usage.aiGenerationLimit,
       active: usage.hasAccess,
       trialEndsAt:
-        calendar.manager.contentWorkspaceBillingStatus === "TRIAL"
+        isFreeWorkspaceTrial(calendar.manager)
           ? (calendar.manager.contentWorkspaceTrialEndsAt?.toISOString() ??
             null)
           : null,

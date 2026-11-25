@@ -624,7 +624,7 @@ async function handleUpload(
 return NextResponse.json({
   document: serializedDocument,
   businessSummary: updatedSummary,
-  summaryUpdatedAt: summaryUpdatedAt.toISOString(),
+  summaryUpdatedAt: summaryUpdatedAt?.toISOString() ?? null,
   summaryUpdated: true,
 });
   } catch (error) {

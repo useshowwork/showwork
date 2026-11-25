@@ -1,3 +1,4 @@
+import { trialAiLimitNotice } from "@/lib/contentWorkspaceEntitlements";
 import { visibleInboxConnection } from "@/lib/socialMessaging/visibility";
 import { maskSensitiveText } from "@/lib/socialMessaging/safety";
 import { getBusinessKnowledgeContext } from "@/lib/knowledge/context";
@@ -87,9 +88,8 @@ export async function POST(
   };
   const quota = await consumeCalendarAiGeneration(calendarId);
   if (!quota.allowed) {
-    const error = quota.engageTrial
-      ? `You’ve used your ${quota.limit} trial AI replies. Subscribe to continue using AI replies. You can still reply manually until your trial ends.`
-      : `Your monthly AI allowance of ${quota.limit} is unavailable or used up. Your allowance resets monthly; you can still send human replies.`;
+    if (quota.freeTrial) return NextResponse.json(trialAiLimitNotice, { status: 403 });
+    const error = `Your monthly AI allowance of ${quota.limit} is unavailable or used up. Your allowance resets monthly; you can still send human replies.`;
     return NextResponse.json({ error, code: "AI_GENERATION_LIMIT_REACHED" }, { status: 403 });
   }
   try {

@@ -782,7 +782,7 @@ export default function CalendarBillingSettings({
             </div>
 
             <p className="mb-4 text-sm leading-6 text-[#667085]">
-              Choose any plan below. During your trial, every plan has full Agency feature access. You can switch your intended plan and keep your remaining trial time. Paid plan changes open checkout and take effect after payment. Existing workspaces beyond the new allowance stay available to review and unlock again when you upgrade.
+              Choose any plan below. Your trial includes one workspace and 10 shared AI credits. You can switch your intended plan and keep your remaining trial time. Paid plan changes open checkout and take effect after payment. Existing workspaces beyond the new allowance stay available to review and unlock again when you upgrade.
             </p>
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
               {CONTENT_WORKSPACE_PLAN_ORDER.map((key) => {

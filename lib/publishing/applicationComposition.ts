@@ -1,3 +1,4 @@
+import { trialAiLimitNotice, trialPaidAiNotice } from "../contentWorkspaceEntitlements";
 import { approvalBatch } from "../workspaceNotifications";
 import { uploadNoticeBatchId, uploadNoticeReceipt, verifiedUploadNoticePosts } from "../calendarUploadNotice";
 import type { WorkflowEmailEvent } from "../calendarWorkflowEmails";
@@ -171,6 +172,7 @@ export function createCanonicalRouteDispatcher(deps:{actions:ReturnType<typeof c
    // specialized uploads require explicit reviewed adapters; never call legacy.
    return Response.json({error:'Canonical adapter required',entrypoint},{status:503});
   }catch(error){const message=error instanceof Error?error.message:'Canonical request failed',code=error&&typeof error==='object'&&'code'in error?String(error.code):message;
+   if(code===trialAiLimitNotice.code||code===trialPaidAiNotice.code)return Response.json(code===trialAiLimitNotice.code?trialAiLimitNotice:trialPaidAiNotice,{status:403});
    const status=/PERMISSION_DENIED|ENTITLEMENT_DENIED|ACTOR_DEACTIVATED|LIMIT_REACHED/.test(code)?403:/POST_MISSING|POST_RETIRED|WORKSPACE_MISSING|WORKSPACE_RETIRED|not found/i.test(code)?404:/INVALID_|valid .* required|must be text|Custom fields|valid generation|Invalid generation/i.test(message)?400:409;
    return Response.json({error:message,code:code==='APPROVED_CONTENT_LOCKED'?'POST_APPROVED_LOCKED':code},{status});}
  };

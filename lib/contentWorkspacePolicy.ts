@@ -1,6 +1,6 @@
 /** Existing policy formulas, shared without importing a global database client. */
 import {workspaceComplimentaryPlan,type ComplimentaryAccount} from "./complimentaryAccess";
-import {CONTENT_WORKSPACE_PLANS,planIncludesWorkspaceFeature,type ContentWorkspacePlan,type ContentWorkspaceFeature} from "./contentWorkspaceEntitlements";
+import {WORKSPACE_TRIAL_AI_CREDIT_LIMIT,trialAiLimitNotice,CONTENT_WORKSPACE_PLANS,planIncludesWorkspaceFeature,type ContentWorkspacePlan,type ContentWorkspaceFeature} from "./contentWorkspaceEntitlements";
 import type {ContentWorkspaceAccount} from "./contentWorkspaceUsage";
 export function isContentWorkspaceTrialActive(
   account: Pick<
@@ -13,6 +13,18 @@ export function isContentWorkspaceTrialActive(
     !!account.contentWorkspaceTrialEndsAt &&
     account.contentWorkspaceTrialEndsAt.getTime() > Date.now()
   );
+}
+
+export function isFreeWorkspaceTrial(account: Parameters<typeof canAccessContentWorkspace>[0]): boolean {
+  return account.contentWorkspaceBillingStatus === "TRIAL" &&
+    isContentWorkspaceTrialActive(account) && !isComplimentaryAccessActive(account);
+}
+
+export function getWorkspaceAiPlan(account: Parameters<typeof getContentWorkspacePlan>[0]) {
+  if (account.contentWorkspaceBillingStatus === "ACTIVE" && isContentWorkspaceTrialActive(account)) {
+    return getContentWorkspacePlan({ ...account, contentWorkspaceTrialEndsAt: null });
+  }
+  return getContentWorkspacePlan(account);
 }
 
 export function isComplimentaryAccessActive(
@@ -75,6 +87,7 @@ export function getContentWorkspacePlan(
 }
 /** Feature access always uses the owner's live billing state, never the caller's plan. */
 export function canUseContentWorkspaceFeature(account: ContentWorkspaceAccount, feature: ContentWorkspaceFeature): boolean {
+  if (isFreeWorkspaceTrial(account) && (feature === "aiAutoReplies" || feature === "performanceRecommendations")) return false;
   return canAccessContentWorkspace(account) && planIncludesWorkspaceFeature(getContentWorkspacePlan(account), feature);
 }
 
@@ -98,7 +111,7 @@ export function currentAiCycleStart(anchor: Date, now = new Date()): Date {
 
 /** Joined publishing-action transaction; reuses the existing owner plan/cycle
  * policy. Never opens a global Prisma transaction or retries a committed action. */
-export async function validateCanonicalWorkspaceUsage(tx:{query(sql:string,values?:unknown[]):Promise<{rows:Record<string,any>[]}>},input:{calendarId:string;kind:'AI_DRAFT'|'AI_REGENERATION'|'UPLOAD'|'MEMBERSHIP';deltaBytes?:string}) {
+export async function validateCanonicalWorkspaceUsage(tx:{query(sql:string,values?:unknown[]):Promise<{rows:Record<string,any>[]}>},input:{calendarId:string;kind:'AI_DRAFT'|'AI_REGENERATION'|'UPLOAD'|'MEMBERSHIP';deltaBytes?:string;trialCost?:1|3}) {
  const owner=(await tx.query(`SELECT c.* FROM "Creator" c JOIN "SocialCalendar" w ON w."managerId"=c.id WHERE w.id=$1`,[input.calendarId])).rows[0];
  if(!owner||!canAccessContentWorkspace(owner as ContentWorkspaceAccount))throw Error('WORKSPACE_ENTITLEMENT_DENIED');
  const plan=getContentWorkspacePlan(owner as ContentWorkspaceAccount);if(!plan)throw Error('WORKSPACE_ENTITLEMENT_DENIED');
@@ -108,11 +121,19 @@ export async function validateCanonicalWorkspaceUsage(tx:{query(sql:string,value
  }
  if(plan==='ENGAGE')throw Error('MARKETING_WORKSPACE_REQUIRED');
  if(input.kind==='UPLOAD')throw Error('STORAGE_RESERVATION_PROOF_REQUIRED');
+ const freeTrial=isFreeWorkspaceTrial(owner as ContentWorkspaceAccount);
+ const aiPlan=getWorkspaceAiPlan(owner as ContentWorkspaceAccount) ?? plan;
  await tx.query(`INSERT INTO "ContentWorkspaceUsage"("creatorId","cycleStart","updatedAt") VALUES($1,clock_timestamp(),clock_timestamp()) ON CONFLICT DO NOTHING`,[owner.id]);
  const usage=(await tx.query(`SELECT * FROM "ContentWorkspaceUsage" WHERE "creatorId"=$1 FOR UPDATE`,[owner.id])).rows[0],now=(await tx.query('SELECT clock_timestamp() AS now')).rows[0].now;
+ if(freeTrial){
+  const cost=input.trialCost??1;
+  const updated=await tx.query(`UPDATE "ContentWorkspaceUsage" SET "trialAiCreditsUsed"="trialAiCreditsUsed"+$2,"updatedAt"=clock_timestamp() WHERE "creatorId"=$1 AND "trialAiCreditsUsed"<=$3 RETURNING "creatorId"`,[owner.id,cost,WORKSPACE_TRIAL_AI_CREDIT_LIMIT-cost]);
+  if(!updated.rows.length)throw Error(trialAiLimitNotice.code);
+  return;
+ }
  const cycle=currentAiCycleStart(usage.cycleStart,now);
  if(cycle.getTime()!==usage.cycleStart.getTime())await tx.query(`UPDATE "ContentWorkspaceUsage" SET "cycleStart"=$2,"aiGenerationsUsed"=0,"aiRegenerationsUsed"=0,"updatedAt"=clock_timestamp() WHERE "creatorId"=$1`,[owner.id,cycle]);
- const regenerate=input.kind==='AI_REGENERATION',limit=regenerate?CONTENT_WORKSPACE_PLANS[plan].aiRegenerations:CONTENT_WORKSPACE_PLANS[plan].aiGenerations;
+ const regenerate=input.kind==='AI_REGENERATION',limit=regenerate?CONTENT_WORKSPACE_PLANS[aiPlan].aiRegenerations:CONTENT_WORKSPACE_PLANS[aiPlan].aiGenerations;
  const updated=(await tx.query(`UPDATE "ContentWorkspaceUsage" SET "aiGenerationsUsed"="aiGenerationsUsed"+1,"aiRegenerationsUsed"="aiRegenerationsUsed"+$3,"updatedAt"=clock_timestamp() WHERE "creatorId"=$1 AND "aiGenerationsUsed"<$2 AND ($3=0 OR "aiRegenerationsUsed"<$2) RETURNING "creatorId"`,[owner.id,limit,regenerate?1:0])).rows;
  if(!updated.length)throw Error(regenerate?'AI_REGENERATION_LIMIT_REACHED':'AI_GENERATION_LIMIT_REACHED');
 }

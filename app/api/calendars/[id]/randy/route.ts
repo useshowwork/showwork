@@ -1,3 +1,5 @@
+import { consumeCalendarAiGeneration, getCalendarFreeTrialOwner } from "@/lib/contentWorkspaceUsage";
+import { trialAiLimitNotice, trialPaidAiNotice } from "@/lib/contentWorkspaceEntitlements";
 import { randomUUID } from 'node:crypto';
 import { after, NextRequest, NextResponse } from 'next/server';
 import { getCurrentCreator } from '@/lib/auth';
@@ -116,6 +118,7 @@ export async function POST(req: NextRequest, { params }: Context) {
   const text = body.text.trim();
   const research = approvedResearch || body.action === 'research' || researchRequested(text);
   if (research && !canManage) return reply({ error: 'Knowledge management permission is required to start research.' }, 403);
+  if (research && await getCalendarFreeTrialOwner(id)) return reply(trialPaidAiNotice, 403);
   const lease = new Date();
   const result = await db.$transaction(async tx => {
    // Per-member lock also prevents rate-limit bypass by creating new conversations.
@@ -126,6 +129,8 @@ export async function POST(req: NextRequest, { params }: Context) {
    if (body.conversationId && !conversation) return { error: 'Conversation not found.', status: 404 };
    if (conversation?.processingAt && Date.now() - conversation.processingAt.getTime() < 5 * 60000) return { error: 'Randy is still answering. Please wait.', status: 409 };
    if (conversation && await tx.workspaceRandyMessage.count({ where: { conversationId: conversation.id } }) >= 98) return { error: 'Start a new conversation to keep chatting.', status: 409 };
+   const quota = await consumeCalendarAiGeneration(id, { trialOnly: true, database: tx });
+   if (!quota.allowed) return { ...trialAiLimitNotice, status: 403 };
    if (!conversation) conversation = await tx.workspaceRandyConversation.create({ data: { calendarId: id, creatorId: creator.id, title: text.slice(0, 90) } });
    if (pendingProposal) {
     const documentId = `randy:${pendingProposal.id}`;
@@ -152,7 +157,10 @@ export async function POST(req: NextRequest, { params }: Context) {
    await tx.workspaceRandyConversation.update({ where: { id: conversation.id }, data: { processingAt: lease } });
    return { conversationId: conversation.id };
   }, { timeout: 20000 });
-  if ('error' in result) return reply({ error: result.error }, result.status);
+  if ('status' in result) {
+   const { status, ...payload } = result;
+   return reply(payload, status);
+  }
   after(async () => {
    try {
     const question = approvedResearch && researchFocusText ? researchFocusText : text;

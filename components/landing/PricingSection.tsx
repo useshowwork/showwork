@@ -690,7 +690,7 @@ export default function PricingSection({
                   >
                     {product === "engage"
                       ? `${CONTENT_WORKSPACE_TRIAL_DAYS}-day free trial · ${ENGAGE_TRIAL_AI_REPLY_LIMIT} AI replies · no card required`
-                      : `${CONTENT_WORKSPACE_TRIAL_DAYS}-day Agency trial · no payment required to start`}
+                      : `${CONTENT_WORKSPACE_TRIAL_DAYS}-day free trial · one workspace · 10 AI credits`}
                   </p>
                 )}
               </div>

@@ -1,3 +1,4 @@
+import { isFreeWorkspaceTrial } from "@/lib/contentWorkspacePolicy";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed, nativePolicyExecutionAllowed } from "@/lib/publishing/applicationBoundary";
 import { complimentaryAccessSelect, workspaceComplimentaryPlan } from "@/lib/complimentaryAccess";
 import { initializeOfferSubscription } from "@/lib/billingOffers";
@@ -316,7 +317,9 @@ export async function POST(req: NextRequest) {
     const effectivePlan = startsTrial ? (selectedPlan === "ENGAGE" ? "ENGAGE" : "UNLIMITED") : getContentWorkspacePlan(owner);
     if ((!startsTrial && !canAccessContentWorkspace(owner)) || !effectivePlan) return null;
     const count = await tx.socialCalendar.count({ where: { managerId: creator.id } });
-    if (count >= CONTENT_WORKSPACE_PLANS[effectivePlan].activeWorkspaces) return null;
+    const workspaceLimit = (startsTrial && owner.contentWorkspaceBillingStatus !== "ACTIVE") || isFreeWorkspaceTrial(owner)
+      ? 1 : CONTENT_WORKSPACE_PLANS[effectivePlan].activeWorkspaces;
+    if (count >= workspaceLimit) return null;
     const trialEndsAt = startsTrial ? new Date(Date.now() + CONTENT_WORKSPACE_TRIAL_DAYS * 86400000) : owner.contentWorkspaceTrialEndsAt;
     if (startsTrial) {
       await tx.creator.update({ where: { id: creator.id }, data: {

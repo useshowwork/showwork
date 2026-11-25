@@ -6,6 +6,9 @@ import {
 } from "@/lib/calendarImport/extraction";
 import { suggestMapping } from "@/lib/calendarImport/mapping";
 import { db } from "@/lib/db";
+import { getCalendarFreeTrialOwner } from "@/lib/contentWorkspaceUsage";
+import { trialPaidAiNotice } from "@/lib/contentWorkspaceEntitlements";
+import { extractCalendarItems } from "@/lib/openai";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -33,6 +36,10 @@ export async function POST(
     const extracted = await extractImport(
       Buffer.from(await file.arrayBuffer()),
       file.name,
+      async (text, filename) => {
+        if (await getCalendarFreeTrialOwner(id)) throw new Error(trialPaidAiNotice.code);
+        return extractCalendarItems(text, filename);
+      },
     );
     const existing = await db.calendarPost.findMany({
       where: { calendarId: id },
@@ -63,6 +70,9 @@ export async function POST(
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
+    if (error instanceof Error && error.message === trialPaidAiNotice.code) {
+      return NextResponse.json({ ...trialPaidAiNotice, error: "Subscribe to import documents with AI. You can still import spreadsheets and tables during your trial." }, { status: 403 });
+    }
     return NextResponse.json(
       {
         error:

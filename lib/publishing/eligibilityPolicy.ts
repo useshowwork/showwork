@@ -15,7 +15,8 @@ export function workspaceEligibility(owner:PublishingPolicyOwner,ordinal:number,
   const order=['CREATOR','GROWTH','STUDIO','UNLIMITED'];
   const plan:ContentWorkspacePlan|null=trial?'UNLIMITED':complimentary?
     owner.contentWorkspaceBillingStatus==='ACTIVE'&&owner.contentWorkspacePlan&&order.indexOf(owner.contentWorkspacePlan)>order.indexOf(complimentary)?owner.contentWorkspacePlan:complimentary:owner.contentWorkspacePlan;
-  return {allowed:!!access&&!!plan&&Number.isInteger(ordinal)&&ordinal>0&&ordinal<=(plan?CONTENT_WORKSPACE_PLANS[plan]?.activeWorkspaces??0:0),plan};
+  const limit=trial&&owner.contentWorkspaceBillingStatus==='TRIAL'&&!complimentary?1:plan?CONTENT_WORKSPACE_PLANS[plan]?.activeWorkspaces??0:0;
+  return {allowed:!!access&&!!plan&&Number.isInteger(ordinal)&&ordinal>0&&ordinal<=limit,plan};
 }
 function stable(v:any):any {return v instanceof Date?v.toISOString():Array.isArray(v)?v.map(stable):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,stable(v[k])])):v;}
 export function policyHash(value:unknown){return createHash('sha256').update(JSON.stringify(stable(value))).digest('hex');}
