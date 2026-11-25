@@ -24,6 +24,7 @@ export async function GET(
   const usage = await getContentWorkspaceUsage(calendar.manager);
   return NextResponse.json(
     {
+      used: usage.aiGenerationsUsed,
       remaining: usage.aiGenerationsRemaining,
       limit: usage.aiGenerationLimit,
       active: usage.hasAccess,

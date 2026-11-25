@@ -1,18 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { trialAiLimitNotice, WORKSPACE_TRIAL_PLAN_COST, WORKSPACE_TRIAL_MAX_DRAFTS } from "@/lib/contentWorkspaceEntitlements";
+import { trialAiLimitNotice } from "@/lib/contentWorkspaceEntitlements";
+import menuStyles from "@/components/calendars/WorkspaceMenu.module.css";
 
 export default function EngageReplyAllowance({
   calendarId,
-  showPlanCost = false,
   engage = false,
+  sidebar = false,
+  canSubscribe = false,
 }: {
   calendarId: string;
-  showPlanCost?: boolean;
   engage?: boolean;
+  sidebar?: boolean;
+  canSubscribe?: boolean;
 }) {
   const [usage, setUsage] = useState<{
+    used: number;
     remaining: number;
     limit: number;
     active: boolean;
@@ -24,7 +28,7 @@ export default function EngageReplyAllowance({
       if (document.visibilityState === "hidden") return;
       try {
         const response = await fetch(
-          `/api/calendars/${calendarId}/engage-usage`,
+          `/api/calendars/${encodeURIComponent(calendarId)}/engage-usage`,
           { cache: "no-store", signal: controller.signal },
         );
         if (response.ok) setUsage(await response.json());
@@ -43,6 +47,22 @@ export default function EngageReplyAllowance({
     };
   }, [calendarId]);
   if (!usage) return null;
+  const plansHref = engage ? "/dashboard/billing?product=engage" : "/dashboard/billing?product=content-workspace#content-workspace-plans";
+  if (sidebar) {
+    if (!usage.trialEndsAt) return null;
+    const used = usage.used ?? Math.max(0, usage.limit - usage.remaining);
+    return (
+      <section aria-label="Trial AI credits" className={menuStyles.trialCredits}>
+        <p className={menuStyles.trialCreditsLabel}>Trial AI credits</p>
+        <p role="status" className={menuStyles.trialCreditsCount}>
+          <span className={menuStyles.trialCreditsFull}>{used} of {usage.limit} used</span>
+          <span className={menuStyles.trialCreditsCompact} aria-hidden="true">{used}/{usage.limit}</span>
+        </p>
+        <progress aria-label="Trial AI credits used" value={Math.min(used, usage.limit)} max={usage.limit} className={menuStyles.trialCreditsProgress} />
+        {canSubscribe && <Link href={plansHref} className={menuStyles.trialCreditsLink}>View plans</Link>}
+      </section>
+    );
+  }
   return (
     <div
       role="status"
@@ -67,15 +87,13 @@ export default function EngageReplyAllowance({
           : usage.trialEndsAt
             ? usage.remaining === 0
               ? trialAiLimitNotice.error
-              : showPlanCost
-                ? `One draft costs 1 credit. A short content plan costs ${WORKSPACE_TRIAL_PLAN_COST} credits and can include up to ${WORKSPACE_TRIAL_MAX_DRAFTS} drafts. An AI revision costs 1 credit.`
-                : "Each AI draft or chat turn uses 1 credit. Manual work uses no credits."
+              : "Each AI draft or chat turn uses 1 credit. Manual work uses no credits."
             : usage.remaining
               ? "Drafts and automatic replies share this monthly allowance. Human replies do not use it."
               : "Your AI allowance resets monthly. You can still reply to customers yourself."}
       </span>
       {usage.trialEndsAt && usage.remaining === 0 && (
-        <Link href={engage ? "/dashboard/billing?product=engage" : "/dashboard/billing?product=content-workspace#content-workspace-plans"} className="mt-2 inline-block font-semibold underline">View plans</Link>
+        <Link href={plansHref} className="mt-2 inline-block font-semibold underline">View plans</Link>
       )}
     </div>
   );

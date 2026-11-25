@@ -26,6 +26,17 @@
 .navItem[aria-current=page] .iconWell { color: #fff; border-color: #ffffff25; background: #ffffff18; box-shadow: inset 0 1px 0 #ffffff10; }
 .activeArrow { display: grid; place-items: center; width: 19px; height: 19px; border: 1px solid #ffffff25; border-radius: 50%; color: #d7e8ff; }
 .footer { display: grid; flex-shrink: 0; gap: 12px; padding: 13px 10px; border-top: 1px solid #e5ecf7; }
+.trialCredits { flex-shrink: 0; margin: 0 12px 12px; padding: 10px 12px; border: 1px solid #ffffff33; border-radius: 12px; background: #ffffff12; color: #fff; }
+.trialCreditsLabel { font-size: 11px; color: #e0ebff; }
+.trialCreditsCount { margin-top: 2px; font-size: 14px; font-weight: 600; }
+.trialCreditsCompact { display: none; }
+.trialCreditsProgress { display: block; width: 100%; height: 5px; margin-top: 8px; accent-color: #b9d8ff; }
+.trialCreditsLink { display: inline-block; margin-top: 8px; color: #fff; font-size: 11px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.trialCreditsLink:focus-visible { outline: 2px solid #b9d8ff; outline-offset: 3px; }
+.rail[data-collapsed=true] .trialCredits { margin-inline: 7px; padding: 8px 4px; text-align: center; }
+.rail[data-collapsed=true] .trialCreditsLabel { font-size: 9px; }
+.rail[data-collapsed=true] .trialCreditsCompact { display: inline; }
+.rail[data-collapsed=true] .trialCreditsFull { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .clientLink { display: flex; align-items: center; gap: 8px; padding: 11px; border: 1px solid #dce7f8; border-radius: 14px; background: linear-gradient(125deg,#f0f5ff,#fff); color: #6386b6; }
 .clientIcon { display: grid; place-items: center; width: 30px; height: 32px; flex-shrink: 0; border-radius: 9px; background: #e4edfc; color: #5c86c2; }
 .clientLink > span:nth-child(2) { flex: 1; min-width: 0; }.clientLink strong { display: block; font-size: 11px; font-weight: 550; color: #4e6d97; }.clientLink small { display: block; margin-top: 3px; font-size: 8px; color: #8a9db6; }

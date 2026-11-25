@@ -378,7 +378,7 @@ contentIdea: p.contentIdea,
       group: "Leads & Messages",
       content: (
         <div>
-        {(isEngage || freeTrial) && <EngageReplyAllowance calendarId={calendar.id} engage={isEngage} />}
+        {isEngage && !freeTrial && <EngageReplyAllowance calendarId={calendar.id} engage />}
         <SocialLeadInbox
           freeTrial={freeTrial}
           engage={isEngage}
@@ -527,6 +527,7 @@ contentIdea: p.contentIdea,
       product={isEngage ? "engage" : "marketing"}
       logoUrl={calendar.logoUrl}
       canViewBilling={isOwner}
+      showTrialCredits={freeTrial}
       canEditLogo={workspaceActive && can("workspace.manage")}
       account={{ name: creator.name || creator.email, avatarUrl: creator.avatarUrl }}
       clientName={calendar.clientName}
@@ -551,7 +552,6 @@ contentIdea: p.contentIdea,
       }).sort((a,b) => isEngage ? ["inbox", "leads", "channels", "knowledge"].indexOf(a.id) - ["inbox", "leads", "channels", "knowledge"].indexOf(b.id) : 0).map(section => ({ ...section, content: (
         <>
           {agencyTrial && <WorkspaceFeatureNotice trial paidPlan={calendar.manager.contentWorkspaceBillingStatus === "ACTIVE" ? calendar.manager.contentWorkspacePlan : null} trialEndsAt={calendar.manager.contentWorkspaceTrialEndsAt} />}
-          {workspaceActive && freeTrial && ["generate", "knowledge", "research"].includes(section.id) && <EngageReplyAllowance calendarId={calendar.id} showPlanCost={section.id === "generate"} />}
           {!workspaceActive && <WorkspaceFeatureNotice message={section.id === "channels"
             ? "This workspace is outside your active plan access or workspace allowance. Channel connections are available in active workspaces."
             : undefined} />}

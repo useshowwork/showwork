@@ -18,6 +18,7 @@ import type { WorkspaceSetupState } from "@/lib/workspaceSetup";
 import WorkspaceUploadTray from "@/components/uploads/WorkspaceUploadTray";
 import WorkspaceNotifications from "./WorkspaceNotifications";
 import InboxHandoffAlert from "./InboxHandoffAlert";
+import EngageReplyAllowance from "@/components/engage/EngageReplyAllowance";
 
 type WorkspaceSectionId =
   | "overview"
@@ -102,6 +103,7 @@ export default function CalendarWorkspaceShell({
   logoUrl,
   canEditLogo,
   canViewBilling = false,
+  showTrialCredits = false,
   account,
   clientUrl,
   isManager,
@@ -116,6 +118,7 @@ export default function CalendarWorkspaceShell({
   logoUrl?: string | null;
   canEditLogo?: boolean;
   canViewBilling?: boolean;
+  showTrialCredits?: boolean;
   account?: { name: string; avatarUrl: string | null };
   clientUrl: string;
   isManager: boolean;
@@ -292,6 +295,9 @@ export default function CalendarWorkspaceShell({
   const openSheet = (sheet: "more" | "ai") => { setMobileSheet(sheet); setMobileOpen(true); };
   const engageDescriptions: Partial<Record<WorkspaceSectionId, string>> = { inbox: "Messages & AI replies", leads: "Contacts & follow-ups", channels: "Facebook, Instagram & WhatsApp", knowledge: "Your business & brand voice" };
   const billingHref = product === "engage" ? "/dashboard/billing?product=engage" : "/dashboard/billing?product=content-workspace";
+  const trialCredits = showTrialCredits && calendarId && (
+    <EngageReplyAllowance calendarId={calendarId} engage={product === "engage"} sidebar canSubscribe={canViewBilling} />
+  );
   const sidebar = <>
     <nav className={`${menuStyles.navigation} ${product === "engage" ? menuStyles.engageNavigation : ""}`} aria-label="Workspace sections">
       {nav.map(cluster => <div key={cluster.label} className={menuStyles.cluster} data-featured={cluster.featured || undefined}>
@@ -332,7 +338,7 @@ export default function CalendarWorkspaceShell({
         </div>
       </header>
       <MobileDrawer motion="slide" placement={mobileSheet === "more" ? "left" : "bottom"} open={mobileOpen} onClose={() => { setMobileOpen(false); if (tourId && window.innerWidth < 1024) window.dispatchEvent(new Event("showwork-workspace-tour-dismiss")); }} label={mobileSheet === "ai" ? "AI Studio" : "Showwork navigation"} heading={mobileSheet === "more" ? <ShowworkLogo tone="white" width={120} /> : undefined} panelClassName={mobileSheet === "more" ? `${menuStyles.navigationDrawer} ${product === "engage" ? menuStyles.engageDrawer : ""}` : menuStyles.mobilePanel} className={mobileSheet === "more" ? "bg-[#123568] text-white" : "bg-white text-slate-800"}>
-        {tourId || mobileSheet === "more" ? <><div className={menuStyles.drawerBrand}><p>{clientName}</p></div>{sidebar}<Link href="/dashboard/calendars" className={menuStyles.helpLink}><ArrowLeft size={16}/>All workspaces</Link></> : <div className={menuStyles.sheetBody}>
+        {tourId || mobileSheet === "more" ? <><div className={menuStyles.drawerBrand}><p>{clientName}</p></div>{sidebar}<Link href="/dashboard/calendars" className={menuStyles.helpLink}><ArrowLeft size={16}/>All workspaces</Link>{trialCredits}</> : <div className={menuStyles.sheetBody}>
           {mobileSheet === "ai" && <p className={menuStyles.sheetIntro}>Build your knowledge, explore ideas and create content.</p>}
           <nav aria-label={mobileSheet === "ai" ? "AI Studio tools" : "More workspace sections"} className={menuStyles.sheetGrid}>
             {(mobileSheet === "ai" ? aiSections : moreSections).map(item => <button key={item.id} onClick={() => select(item.id)} aria-current={item.id === active.id ? "page" : undefined} data-section={item.id} className={menuStyles.sheetItem}><span className={menuStyles.iconWell}><SectionIcon name={item.id} className="h-5 w-5"/></span><span className={menuStyles.sheetLabel}>{item.label}</span><ChevronRight size={14} className={menuStyles.sheetChevron} aria-hidden="true"/>{item.id === active.id && <span className={menuStyles.sheetActive}>You’re here</span>}</button>)}
@@ -372,6 +378,7 @@ export default function CalendarWorkspaceShell({
               </div>}
               {publishAction && <div className={menuStyles.collapsedFooter}><button type="button" onClick={toggleSidebar} title="Publishing actions" aria-label="Expand menu for publishing actions" className={menuStyles.collapsedAction}><SectionIcon name="publish" className="h-5 w-5"/></button></div>}
             </> : sidebar}
+            {trialCredits}
           </div>
         </aside>
 
