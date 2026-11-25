@@ -17,7 +17,7 @@ const account = (plan) => ({
 
 for (const plan of ["ENGAGE", "CREATOR"])
   test(`${plan} first business starts exactly three days of free access without Paystack`, async () => {
-    const owner = account(plan);
+    const owner = account(null);
     let count = 0;
     const db = {
       creator: {
@@ -35,14 +35,7 @@ for (const plan of ["ENGAGE", "CREATOR"])
       },
       calendarCollaborator: { count: async () => 0 },
       contentWorkspaceUsage: {
-        upsert: async () => ({
-          cycleStart: new Date(),
-          storageBytes: 0n,
-          storageReservedBytes: 0n,
-          aiGenerationsUsed: 0,
-          aiRegenerationsUsed: 0,
-          trialAiCreditsUsed: 0,
-        }),
+        upsert: async () => assert.fail("Workspace creation must work before the trial AI credit migration"),
       },
       $queryRaw: async () => [],
     };
@@ -65,6 +58,7 @@ for (const plan of ["ENGAGE", "CREATOR"])
     const body = await response.json();
     assert.equal(response.status, 200);
     assert.equal(body.trial, true);
+    assert.equal(owner.contentWorkspacePlan, plan);
     assert.equal(owner.contentWorkspaceBillingStatus, "TRIAL");
     const duration = owner.contentWorkspaceTrialEndsAt.getTime() - before;
     assert.ok(duration >= 3 * 86400000 && duration <= 3 * 86400000 + 2000);

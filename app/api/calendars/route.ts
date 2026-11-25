@@ -16,11 +16,9 @@ import {
   type ContentWorkspacePlan,
 } from "@/lib/contentWorkspaceEntitlements";
 import {
-  canCreateContentWorkspace,
   canAccessContentWorkspace,
   getContentWorkspacePlan,
   isComplimentaryAccessActive,
-  type ContentWorkspaceAccount,
 } from "@/lib/contentWorkspaceUsage";
 
 function slugify(input: string): string {
@@ -239,63 +237,6 @@ export async function POST(req: NextRequest) {
   }
 
   /*
-   * Build the account shape expected by the centralized
-   * Marketing Workspace entitlement service.
-   */
-  const account: ContentWorkspaceAccount = {
-  billingComplimentaryGrants: creator.billingComplimentaryGrants,
-  workspaceCompedPlan: creator.workspaceCompedPlan,
-  workspaceCompedUntil: creator.workspaceCompedUntil,
-  id: creator.id,
-  contentWorkspacePlan: plan,
-  contentWorkspaceBillingStatus: creator.contentWorkspaceBillingStatus,
-  contentWorkspaceBillingCycle: creator.contentWorkspaceBillingCycle,
-  contentWorkspaceTrialUsedAt: creator.contentWorkspaceTrialUsedAt,
-  contentWorkspaceTrialEndsAt: creator.contentWorkspaceTrialEndsAt,
-  isComped: creator.isComped,
-  compedUntil: creator.compedUntil,
-};
-
-  /*
-   * IMPORTANT:
-   * Check the workspace entitlement BEFORE creating the database row.
-   *
-   * This enforces:
-   * Creator -> maximum 5 active workspace
-   * Studio  -> maximum 15 active workspaces
-   */
-  const creationCheck = await canCreateContentWorkspace(account);
-
-  if (!creationCheck.allowed) {
-    return NextResponse.json(
-      {
-        error:
-          creationCheck.reason ??
-          "You cannot create another Marketing Workspace.",
-        usage: creationCheck.usage,
-      },
-      { status: 403 }
-    );
-  }
-
-  /*
-   * Persist the selected Marketing Workspace plan if this is the
-   * account's first Marketing Workspace setup.
-   *
-   * This does NOT touch the main Showwork subscription fields.
-   */
-  if (!creator.contentWorkspacePlan) {
-    await db.creator.update({
-      where: {
-        id: creator.id,
-      },
-      data: {
-        contentWorkspacePlan: plan,
-      },
-    });
-  }
-
-  /*
    * Generate the workspace credentials.
    */
   const slug = await uniqueSlugFor(slugify(clientName));
@@ -311,16 +252,28 @@ export async function POST(req: NextRequest) {
   const creation = await db.$transaction(async tx => {
     // Serialize account-level limits and the first trial start across requests.
     await tx.$queryRaw`SELECT "id" FROM "Creator" WHERE "id" = ${creator.id} FOR UPDATE`;
-    const owner = await tx.creator.findUniqueOrThrow({ where: { id: creator.id } });
-    const selectedPlan = owner.contentWorkspacePlan ?? plan!;
+    const currentOwner = await tx.creator.findUniqueOrThrow({ where: { id: creator.id } });
+    const selectedPlan = currentOwner.contentWorkspacePlan ?? plan!;
+    const owner = { ...currentOwner, contentWorkspacePlan: selectedPlan };
     const startsTrial = !owner.contentWorkspaceTrialUsedAt && !isComplimentaryAccessActive(owner);
     const effectivePlan = startsTrial ? (selectedPlan === "ENGAGE" ? "ENGAGE" : "UNLIMITED") : getContentWorkspacePlan(owner);
-    if ((!startsTrial && !canAccessContentWorkspace(owner)) || !effectivePlan) return null;
+    if ((!startsTrial && !canAccessContentWorkspace(owner)) || !effectivePlan) {
+      return { error: "Your Marketing Workspace subscription or trial is not active." };
+    }
     const count = await tx.socialCalendar.count({ where: { managerId: creator.id } });
     const workspaceLimit = (startsTrial && owner.contentWorkspaceBillingStatus !== "ACTIVE") || isFreeWorkspaceTrial(owner)
       ? 1 : CONTENT_WORKSPACE_PLANS[effectivePlan].activeWorkspaces;
-    if (count >= workspaceLimit) return null;
+    if (count >= workspaceLimit) {
+      return {
+        error: workspaceLimit === 1 && (startsTrial || isFreeWorkspaceTrial(owner))
+          ? "Your free trial includes one active workspace. Subscribe to add another."
+          : "Your workspace allowance is full. Upgrade to add a workspace. Existing data is preserved.",
+      };
+    }
     const trialEndsAt = startsTrial ? new Date(Date.now() + CONTENT_WORKSPACE_TRIAL_DAYS * 86400000) : owner.contentWorkspaceTrialEndsAt;
+    if (!currentOwner.contentWorkspacePlan) {
+      await tx.creator.update({ where: { id: owner.id }, data: { contentWorkspacePlan: selectedPlan } });
+    }
     if (startsTrial) {
       await tx.creator.update({ where: { id: creator.id }, data: {
         contentWorkspaceTrialUsedAt: new Date(), contentWorkspaceTrialEndsAt: trialEndsAt,
@@ -336,7 +289,7 @@ export async function POST(req: NextRequest) {
     } });
     return { calendar, startsTrial, trialEndsAt, owner, selectedPlan };
   });
-  if (!creation) return NextResponse.json({ error: "Your workspace allowance is full or your subscription is inactive. Upgrade to add a workspace. Existing data is preserved." }, { status: 403 });
+  if ("error" in creation) return NextResponse.json({ error: creation.error }, { status: 403 });
   const { calendar } = creation;
   Object.assign(creator, creation.owner);
   plan = creation.selectedPlan;

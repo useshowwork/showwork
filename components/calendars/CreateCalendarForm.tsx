@@ -65,15 +65,15 @@ export default function CreateCalendarForm({
           plan: chosenPlan,
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && typeof data?.calendarId === "string") {
         emit("showwork:workspace-created");
         window.location.href =
           data.authorizationUrl ?? `/dashboard/calendars/${data.calendarId}`;
       } else {
-        setBillingBlocked(res.status === 402 || (res.status === 403 && /subscription|allowance|limit|upgrade|trial/i.test(data.error || "")));
+        setBillingBlocked(res.status === 402 || (res.status === 403 && /subscription|allowance|limit|upgrade|trial/i.test(data?.error || "")));
         setError(
-          data.error ?? "Couldn’t create the workspace. Please try again.",
+          data?.error ?? "Couldn’t create the workspace. Please try again.",
         );
         setLoading(false);
       }
