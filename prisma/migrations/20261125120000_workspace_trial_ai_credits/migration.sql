@@ -1,14 +1,11 @@
-BEGIN;
+-- AlterTable ContentWorkspaceUsage: add trialAiCreditsUsed
+ALTER TABLE "ContentWorkspaceUsage" ADD COLUMN IF NOT EXISTS "trialAiCreditsUsed" INTEGER NOT NULL DEFAULT 0;
 
-ALTER TABLE "ContentWorkspaceUsage" ADD COLUMN "trialAiCreditsUsed" INTEGER NOT NULL DEFAULT 0;
-
--- Earlier regenerations already incremented the generation counter.
-UPDATE "ContentWorkspaceUsage" AS usage
-SET "trialAiCreditsUsed" = usage."aiGenerationsUsed",
-    "aiGenerationsUsed" = 0,
-    "aiRegenerationsUsed" = 0
-FROM "Creator" AS owner
-WHERE usage."creatorId" = owner.id
-  AND owner."contentWorkspaceBillingStatus" = 'TRIAL';
-
-COMMIT;
+-- Backfill existing trial usage into trialAiCreditsUsed for active or historical trial accounts
+UPDATE "ContentWorkspaceUsage" u
+SET "trialAiCreditsUsed" = LEAST(10, u."aiGenerationsUsed")
+FROM "Creator" c
+WHERE u."creatorId" = c."id"
+  AND (c."contentWorkspaceBillingStatus" = 'TRIAL' OR c."contentWorkspaceTrialEndsAt" IS NOT NULL)
+  AND u."trialAiCreditsUsed" = 0
+  AND u."aiGenerationsUsed" > 0;
