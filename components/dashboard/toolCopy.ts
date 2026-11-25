@@ -6,6 +6,12 @@ export const TOOL_COPY = {
     createAction: "Create a workspace",
     openAction: "Open workspaces",
   },
+  engage: {
+    product: "Showwork Engage",
+    description: "Manage Facebook, Instagram and WhatsApp messages in one inbox, draft replies with AI, and track leads.",
+    createAction: "Explore Engage",
+    openAction: "Open Engage",
+  },
   delivery: {
     product: "Project Delivery",
     description: "For videographers, photographers & creative teams.",

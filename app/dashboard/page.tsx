@@ -427,7 +427,7 @@ export default async function DashboardPage() {
           </div>
           <div className={workspaceStyles.grid}>
             <WorkspaceCard variant="workspace" product={TOOL_COPY.workspace.product} description={TOOL_COPY.workspace.description} href={usesEngage ? "/dashboard/billing?product=content-workspace" : "/dashboard/calendars"} action={usesEngage ? "View plans" : calendar ? TOOL_COPY.workspace.openAction : TOOL_COPY.workspace.createAction} icon={<WorkspaceIcon />} />
-            <WorkspaceCard variant="engage" product="Showwork Engage" description="Bring Facebook, Instagram and WhatsApp messages into one inbox. Reply with AI, track leads and turn conversations into customers." href="/dashboard/engage" action={usesEngage || hasBundledEngageAccess(creator) ? "Open Engage" : "Explore Engage"} icon={<MessagesSquare />} />
+            <WorkspaceCard variant="engage" product={TOOL_COPY.engage.product} description={TOOL_COPY.engage.description} href="/dashboard/engage" action={usesEngage || hasBundledEngageAccess(creator) ? TOOL_COPY.engage.openAction : TOOL_COPY.engage.createAction} icon={<MessagesSquare />} />
             <WorkspaceCard variant="delivery" product={TOOL_COPY.delivery.product} description={TOOL_COPY.delivery.description} href={projectCount > 0 ? "/dashboard/projects" : "/dashboard/start"} action={projectCount > 0 ? TOOL_COPY.delivery.openAction : TOOL_COPY.delivery.createAction} icon={<DeliveryIcon />} />
           </div>
           <Link href="/dashboard/portfolio" className={workspaceStyles.portfolioStrip}>
