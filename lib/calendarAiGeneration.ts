@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
-import { consumeAiGeneration, getContentWorkspacePlan } from "@/lib/contentWorkspaceUsage";
+import { consumeAiGeneration, refundAiGeneration, getContentWorkspacePlan } from "@/lib/contentWorkspaceUsage";
 import { generateContentCalendar } from "@/lib/openai";
 import type { Prisma, SocialPlatform } from "@prisma/client";
 
@@ -111,12 +111,26 @@ export async function generateCalendarDrafts(req: NextRequest, { params }: { par
     }, { status: 503 });
   }
 
+  const { drafts: expectedDrafts } = generationCount(
+    startDate,
+    endDate,
+    typeof postsPerWeek === "number" ? postsPerWeek : 3,
+    platforms as string[],
+    contentStrategy as string | undefined,
+    contentGroups as string[][] | undefined
+  );
+  const creditCost = expectedDrafts <= 1 ? 1 : 3;
+
   const plan = getContentWorkspacePlan(owner);
-  const consumed = await consumeAiGeneration(owner.id);
+  const consumed = await consumeAiGeneration(owner.id, creditCost);
   if (!consumed.allowed) {
+    const errorMsg = consumed.isTrial
+      ? "You have run out of free trial credits (10 credits limit). Please subscribe to continue generating content."
+      : `Your AI allowance of ${consumed.limit} generations is unavailable or used up. Upgrade your plan or wait for your next monthly allowance.`;
     return NextResponse.json({
-      error: `Your AI allowance of ${consumed.limit} generations is unavailable or used up. Upgrade your plan or wait for your next monthly allowance.`,
-      code: "AI_GENERATION_LIMIT_REACHED", plan,
+      error: errorMsg,
+      code: consumed.isTrial ? "SUBSCRIBE_REQUIRED" : "AI_GENERATION_LIMIT_REACHED",
+      plan,
     }, { status: 403 });
   }
 
@@ -217,15 +231,7 @@ return NextResponse.json({
   });
 
   try {
-    await db.contentWorkspaceUsage.updateMany({
-      where: {
-        creatorId: owner.id,
-        aiGenerationsUsed: { gt: 0 },
-      },
-      data: {
-        aiGenerationsUsed: { decrement: 1 },
-      },
-    });
+    await refundAiGeneration(owner.id, typeof creditCost === "number" ? creditCost : 1);
   } catch (refundError) {
     console.error("[Calendar AI Generation] Allowance refund failed", {
       calendarId: id,

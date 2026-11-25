@@ -1,3 +1,4 @@
+import { resetPaidContentWorkspaceAllowance } from "@/lib/contentWorkspaceUsage";
 import { syncPartnerPaymentIssue } from "@/lib/partnerPaymentIssues";
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed, nativePolicyExecutionAllowed } from "@/lib/publishing/applicationBoundary";
 import { syncVerifiedPayment } from "@/lib/paymentSync";
@@ -413,6 +414,8 @@ export async function POST(req: NextRequest) {
             contentWorkspaceWentOfflineAt: null,
           },
         });
+
+        await resetPaidContentWorkspaceAllowance(creator.id);
 
         try {
           const reference =

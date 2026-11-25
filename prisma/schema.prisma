@@ -2630,6 +2630,7 @@ model ContentWorkspaceUsage {
 
   aiGenerationsUsed   Int @default(0)
   aiRegenerationsUsed Int @default(0)
+  trialAiCreditsUsed  Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
