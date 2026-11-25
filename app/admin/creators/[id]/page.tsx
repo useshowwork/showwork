@@ -318,6 +318,12 @@ export default async function CreatorDetailPage({
     where: {
       creatorId: creator.id,
     },
+    select: {
+      storageBytes: true,
+      storageReservedBytes: true,
+      aiGenerationsUsed: true,
+      aiRegenerationsUsed: true,
+    },
   });
 
   const paymentRecords = await getAdminPaymentHistory({creatorId:creator.id,limit:50});
