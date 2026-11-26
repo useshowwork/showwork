@@ -52,10 +52,16 @@ export function createInstagramPublisher(database: typeof defaultDb, reporting: 
   if (!post) throw new Error("Post not found");
   if (post.internalReviewStatus !== "APPROVED" || post.approvalStatus !== "APPROVED" || post.isAiDraft) throw new Error("Internal and client approval are required before publishing.");
 
+  let publishRequested = false;
   const fail = async (message: string) => {
     await db.calendarPost.update({
       where: { id: postId },
-      data: { instagramPublishStatus: "FAILED", instagramPublishError: message },
+      data: {
+        instagramPublishStatus: "FAILED",
+        instagramPublishError: message,
+        // The durable worker that supplies a snapshot releases its own claim.
+        ...(!preload && !publishRequested ? { publishWorkerStartedAt: null } : {}),
+      },
     });
   };
 
@@ -92,6 +98,7 @@ export function createInstagramPublisher(database: typeof defaultDb, reporting: 
         caption,
       });
       if (isVideo) await waitForContainerReady(containerId, instagramAccessToken);
+      publishRequested = true;
       mediaId = await publishContainer(instagramAccountId, containerId, instagramAccessToken);
     } else {
       // Carousel — one child container per asset (no caption on any
@@ -116,6 +123,7 @@ export function createInstagramPublisher(database: typeof defaultDb, reporting: 
         childContainerIds,
         caption,
       });
+      publishRequested = true;
       mediaId = await publishContainer(instagramAccountId, carouselContainerId, instagramAccessToken);
     }
 

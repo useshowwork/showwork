@@ -3027,6 +3027,7 @@ caption: draftDetails.caption,
     }
 
     if (!canEdit) return;
+    setError(null);
     try {
       const res = await calendarMutationFetch(
         `/api/calendars/${calendarId}/posts/${post.id}/assets/${assetId}`,
@@ -3036,9 +3037,20 @@ caption: draftDetails.caption,
       );
 
       if (!res.ok) {
-        throw new Error(
-          "Failed to remove content"
-        );
+        const failure = await res.json().catch(() => null);
+        let message = "Unable to remove this file. Please try again.";
+        if (res.status === 401) {
+          message = "Sign in again before removing this file.";
+        } else if (res.status === 403) {
+          message = "You don't have permission to remove content from this calendar.";
+        } else if (res.status === 404) {
+          message = "This file or post could not be found. Refresh the calendar and try again.";
+        } else if (failure?.code === "MEDIA_LOCKED" || failure?.code === "PENDING_RECONCILIATION") {
+          message = "This post is locked. Check its approval and publishing status before removing content.";
+        } else if (typeof failure?.error === "string" && !failure.code) {
+          message = failure.error;
+        }
+        throw new Error(message);
       }
 
       const updatedAssets =
