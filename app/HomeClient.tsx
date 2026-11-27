@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
-import { ArrowRight, ArrowUpRight, BookOpenText, CalendarDays, ChartNoAxesCombined, ChevronDown, ChevronRight, FileCheck2, MessageCircle, Send, UsersRound } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpenText, Building2, CalendarDays, ChartNoAxesCombined, ChevronDown, ChevronRight, FileCheck2, MessageCircle, Send, Smartphone, Store, UsersRound } from "lucide-react";
 import BookDemoModal from "@/components/landing/BookDemoModal";
 import PricingSection from "@/components/landing/PricingSection";
 import MarketingHeader from "@/components/landing/MarketingHeader";
@@ -18,10 +18,10 @@ import styles from "./HomePage.module.css";
 const audienceRoutes = new Map(solutionNavigation.map(solution => [solution.homeSection, solution.href]));
 
 const audiences = [
-  { section: "businesses", label: "Businesses", title: "You're Investing in Marketing. Is It Working?", copy: "Your team is busy, but are you seeing results? Keep your people, campaigns, customer conversations and performance connected.", action: "Explore Showwork for Businesses", photo: "/images/landing/9.webp", alt: "Business owner and marketing team in a Nigerian office" },
-  { section: "agencies", label: "Marketing Agencies", title: "More Clients Shouldn't Mean More Chaos.", copy: "Different brands, endless approvals and growing teams. Keep every client's marketing organised without losing control of delivery.", action: "Explore Showwork for Agencies", photo: "/images/landing/6.webp", alt: "Nigerian agency team reviewing campaign materials" },
-  { section: "managers", label: "Social Media Managers", title: "Your Next Client Shouldn't Overwhelm You.", copy: "Too many brands, deadlines and client revisions? Plan content, manage approvals and publish without the constant back-and-forth.", action: "Explore Showwork for Social Media Managers", photo: "/images/landing/freelancers/hero.webp", alt: "Nigerian social media manager at her desk" },
-  { section: "retailers", label: "Small Businesses & Retailers", title: "You're Busy Selling. Who's Answering Your Customers?", copy: "Running promotions while enquiries pile up? Let Showwork help you respond, manage conversations and keep potential customers engaged.", action: "Explore Showwork for Small Businesses", photo: "/images/landing/retail-owner.webp", alt: "Lagos shop owner helping customers at her counter" },
+  { section: "businesses", label: "Businesses", icon: Building2, action: "Explore for businesses", copy: "Keep marketing, customer conversations and results in view." },
+  { section: "agencies", label: "Marketing Agencies", icon: UsersRound, action: "Explore for agencies", copy: "Manage campaigns and approvals across every client." },
+  { section: "managers", label: "Social Media Managers", icon: Smartphone, action: "Explore for managers", copy: "Plan, get approval and publish from one place." },
+  { section: "retailers", label: "Small Businesses & Retailers", icon: Store, action: "Explore for retailers", copy: "Stay on top of customer enquiries while you sell." },
 ] as const;
 
 const problems = [
@@ -162,20 +162,27 @@ export default function HomeClient({ isLoggedIn = false }: { isLoggedIn?: boolea
               <div className={styles.wideIntro}>
                 <Intro title="Find Showwork for the way you work." id="solutions-heading" />
               </div>
-              <div className={styles.audienceGrid}>
-                {audiences.map(audience => (
-                    <article key={audience.section} id={audience.section} data-audience={audience.section} data-marketing-card>
-                      <div className={styles.audiencePhoto}>
-                        <Image src={audience.photo} alt={audience.alt} fill
-                          sizes={audience.section === "businesses" ? "(max-width: 760px) 92vw, 50vw" : "(max-width: 760px) 30vw, 16vw"} />
-                      </div>
-                      <div className={styles.audienceCopy}>
-                        <span className={styles.audienceLabel}>{audience.label}</span>
-                        <h3>{audience.title}</h3><p>{audience.copy}</p>
-                        <Link href={audienceRoutes.get(audience.section)!} className={styles.textLink}>{audience.action}<ArrowUpRight size={18} /></Link>
-                      </div>
-                    </article>
-                ))}
+              <div className={styles.audienceLayout}>
+                <div className={styles.audiencePhoto}>
+                  <Image
+                    src="/images/landing/9.webp"
+                    alt="Business owner and marketing team in a Nigerian office"
+                    fill
+                    sizes="(max-width: 760px) 94vw, (max-width: 1280px) 45vw, 555px"
+                  />
+                </div>
+                <ul className={styles.audienceList}>
+                  {audiences.map(audience => (
+                    <li key={audience.section} id={audience.section}>
+                      <audience.icon className={styles.audienceIcon} size={24} strokeWidth={1.65} aria-hidden="true" />
+                      <h3>{audience.label}</h3>
+                      <p>{audience.copy}</p>
+                      <Link href={audienceRoutes.get(audience.section)!} className={styles.audienceLink}>
+                        {audience.action}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </section>

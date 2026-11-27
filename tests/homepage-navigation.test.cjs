@@ -29,7 +29,7 @@ test('Products menu links to four dedicated landing pages', () => {
   ['/content-workspace', '/engage', '/delivery', '/portfolio'],
  );
 });
-test('Solutions menu retains five routes and the homepage has four illustrated audience cards', () => {
+test('Solutions menu retains five routes and the homepage has four audience links and one shared image', () => {
  const html = renderToStaticMarkup(React.createElement(component));
  const menu = html.match(/<details[^>]*><summary[^>]*>Solutions[\s\S]*?<\/details>/)?.[0];
  assert.ok(menu, 'Solutions disclosure is present');
@@ -37,12 +37,12 @@ test('Solutions menu retains five routes and the homepage has four illustrated a
  assert.deepEqual([...menu.matchAll(/href="([^"]+)"/g)].map(([, href]) => href), routes);
  assert.match(menu, /href="\/solutions\/creatives">Creatives</);
  assert.doesNotMatch(menu, /Videographers|Photographers/);
- const cards = html.match(/<section id="solutions"[\s\S]*?<\/section>/)?.[0];
- assert.ok(cards);
- for (const route of routes.slice(0, 4)) assert.ok(cards.includes(`href="${route}"`), route);
- assert.ok(!cards.includes('href="/solutions/creatives"'));
- assert.equal((cards.match(/<article\b/g)||[]).length,4);
- assert.equal((cards.match(/<img\b/g)||[]).length,4);
+ const solutions = html.match(/<section id="solutions"[\s\S]*?<\/section>/)?.[0];
+ assert.ok(solutions);
+ for (const route of routes.slice(0, 4)) assert.ok(solutions.includes(`href="${route}"`), route);
+ assert.ok(!solutions.includes('href="/solutions/creatives"'));
+ assert.equal((solutions.match(/<li\b/g)||[]).length,4);
+ assert.equal((solutions.match(/<img\b/g)||[]).length,1);
 });
 test('signed-in visitors receive a direct route to their workspaces',()=>{
  const html=renderToStaticMarkup(React.createElement(component,{isLoggedIn:true}));
