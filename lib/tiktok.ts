@@ -42,6 +42,7 @@ export function buildTikTokAuthUrl({ redirectUri, state, codeChallenge }: { redi
     client_key: CLIENT_KEY,
     scope: TIKTOK_OAUTH_SCOPES,
     response_type: "code",
+    disable_auto_auth: "1",
     redirect_uri: redirectUri,
     state,
     code_challenge: codeChallenge,

@@ -10,7 +10,7 @@ afterEach(() => {
     if (originalEnv[key] === undefined) delete process.env[key]; else process.env[key] = originalEnv[key];
   }
 });
-test('production authorization and exchange use only approved scopes, exact callback and server credentials', async () => {
+test('production OAuth always prompts for authorization and uses the approved callback and scopes', async () => {
   process.env.NODE_ENV = 'production';
   process.env.TIKTOK_CLIENT_KEY = 'live-key-test'; process.env.TIKTOK_CLIENT_SECRET = 'private-secret-test';
   const { tikTokRedirectUri } = load('lib/tiktokOAuthConfig.ts', { '@/lib/url': { appUrl: () => 'https://www.useshowwork.com' } });
@@ -22,6 +22,7 @@ test('production authorization and exchange use only approved scopes, exact call
   const url = new URL(api.buildTikTokAuthUrl({ redirectUri, state: 'signed-state', codeChallenge: 'challenge' }));
   assert.equal(url.searchParams.get('scope'), 'user.info.basic,user.info.stats,video.list,video.publish');
   assert.equal(url.searchParams.get('client_key'), 'live-key-test');
+  assert.equal(url.searchParams.get('disable_auto_auth'), '1');
   assert.equal(url.searchParams.get('redirect_uri'), approved);
   assert.equal(url.searchParams.get('state'), 'signed-state');
   assert.equal(url.searchParams.get('code_challenge'), 'challenge');
