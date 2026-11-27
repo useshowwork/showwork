@@ -1,5 +1,5 @@
 import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
-import type { SocialPlatform } from "@prisma/client";
+import type { Prisma, SocialPlatform } from "@prisma/client";
 import { recordChannelConnected } from "./workspaceNotifications";
 import { db } from "@/lib/db";
 
@@ -18,7 +18,7 @@ export type SocialConnectionInput = {
 };
 
 /** Upserts a server-side normalized account row while preserving legacy callers. */
-export async function upsertSocialConnection(input: SocialConnectionInput, database: typeof db = db) {
+export async function upsertSocialConnection(input: SocialConnectionInput, database: typeof db = db, beforeUpsert?: (tx: Prisma.TransactionClient) => Promise<void>) {
   const { calendarId, platform, platformAccountId, actorId, ...values } = input;
   const definedValues = Object.fromEntries(
     Object.entries(values).filter(([, value]) => value !== undefined),
@@ -27,6 +27,7 @@ export async function upsertSocialConnection(input: SocialConnectionInput, datab
   const connection = await database.$transaction(async (tx) => {
   /* canonical-integration-boundary */ if (publishingIntegrationInstalled()) { await assertLegacyPublishingAllowed("lib/socialReporting.ts#database.$transaction:callback@24"); } /* end-canonical-integration-boundary */
 
+    await beforeUpsert?.(tx);
     await tx.socialConnection.updateMany({
       where: {
         calendarId,

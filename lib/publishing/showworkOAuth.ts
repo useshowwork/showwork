@@ -14,23 +14,33 @@ import type {createCanonicalApplicationActions} from './applicationActions';
 import type {OwnershipDatabase} from './ownership';
 import {withPublishingAccountIO} from './executionContext';
 import {buildInstagramAuthUrl,exchangeCodeForToken,exchangeForLongLivedToken,listManagedPages,listInstagramGrantedPermissions,getInstagramUsername} from '../instagram';
-import {exchangeCodeForTikTokTokens,getTikTokDisplayName} from '../tiktok';
+import {exchangeCodeForTikTokTokens,getTikTokAccountProfile} from '../tiktok';
 import {readTikTokVerifier,TIKTOK_PKCE_COOKIE} from '../tiktokOAuthPkce';
+import {handleTikTokAccountSelection,tikTokSelectionRedirect} from '../tiktokAccountSelection';
 import {linkedInPages} from '../linkedin/pages';
 import {linkedInMessagingAccess} from '../linkedin/messagingAccess';
 import type {SocialConnection} from '@prisma/client';
 
 export function createCanonicalShowworkOAuth(deps:{database:OwnershipDatabase;actions:ReturnType<typeof createCanonicalApplicationActions>;policy:ValidationDependencies;
- authenticate():Promise<{id:string}|null>;fetch?:typeof globalThis.fetch;services?:Partial<{exchange:typeof exchangeChannelCode;xMember:typeof getXMember;linkedinMember:typeof getLinkedInMember;linkedinPages:typeof linkedInPages;facebookLong:typeof exchangeForLongLivedFacebookToken;facebookPages:typeof getFacebookPages;facebookPermissions:typeof getFacebookGrantedPermissions;instagramExchange:typeof exchangeCodeForToken;instagramLong:typeof exchangeForLongLivedToken;instagramPages:typeof listManagedPages;instagramPermissions:typeof listInstagramGrantedPermissions;instagramUsername:typeof getInstagramUsername;tiktokExchange:typeof exchangeCodeForTikTokTokens;tiktokName:typeof getTikTokDisplayName}>}) {
- const defaults={exchange:exchangeChannelCode,xMember:getXMember,linkedinMember:getLinkedInMember,linkedinPages:linkedInPages,facebookLong:exchangeForLongLivedFacebookToken,facebookPages:getFacebookPages,facebookPermissions:getFacebookGrantedPermissions,instagramExchange:exchangeCodeForToken,instagramLong:exchangeForLongLivedToken,instagramPages:listManagedPages,instagramPermissions:listInstagramGrantedPermissions,instagramUsername:getInstagramUsername,tiktokExchange:exchangeCodeForTikTokTokens,tiktokName:getTikTokDisplayName};
+ authenticate():Promise<{id:string}|null>;fetch?:typeof globalThis.fetch;services?:Partial<{exchange:typeof exchangeChannelCode;xMember:typeof getXMember;linkedinMember:typeof getLinkedInMember;linkedinPages:typeof linkedInPages;facebookLong:typeof exchangeForLongLivedFacebookToken;facebookPages:typeof getFacebookPages;facebookPermissions:typeof getFacebookGrantedPermissions;instagramExchange:typeof exchangeCodeForToken;instagramLong:typeof exchangeForLongLivedToken;instagramPages:typeof listManagedPages;instagramPermissions:typeof listInstagramGrantedPermissions;instagramUsername:typeof getInstagramUsername;tiktokExchange:typeof exchangeCodeForTikTokTokens;tiktokProfile:typeof getTikTokAccountProfile}>}) {
+ const defaults={exchange:exchangeChannelCode,xMember:getXMember,linkedinMember:getLinkedInMember,linkedinPages:linkedInPages,facebookLong:exchangeForLongLivedFacebookToken,facebookPages:getFacebookPages,facebookPermissions:getFacebookGrantedPermissions,instagramExchange:exchangeCodeForToken,instagramLong:exchangeForLongLivedToken,instagramPages:listManagedPages,instagramPermissions:listInstagramGrantedPermissions,instagramUsername:getInstagramUsername,tiktokExchange:exchangeCodeForTikTokTokens,tiktokProfile:getTikTokAccountProfile};
  const services=Object.fromEntries(Object.entries(defaults).map(([key,native])=>[key,(...args:any[])=>{const override=(deps.services as Record<string,Function>|undefined)?.[key];if(override)return override(...args);if(!deps.fetch)throw Error('EXPLICIT_ACCOUNT_HTTP_REQUIRED');return withPublishingAccountIO({fetch:deps.fetch,signal:AbortSignal.timeout(30000)},()=>Reflect.apply(native,null,args));}])) as typeof defaults;
  const validation=createPublishingValidationAdapters(deps.policy);
  const expires=(seconds?:number)=>seconds&&Number.isFinite(seconds)?new Date(Date.now()+seconds*1000):null;
  async function bounded<T>(run:()=>Promise<T>){let timer:ReturnType<typeof setTimeout>;try{return await Promise.race([run(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('OAUTH_PENDING_RECONNECT_REQUIRED')),30000);})]);}finally{clearTimeout(timer!);}}
  return async(entrypoint:string,args:readonly unknown[]):Promise<Response|undefined>=>{
-  const path=entrypoint.split('#')[0];if(!['app/api/calendars/channels/[channel]/callback/route.ts','app/api/calendars/[id]/channels/facebook/select-page/route.ts','app/api/calendars/[id]/channels/linkedin/pages/route.ts','app/api/calendars/[id]/instagram/connect/route.ts','app/api/calendars/[id]/instagram/select-account/route.ts','app/api/calendars/instagram/callback/route.ts','app/api/calendars/tiktok/callback/route.ts'].includes(path))return;
+  const path=entrypoint.split('#')[0];if(!['app/api/calendars/channels/[channel]/callback/route.ts','app/api/calendars/[id]/channels/facebook/select-page/route.ts','app/api/calendars/[id]/channels/linkedin/pages/route.ts','app/api/calendars/[id]/instagram/connect/route.ts','app/api/calendars/[id]/instagram/select-account/route.ts','app/api/calendars/instagram/callback/route.ts','app/api/calendars/tiktok/callback/route.ts','app/api/calendars/[id]/tiktok/select-account/route.ts'].includes(path))return;
   const request=args[0] as NextRequest,params=await (args[1] as {params:Promise<Record<string,string>>})?.params??{},creator=await deps.authenticate();
   if(!creator)return redirectWithinChannelFlow('/login',303);
+  if(path.endsWith('/tiktok/select-account/route.ts')){
+   await deps.database.transaction(tx=>validation.validateWorkspacePermission(tx,{actor:creator.id,calendarId:params.id,permission:'channels.manage'}));
+   return handleTikTokAccountSelection(request,params.id,creator.id,async account=>{
+    await deps.actions.bindVerifiedAccount({
+     operationId:account.id,actor:creator.id,calendarId:params.id,platform:'TIKTOK',expectedAccountVersion:account.connectionVersion??0,
+     evidence:{platform:'TIKTOK',providerAccountId:account.accountId,connectionId:policyHash({calendarId:params.id,platform:'TIKTOK',id:account.accountId}).slice(0,40),accessToken:account.accessToken,refreshToken:account.refreshToken,expiresAt:new Date(account.accessExpiresAt),refreshTokenExpiresAt:new Date(account.refreshExpiresAt),tokenScopes:account.scopes,accountName:account.displayName,username:account.displayName},
+    });
+   });
+  }
   if(path.endsWith('/instagram/select-account/route.ts')){
    const ticketId=request.cookies.get('showwork_instagram_account_selection')?.value;
    const ticket=await deps.database.transaction(async tx=>{await validation.validateWorkspacePermission(tx,{actor:creator.id,calendarId:params.id,permission:'channels.manage'});return (await tx.query(`SELECT * FROM "PublishingApplicationOperation" WHERE "operationId"=$1 AND actor=$2`,[ticketId,creator.id])).rows[0];});
@@ -78,8 +88,16 @@ export function createCanonicalShowworkOAuth(deps:{database:OwnershipDatabase;ac
    if(fresh){
     if(channel==='tiktok'){
      const verifier=readTikTokVerifier(request.cookies.get(TIKTOK_PKCE_COOKIE)?.value,request.cookies.get('showwork_tiktok_oauth_state')?.value);if(!verifier)throw Error('TIKTOK_PKCE_REQUIRED');
-     const tokens=await bounded(()=>services.tiktokExchange(code,tikTokRedirectUri(),verifier));if(!tokens.scope.split(/[\s,]+/).includes('video.publish'))throw Error('TIKTOK_PERMISSION_REQUIRED');const name=await bounded(()=>services.tiktokName(tokens.access_token));
-     await deps.actions.bindVerifiedAccount({operationId,actor:creator.id,calendarId,platform:'TIKTOK',evidence:{platform:'TIKTOK',providerAccountId:tokens.open_id,connectionId:policyHash({calendarId,platform:'TIKTOK',id:tokens.open_id}).slice(0,40),accessToken:tokens.access_token,refreshToken:tokens.refresh_token,expiresAt:expires(tokens.expires_in),refreshTokenExpiresAt:expires(tokens.refresh_expires_in)??undefined,tokenScopes:tokens.scope,accountName:name,username:name}});
+     const binding=await deps.database.transaction(async tx=>(await tx.query(`SELECT "currentVersion" FROM "PublishingAccountBinding" WHERE "calendarId"=$1 AND platform='TIKTOK'`,[calendarId])).rows[0]);
+     const tokens=await bounded(()=>services.tiktokExchange(code,tikTokRedirectUri(),verifier));if(!tokens.scope.split(/[\s,]+/).includes('video.publish'))throw Error('TIKTOK_PERMISSION_REQUIRED');
+     const profile=await bounded(()=>services.tiktokProfile(tokens.access_token));
+     const response=tikTokSelectionRedirect(new URL(appUrl()+`/dashboard/calendars/${calendarId}?view=channels`,request.nextUrl),{
+      ...profile,calendarId,actorId:creator.id,accountId:tokens.open_id,accessToken:tokens.access_token,refreshToken:tokens.refresh_token,
+      accessExpiresAt:Date.now()+tokens.expires_in*1000,refreshExpiresAt:Date.now()+tokens.refresh_expires_in*1000,scopes:tokens.scope,connectionVersion:binding?.currentVersion??0,
+     });
+     response.cookies.set('showwork_tiktok_oauth_state','',channelOAuthCookieOptions('tiktok',0));
+     response.cookies.set(TIKTOK_PKCE_COOKIE,'',channelOAuthCookieOptions('tiktok',0));
+     return response;
     }else{
      const workspace=await deps.database.transaction(async tx=>(await tx.query(`SELECT "instagramPageId","facebookPageId" FROM "SocialCalendar" WHERE id=$1`,[calendarId])).rows[0]);
      const pageHints=[workspace?.instagramPageId,workspace?.facebookPageId].filter((value):value is string=>typeof value==='string'&&!!value);

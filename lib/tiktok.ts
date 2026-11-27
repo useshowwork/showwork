@@ -42,7 +42,6 @@ export function buildTikTokAuthUrl({ redirectUri, state, codeChallenge }: { redi
     client_key: CLIENT_KEY,
     scope: TIKTOK_OAUTH_SCOPES,
     response_type: "code",
-    disable_auto_auth: "1",
     redirect_uri: redirectUri,
     state,
     code_challenge: codeChallenge,
@@ -132,16 +131,23 @@ async function apiPost<T>(path: string, accessToken: string, body: Record<string
   return data.data as T;
 }
 
-/** The account's display name — TikTok's closest equivalent to a username for display purposes. */
-export async function getTikTokDisplayName(accessToken: string): Promise<string> {
-  const res = await fetch(`${API_BASE}/user/info/?fields=display_name`, {
+/** The account identity available with TikTok's basic profile scope. */
+export async function getTikTokAccountProfile(accessToken: string): Promise<{ displayName: string; avatarUrl?: string }> {
+  const res = await fetch(`${API_BASE}/user/info/?fields=display_name,avatar_url`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const data = await res.json();
   if (!res.ok || data.error?.code !== "ok") {
     throw new Error(data.error?.message ?? "Failed to fetch TikTok account info");
   }
-  return data.data.user.display_name;
+  const profile = data.data?.user;
+  if (typeof profile?.display_name !== "string" || !profile.display_name.trim()) {
+    throw new Error("TikTok did not return an account name.");
+  }
+  const avatarUrl = typeof profile.avatar_url === "string" && profile.avatar_url.startsWith("https://")
+    ? profile.avatar_url
+    : undefined;
+  return { displayName: profile.display_name, avatarUrl };
 }
 
 export interface CreatorInfo {

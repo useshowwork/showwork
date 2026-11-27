@@ -6,7 +6,7 @@ import PlatformBrandIcon from "./PlatformBrandIcon";
 import { calendarMutationFetch } from "@/lib/publishing/clientRequests";
 
 import TikTokMessagingPanel from "./TikTokMessagingPanel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -41,6 +41,63 @@ export default function TikTokConnectionCard({
   const [messagingConnected, setMessagingConnected] = useState(false);
   const [justConnected, setJustConnected] = useState(false);
   const [analyticsAccess, setAnalyticsAccess] = useState<boolean | null>(null);
+  const attempt = searchParams.get("tiktokSelection");
+  const selectionUrl = `/api/calendars/${calendarId}/tiktok/select-account`;
+  const [pendingAccount, setPendingAccount] = useState<{ attempt: string; displayName: string; avatarUrl?: string } | null>(null);
+  const [resolvingAccount, setResolvingAccount] = useState(false);
+  const [switchAccount, setSwitchAccount] = useState(false);
+  const accountHeading = useRef<HTMLHeadingElement>(null);
+  const selectedAccount = pendingAccount?.attempt === attempt ? pendingAccount : null;
+
+  useEffect(() => {
+    if (selectedAccount) accountHeading.current?.focus();
+  }, [selectedAccount]);
+
+  useEffect(() => {
+    if (!isManager || !attempt) return;
+    const controller = new AbortController();
+    void fetch(`${selectionUrl}?attempt=${encodeURIComponent(attempt)}`, { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        const data = await response.json();
+        if (controller.signal.aborted) return;
+        if (!response.ok) throw new Error(data.error ?? "Could not check the TikTok account.");
+        setPendingAccount({ attempt, displayName: data.displayName, avatarUrl: data.avatarUrl });
+      })
+      .catch(error => {
+        if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Could not check the TikTok account.");
+      });
+    return () => controller.abort();
+  }, [attempt, isManager, selectionUrl]);
+
+  async function resolveAccount(action: "confirm" | "cancel") {
+    if (!selectedAccount || resolvingAccount) return;
+    setResolvingAccount(true);
+    setError(null);
+    try {
+      const response = await fetch(selectionUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attempt: selectedAccount.attempt, action }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not update the TikTok connection.");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tiktokSelection");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      setPendingAccount(null);
+      setSwitchAccount(action === "cancel");
+      if (action === "confirm") {
+        notifyReportingChannelChange(calendarId);
+        setJustConnected(true);
+        router.refresh();
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not update the TikTok connection.");
+    } finally {
+      setResolvingAccount(false);
+    }
+  }
+
   useEffect(() => {
     if (!isManager || !username) return;
     const controller = new AbortController();
@@ -121,6 +178,33 @@ export default function TikTokConnectionCard({
           </p>
         )}
 
+        {isManager && selectedAccount && (
+          <div className="mt-4 rounded-xl border border-[#DCE5F2] bg-[#F7FAFF] p-4">
+            <div className="flex items-center gap-3">
+              {selectedAccount.avatarUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selectedAccount.avatarUrl} alt="" referrerPolicy="no-referrer" className="h-10 w-10 rounded-full object-cover" />
+              )}
+              <div className="min-w-0">
+                <h3 ref={accountHeading} tabIndex={-1} className="scroll-mt-24 text-sm font-semibold text-[#173455]">Connect this TikTok account?</h3>
+                <p className="break-words text-sm text-[#526780]">{selectedAccount.displayName}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <button type="button" disabled={resolvingAccount} onClick={() => void resolveAccount("confirm")} className="min-h-11 rounded-lg bg-black px-3 text-xs font-semibold text-white disabled:opacity-50">
+                Connect account
+              </button>
+              <button type="button" disabled={resolvingAccount} onClick={() => void resolveAccount("cancel")} className="min-h-11 text-xs font-semibold text-[#155fc7] disabled:opacity-50">
+                Use a different account
+              </button>
+            </div>
+          </div>
+        )}
+        {switchAccount && (
+          <p role="status" className="mt-4 text-xs leading-5 text-[#526780]">
+            Switch to the TikTok account you want in this browser, then return here and try connecting again.
+          </p>
+        )}
         <ChannelCapabilities platform="tiktok"/>
         {isConnected ? (
           <>
@@ -136,7 +220,7 @@ export default function TikTokConnectionCard({
             Connect this calendar to a client&apos;s TikTok account — once connected, review the settings and authorize each approved TikTok post for scheduled publishing.
           </p>
         )}
-        {isManager && isConnected && <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+        {isManager && isConnected && !selectedAccount && <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
           <p className="text-xs font-semibold text-white">TikTok analytics</p>
           <p className="mt-1 text-[11px] leading-5 text-[#71849E]">{analyticsAccess === true
             ? "Analytics permissions granted. Open Analytics & Reporting, select TikTok, and sync data to retrieve current statistics."
@@ -180,7 +264,7 @@ export default function TikTokConnectionCard({
           Disconnect TikTok
         </button>
       )
-    ) : (
+    ) : !selectedAccount && (
       <a
         href={`/api/calendars/${calendarId}/tiktok/connect`}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5">

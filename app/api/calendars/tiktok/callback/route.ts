@@ -1,14 +1,14 @@
-import { publishingIntegrationInstalled, invokePublishingEntrypoint, assertLegacyPublishingAllowed } from "@/lib/publishing/applicationBoundary";
+import { publishingIntegrationInstalled, invokePublishingEntrypoint } from "@/lib/publishing/applicationBoundary";
 import { hasCalendarPermission } from "@/lib/calendarPermissions";
 import { verifyChannelOAuthState, channelOAuthCookieOptions } from "@/lib/channelOAuthState";
 import { readTikTokVerifier, TIKTOK_PKCE_COOKIE } from "@/lib/tiktokOAuthPkce";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentCreator } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { exchangeCodeForTikTokTokens, getTikTokDisplayName } from "@/lib/tiktok";
+import { exchangeCodeForTikTokTokens, getTikTokAccountProfile } from "@/lib/tiktok";
 import { appUrl } from "@/lib/url";
 import { tikTokRedirectUri } from "@/lib/tiktokOAuthConfig";
-import { upsertSocialConnection } from "@/lib/socialReporting";
+import { tikTokSelectionRedirect } from "@/lib/tiktokAccountSelection";
 
 // GET — TikTok redirects here after the manager approves (or denies)
 // access on its authorization page. Signed state and a browser nonce
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const creator = await getCurrentCreator();
   if (!creator) return redirectTo("/login");
 
-  const calendar = await db.socialCalendar.findUnique({ where: { id: calendarId }, select: { id: true, managerId: true } });
+  const calendar = await db.socialCalendar.findUnique({ where: { id: calendarId }, select: { id: true, tikTokConnectedAt: true } });
   if (!calendar || !(await hasCalendarPermission(creator.id, calendar.id, "channels.manage", "TIKTOK"))) {
     return redirectTo("/dashboard/calendars?tiktokError=not_found");
   }
@@ -50,41 +50,22 @@ export async function GET(req: NextRequest) {
   try {
     const tokens = await exchangeCodeForTikTokTokens(code, redirectUri, verifier);
     if (!tokens.scope?.split(/[\s,]+/).includes("video.publish")) throw new Error("TikTok publishing permission was not granted.");
-    const displayName = await getTikTokDisplayName(tokens.access_token);
-
-    const accessTokenExpiresAt = new Date();
-    accessTokenExpiresAt.setSeconds(accessTokenExpiresAt.getSeconds() + tokens.expires_in);
-
-    await db.socialCalendar.update({
-      where: { id: calendarId },
-      data: {
-        tikTokOpenId: tokens.open_id,
-        tikTokUsername: displayName,
-        tikTokAccessToken: tokens.access_token,
-        tikTokAccessTokenExpiresAt: accessTokenExpiresAt,
-        tikTokRefreshToken: tokens.refresh_token,
-        tikTokConnectedAt: new Date(),
-      },
-    });
-    const refreshTokenExpiresAt = new Date(Date.now() + tokens.refresh_expires_in * 1000);
-    await upsertSocialConnection({ actorId: creator.id,
+    const profile = await getTikTokAccountProfile(tokens.access_token);
+    const response = tikTokSelectionRedirect(new URL(`${appUrl()}${settingsPath}`, req.nextUrl), {
+      ...profile,
       calendarId,
-      platform: "TIKTOK",
-      platformAccountId: tokens.open_id,
-      accountName: displayName,
-      username: displayName,
+      actorId: creator.id,
+      accountId: tokens.open_id,
       accessToken: tokens.access_token,
-      accessTokenExpiresAt,
       refreshToken: tokens.refresh_token,
-      refreshTokenExpiresAt,
-      tokenScopes: tokens.scope,
+      accessExpiresAt: Date.now() + tokens.expires_in * 1000,
+      refreshExpiresAt: Date.now() + tokens.refresh_expires_in * 1000,
+      scopes: tokens.scope,
+      connectionVersion: calendar.tikTokConnectedAt?.getTime() ?? null,
     });
-
-    await db.calendarPost.updateMany({ where: { calendarId, platform: "TIKTOK", tikTokPublishStatus: "SCHEDULED", tikTokConsentAccountId: { not: tokens.open_id } }, data: {
-      tikTokPublishStatus: "NOT_SCHEDULED", tikTokConsentAt: null, tikTokConsentBy: null, tikTokConsentHash: null,
-      tikTokConsentAccountId: null, tikTokConsentVersion: null, tikTokPublishError: "The connected account changed. Review TikTok settings and authorize again.",
-    } });
-    return redirectTo(`${settingsPath}&tiktokConnected=true`);
+    response.cookies.set("showwork_tiktok_oauth_state", "", channelOAuthCookieOptions("tiktok", 0));
+    response.cookies.set(TIKTOK_PKCE_COOKIE, "", channelOAuthCookieOptions("tiktok", 0));
+    return response;
   } catch (err) {
     console.error("TikTok OAuth callback failed.");
     return redirectTo(`${settingsPath}&tiktokError=connection_failed`);

@@ -6,11 +6,11 @@ const originalEnv = { ...process.env };
 const approved = 'https://useshowwork.com/api/calendars/tiktok/callback';
 afterEach(() => {
   global.fetch = originalFetch;
-  for (const key of ['NODE_ENV', 'TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET']) {
+  for (const key of ['NODE_ENV', 'TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET', 'JWT_SECRET']) {
     if (originalEnv[key] === undefined) delete process.env[key]; else process.env[key] = originalEnv[key];
   }
 });
-test('production OAuth always prompts for authorization and uses the approved callback and scopes', async () => {
+test('production OAuth lets TikTok manage login and uses the approved callback and scopes', async () => {
   process.env.NODE_ENV = 'production';
   process.env.TIKTOK_CLIENT_KEY = 'live-key-test'; process.env.TIKTOK_CLIENT_SECRET = 'private-secret-test';
   const { tikTokRedirectUri } = load('lib/tiktokOAuthConfig.ts', { '@/lib/url': { appUrl: () => 'https://www.useshowwork.com' } });
@@ -22,7 +22,7 @@ test('production OAuth always prompts for authorization and uses the approved ca
   const url = new URL(api.buildTikTokAuthUrl({ redirectUri, state: 'signed-state', codeChallenge: 'challenge' }));
   assert.equal(url.searchParams.get('scope'), 'user.info.basic,user.info.stats,video.list,video.publish');
   assert.equal(url.searchParams.get('client_key'), 'live-key-test');
-  assert.equal(url.searchParams.get('disable_auto_auth'), '1');
+  assert.equal(url.searchParams.has('disable_auto_auth'), false);
   assert.equal(url.searchParams.get('redirect_uri'), approved);
   assert.equal(url.searchParams.get('state'), 'signed-state');
   assert.equal(url.searchParams.get('code_challenge'), 'challenge');
@@ -70,31 +70,72 @@ test('existing analytics grants retain their supported metrics independently', a
     assert.equal(metrics.accountPosts.length, scope.includes('video.list') ? 1 : 0);
   }
 });
-test('callback accepts approved grant, saves actual scopes and keeps scheduled-account safeguards', async () => {
+test('callback stages the account and only explicit confirmation saves it', async () => {
   process.env.NODE_ENV = 'production';
+  process.env.JWT_SECRET = 'test-only-selection-secret';
+  const { NextRequest } = require('next/server');
   const saved = [], schedules = [];
-  const route = load('app/api/calendars/tiktok/callback/route.ts', {
+  let actor = 'creator';
+  const db = {
+    socialCalendar: {
+      findUnique: async () => ({ id: 'calendar', tikTokConnectedAt: null }),
+      updateMany: async input => { saved.push(input); return { count: 1 }; },
+    },
+    calendarPost: { updateMany: async input => schedules.push(input) },
+  };
+  const mocks = {
     '@/lib/publishing/applicationBoundary': { publishingIntegrationInstalled: () => false },
-    '@/lib/auth': { getCurrentCreator: async () => ({id:'creator'}) },
+    '@/lib/auth': { getCurrentCreator: async () => ({ id: actor }) },
     '@/lib/calendarPermissions': { hasCalendarPermission: async () => true },
-    '@/lib/channelOAuthState': { verifyChannelOAuthState: () => 'calendar', channelOAuthCookieOptions: () => ({path:'/api/calendars/tiktok/callback',httpOnly:true,maxAge:0}) },
-    '@/lib/tiktokOAuthPkce': { readTikTokVerifier: () => 'verifier', TIKTOK_PKCE_COOKIE:'showwork_tiktok_pkce' },
+    '@/lib/channelOAuthState': { verifyChannelOAuthState: () => 'calendar', channelOAuthCookieOptions: () => ({ path: '/api/calendars/tiktok/callback', httpOnly: true, maxAge: 0 }) },
+    '@/lib/tiktokOAuthPkce': { readTikTokVerifier: () => 'verifier', TIKTOK_PKCE_COOKIE: 'showwork_tiktok_pkce' },
     '@/lib/url': { appUrl: () => 'https://www.useshowwork.com' },
-    '@/lib/db': {db:{socialCalendar:{findUnique:async()=>({id:'calendar',managerId:'creator'}),update:async input=>saved.push(input)},calendarPost:{updateMany:async input=>schedules.push(input)}}},
-    '@/lib/socialReporting': { upsertSocialConnection: async input => saved.push(input) },
+    '@/lib/db': { db },
+    '@/lib/socialReporting': { upsertSocialConnection: async (input, _db, beforeUpsert) => { await beforeUpsert(db); saved.push(input); } },
     '@/lib/tiktok': {
       exchangeCodeForTikTokTokens: async (code, redirect, verifier) => {
-        assert.equal(redirect, approved);assert.equal(verifier, 'verifier');assert.equal(code, 'code');
-        return {open_id:'account',access_token:'token',refresh_token:'refresh',expires_in:86400,refresh_expires_in:864000,scope:'user.info.basic,video.publish'};
-      }, getTikTokDisplayName: async () => 'Test creator',
+        assert.equal(redirect, approved); assert.equal(verifier, 'verifier'); assert.equal(code, 'code');
+        return { open_id: 'account', access_token: 'private-token', refresh_token: 'private-refresh', expires_in: 86400, refresh_expires_in: 864000, scope: 'user.info.basic,video.publish' };
+      },
+      getTikTokAccountProfile: async () => ({ displayName: 'Test creator', avatarUrl: 'https://example.test/avatar.png' }),
     },
-  });
-  const result = await route.GET({nextUrl:new URL(approved+'?code=code&state=signed'),cookies:{get:()=>({value:'cookie'})}});
-  assert.match(result.headers.get('location'), /tiktokConnected=true/);
-  assert.equal(saved[1].tokenScopes,'user.info.basic,video.publish');
-  assert.equal(schedules[0].where.tikTokPublishStatus,'SCHEDULED');
-  assert.deepEqual(schedules[0].where.tikTokConsentAccountId,{not:'account'});
-  assert.equal(result.cookies.get('showwork_tiktok_pkce').maxAge,0);
+  };
+  const callback = load('app/api/calendars/tiktok/callback/route.ts', mocks);
+  const selection = load('app/api/calendars/[id]/tiktok/select-account/route.ts', mocks);
+  const context = { params: Promise.resolve({ id: 'calendar' }) };
+  const start = async () => {
+    const result = await callback.GET(new NextRequest(approved+'?code=code&state=signed'));
+    const attempt = new URL(result.headers.get('location')).searchParams.get('tiktokSelection');
+    const cookie = result.cookies.get('showwork_tiktok_account_selection');
+    assert.ok(attempt);
+    assert.equal(cookie.httpOnly, true);
+    assert.equal(cookie.path, '/api/calendars/calendar/tiktok/select-account');
+    assert.doesNotMatch(cookie.value, /private-token|private-refresh/);
+    assert.equal(result.cookies.get('showwork_tiktok_pkce').maxAge, 0);
+    assert.equal(saved.length, 0);
+    return { attempt, cookie: cookie.name+'='+cookie.value };
+  };
+  const endpoint = 'https://www.useshowwork.com/api/calendars/calendar/tiktok/select-account';
+  const post = (pending, action, origin = 'https://www.useshowwork.com') => selection.POST(
+    new NextRequest(endpoint, { method: 'POST', headers: { cookie: pending.cookie, origin }, body: JSON.stringify({ attempt: pending.attempt, action }) }), context,
+  );
+  const first = await start();
+  const preview = await selection.GET(new NextRequest(endpoint+'?attempt='+first.attempt, { headers: { cookie: first.cookie } }), context);
+  assert.deepEqual(await preview.json(), { displayName: 'Test creator', avatarUrl: 'https://example.test/avatar.png' });
+  assert.equal((await post(first, 'confirm', 'https://other.example')).status, 403);
+  actor = 'another-creator';
+  assert.equal((await post(first, 'confirm')).status, 409);
+  actor = 'creator';
+  assert.equal(saved.length, 0);
+  const cancelled = await post(first, 'cancel');
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.cookies.get('showwork_tiktok_account_selection').maxAge, 0);
+  const second = await start();
+  assert.equal((await post({ ...second, attempt: first.attempt }, 'confirm')).status, 409);
+  assert.equal((await post(second, 'confirm')).status, 200);
+  assert.equal(saved[1].tokenScopes, 'user.info.basic,video.publish');
+  assert.equal(schedules[0].where.tikTokPublishStatus, 'SCHEDULED');
+  assert.deepEqual(schedules[0].where.tikTokConsentAccountId, { not: 'account' });
 });
 test('approved TikTok analytics maps real response fields into account, video and linked-post metrics', async () => {
   const calls=[];
